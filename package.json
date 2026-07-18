@@ -1,0 +1,23 @@
+{
+  "name": "druckarchiv",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --configLoader runner",
+    "build:web": "vite build --configLoader runner",
+    "tauri": "tauri",
+    "build": "tauri build",
+    "check:privacy": "node scripts/privacy-check.mjs",
+    "check": "npm run check:privacy && npm run build:web && cargo check --manifest-path src-tauri/Cargo.toml"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-dialog": "^2.0.0",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "vite": "^7.0.0"
+  }
+}

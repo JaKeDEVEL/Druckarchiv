@@ -1,0 +1,44 @@
+# Dependencies and build output
+node_modules/
+dist/
+releases/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/android/
+src-tauri/icons/ios/
+src-tauri/icons/Square*Logo.png
+src-tauri/icons/StoreLogo.png
+
+# Local editor and operating-system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Local configuration, credentials, and signing material
+.env
+.env.*
+!.env.example
+*.p12
+*.pfx
+*.cer
+*.crt
+*.key
+*.mobileprovision
+*.provisionprofile
+*.keystore
+
+# Never commit a user's generated archive state
+runtime-data/
+inventory.json
+thumb_map.json
+thumbs/
+*.stl
+*.3mf
+*.gcode
+*.bgcode
+*.step
+*.stp
+*.f3d
+*.fcstd
