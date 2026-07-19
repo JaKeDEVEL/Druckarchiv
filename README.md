@@ -21,6 +21,7 @@ Druckarchiv is a local desktop app for organizing, filtering, and viewing 3D pri
 - an interactive STL, 3MF, and OBJ viewer with rotation, zoom, and pan, available directly inside project folders
 - open selected print files directly in OrcaSlicer, Bambu Studio, or PrusaSlicer; the most recently used slicer is stored locally
 - German and English interfaces based on the system language, with manual selection and a locally stored preference
+- light, dark, and system-based appearance modes with a locally stored preference
 - no telemetry, no user account, and no uploads
 - Blender is **not required**
 
@@ -87,6 +88,7 @@ Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3
 - interaktiver STL-/3MF-/OBJ-Viewer mit Drehen, Zoomen und Verschieben – auch direkt aus Projektordnern
 - ausgewählte Druckdateien direkt in OrcaSlicer, Bambu Studio oder PrusaSlicer öffnen; der zuletzt verwendete Slicer bleibt lokal gespeichert
 - deutsche und englische Oberfläche mit Systemsprache, manuellem Wechsel und lokal gespeichertem Sprachwunsch
+- helle, dunkle oder am System ausgerichtete Darstellung mit lokal gespeicherter Auswahl
 - keine Telemetrie, kein Benutzerkonto und kein Upload
 - Blender ist **keine Voraussetzung**
 

@@ -29,6 +29,7 @@ import { projectBreadcrumbs, projectBrowserEntries } from "./project-browser.js"
 import { applyTranslations, formatDateValue, formatNumber, getLocale, onLocaleChange, setLocale, t } from "./i18n.js";
 import { isSlicerCompatible, normalizeSlicer, slicerErrorKey, slicerLabel } from "./slicer-preferences.js";
 import { normalizeViewMode, toggleViewMode } from "./view-preferences.js";
+import { normalizeThemePreference, resolveTheme, THEME_STORAGE_KEY } from "./theme-preferences.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -50,6 +51,9 @@ const PAGE_SIZE_KEY = "druckarchiv.page-size.v1";
 const PROJECT_VIEW_KEY = "druckarchiv.project-view.v1";
 const SLICER_KEY = "druckarchiv.slicer.v1";
 const APP_VERSION = __APP_VERSION__;
+const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+let themePreference = normalizeThemePreference(localStorage.getItem(THEME_STORAGE_KEY));
+let currentTheme = resolveTheme(themePreference, systemThemeQuery.matches);
 const state = {
   archive: null,
   roots: [],
@@ -73,6 +77,25 @@ const state = {
 };
 
 const byId = id => document.getElementById(id);
+
+function syncThemeSwitch() {
+  byId("themeSwitch").querySelectorAll("[data-theme-preference]").forEach(button => {
+    const selected = button.dataset.themePreference === themePreference;
+    button.classList.toggle("on", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+}
+
+function applyTheme(preference, { persist = true } = {}) {
+  themePreference = normalizeThemePreference(preference);
+  currentTheme = resolveTheme(themePreference, systemThemeQuery.matches);
+  document.documentElement.dataset.theme = currentTheme;
+  document.documentElement.style.colorScheme = currentTheme;
+  if (persist) {
+    try { localStorage.setItem(THEME_STORAGE_KEY, themePreference); } catch (_) { /* storage can be unavailable */ }
+  }
+  syncThemeSwitch();
+}
 const categoryLabel = category => CATEGORIES[category]?.label || t(CATEGORIES[category]?.labelKey || "categories.other");
 const categoryOf = file => extCategory.get(file.extension.toLowerCase()) || "other";
 const isViewable = file => MODEL_EXTENSIONS.has(file.extension.toLowerCase());
@@ -1007,8 +1030,19 @@ function refreshLocalizedInterface() {
   if (projectDialog.open && projectDialog.dataset.projectIndex !== undefined) renderProjectContents(Number(projectDialog.dataset.projectIndex));
 }
 
+byId("themeSwitch").addEventListener("click", event => {
+  const button = event.target.closest("[data-theme-preference]");
+  if (button) applyTheme(button.dataset.themePreference);
+});
+const handleSystemThemeChange = () => {
+  if (themePreference === "system") applyTheme("system", { persist: false });
+};
+if (typeof systemThemeQuery.addEventListener === "function") systemThemeQuery.addEventListener("change", handleSystemThemeChange);
+else systemThemeQuery.addListener(handleSystemThemeChange);
+
 byId("localeSelect").addEventListener("change", event => setLocale(event.target.value));
 onLocaleChange(refreshLocalizedInterface);
+applyTheme(themePreference, { persist: false });
 applyTranslations();
 byId("localeSelect").value = getLocale();
 render();

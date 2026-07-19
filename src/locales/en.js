@@ -5,6 +5,12 @@ export default {
     noFolder: "No archive folder selected yet",
     manageLibrary: "Manage library"
   },
+  theme: {
+    label: "Appearance",
+    system: "System",
+    light: "Light",
+    dark: "Dark"
+  },
   nav: {
     label: "Search and view",
     searchPlaceholder: "Search projects and files …",

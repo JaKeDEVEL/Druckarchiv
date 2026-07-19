@@ -5,6 +5,12 @@ export default {
     noFolder: "Noch kein Archivordner ausgewählt",
     manageLibrary: "Bibliothek verwalten"
   },
+  theme: {
+    label: "Darstellung",
+    system: "System",
+    light: "Hell",
+    dark: "Dunkel"
+  },
   nav: {
     label: "Suche und Ansicht",
     searchPlaceholder: "Projekte und Dateien durchsuchen …",
