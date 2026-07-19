@@ -17,7 +17,7 @@ Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3
 - speicherschonende Pagination mit wahlweise 25 oder 50 Einträgen pro Seite – auch innerhalb geöffneter Ordner
 - lokal und verzögert erzeugte Modell-Thumbnails mit sichtbarem Ladefortschritt; in der Verwaltung abschaltbar
 - interaktiver STL-/3MF-/OBJ-Viewer mit Drehen, Zoomen und Verschieben – auch direkt aus Projektordnern
-- ausgewählte Druckdateien direkt in OrcaSlicer oder Bambu Studio öffnen; der zuletzt verwendete Slicer bleibt lokal gespeichert
+- ausgewählte Druckdateien direkt in OrcaSlicer, Bambu Studio oder PrusaSlicer öffnen; der zuletzt verwendete Slicer bleibt lokal gespeichert
 - deutsche und englische Oberfläche mit Systemsprache, manuellem Wechsel und lokal gespeichertem Sprachwunsch
 - keine Telemetrie, kein Benutzerkonto und kein Upload
 - Blender ist **keine Voraussetzung**

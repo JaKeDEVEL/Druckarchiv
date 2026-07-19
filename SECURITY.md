@@ -6,11 +6,11 @@ Die Web-Oberfläche erhält nur drei eng begrenzte Rust-Befehle:
 
 1. bis zu 32 vom Nutzer ausgewählte Ordner schreibgeschützt einlesen;
 2. eine STL-, 3MF- oder OBJ-Datei innerhalb genau dieses Ordners für Vorschau und Viewer lesen;
-3. ausgewählte, slicer-kompatible Dateien an OrcaSlicer oder Bambu Studio übergeben.
+3. ausgewählte, slicer-kompatible Dateien an OrcaSlicer, Bambu Studio oder PrusaSlicer übergeben.
 
 Vor dem Lesen eines Modells wird der kanonische Pfad geprüft. Pfadtraversierung außerhalb der Archivordner, symbolische Links, nicht unterstützte Dateitypen und Modelle über 512 MB werden blockiert. Verschachtelt ausgewählte Quellen werden zusammengeführt, damit Dateien nicht doppelt erfasst werden. Der Scan überspringt versteckte Einträge und ist insgesamt auf 200.000 Dateien begrenzt.
 
-Der Slicer-Start akzeptiert keine frei wählbaren Programme oder Shell-Befehle. Zulässig sind ausschließlich die fest hinterlegten Ziele OrcaSlicer und Bambu Studio sowie höchstens 100 Dateien pro Aufruf. Jede Datei wird erneut kanonisch gegen die im Rust-Kern gespeicherten Bibliotheksordner geprüft; fremde Pfade und nicht unterstützte Formate werden blockiert.
+Der Slicer-Start akzeptiert keine frei wählbaren Programme oder Shell-Befehle. Zulässig sind ausschließlich die fest hinterlegten Ziele OrcaSlicer, Bambu Studio und PrusaSlicer sowie höchstens 100 Dateien pro Aufruf. Jede Datei wird erneut kanonisch gegen die im Rust-Kern gespeicherten Bibliotheksordner geprüft; fremde Pfade und für den gewählten Slicer nicht unterstützte Formate werden blockiert.
 
 Die Content Security Policy sperrt fremde Skripte, Frames, Plugins und externe Verbindungen. Abhängigkeiten werden lokal gebündelt.
 

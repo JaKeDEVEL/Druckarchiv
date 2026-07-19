@@ -499,7 +499,7 @@ const projectFileKey = file => `${file.rootIndex}\n${file.path}`;
 let slicerOpening = false;
 
 function projectCheckbox(file, selectedKeys) {
-  const compatible = isSlicerCompatible(file.extension);
+  const compatible = isSlicerCompatible(file.extension, state.slicer);
   const checked = selectedKeys.has(projectFileKey(file)) ? "checked" : "";
   const disabled = compatible ? "" : `disabled title="${escapeHtml(t("project.slicerUnsupported"))}"`;
   return `<input type="checkbox" data-path="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" aria-label="${escapeHtml(t("project.selectFile", { name: file.name }))}" ${checked} ${disabled}>`;
@@ -647,7 +647,11 @@ byId("projectViewToggle").addEventListener("click", () => {
 byId("slicerSelect").addEventListener("change", event => {
   state.slicer = normalizeSlicer(event.target.value);
   localStorage.setItem(SLICER_KEY, state.slicer);
-  updateProjectSelection();
+  state.projectSelection = new Set([...state.projectSelection].filter(key => {
+    const file = state.fileIndex.get(key);
+    return file && isSlicerCompatible(file.extension, state.slicer);
+  }));
+  renderProjectContents(Number(projectDialog.dataset.projectIndex));
 });
 byId("projectBreadcrumb").addEventListener("click", event => {
   const button = event.target.closest("[data-project-path]");

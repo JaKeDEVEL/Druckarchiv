@@ -12,14 +12,14 @@ Rust-Kern ── schreibgeschützter Scan ──► Archivdaten im Arbeitsspeich
         └──────────────────────────────► HTML/CSS-Oberfläche
         │                                      │
         │ validierte Dateiauswahl               ▼
-        └──► OrcaSlicer / Bambu Studio  Three.js / WebGL Viewer
+        └──► OrcaSlicer / Bambu Studio / PrusaSlicer  Three.js / WebGL Viewer
 ```
 
 Die Oberfläche läuft in Tauri über den nativen WebView des Betriebssystems. Rust übernimmt ausschließlich privilegierte Dateisystemoperationen. Das Frontend bekommt keinen allgemeinen Dateisystemzugriff. Jede Datei trägt den Index ihres kanonisch geprüften Ursprungsordners; verschachtelte oder doppelte Quellen werden vor dem Scan zusammengeführt.
 
 Formatwahl und Ausschlussregeln filtern die eingelesenen Metadaten im Frontend. Dadurch gelten sie identisch für KPI-Zahlen, Projektkarten, Einzeldateien und Projektinhalte. Nur Ordnerpfade und Regeln werden lokal persistiert, niemals Inventardaten oder Modelldateien.
 
-Projektinhalte können als Liste oder Raster angezeigt werden; die lokale Ansichtspräferenz bleibt auf dem Gerät. Für den Slicer-Start übergibt das Frontend nur Ursprungsindex und relativen Pfad. Der Rust-Kern löst diese Angaben gegen die beim Scan gespeicherten kanonischen Wurzelordner auf, begrenzt Formate und Anzahl und startet ausschließlich OrcaSlicer oder Bambu Studio ohne Shell.
+Projektinhalte können als Liste oder Raster angezeigt werden; die lokale Ansichtspräferenz bleibt auf dem Gerät. Für den Slicer-Start übergibt das Frontend nur Ursprungsindex und relativen Pfad. Der Rust-Kern löst diese Angaben gegen die beim Scan gespeicherten kanonischen Wurzelordner auf, begrenzt Formate und Anzahl und startet ausschließlich OrcaSlicer, Bambu Studio oder PrusaSlicer ohne Shell.
 
 ## Vorschauen ohne Blender
 

@@ -19,6 +19,8 @@ const EXCLUDED_ROOT_DIRS: &[&str] = &["_uebersicht", "_druckarchiv_app"];
 const SLICER_EXTENSIONS: &[&str] = &[
     "stl", "3mf", "obj", "step", "stp", "amf", "ply", "gcode", "bgcode",
 ];
+const PRUSA_SLICER_EXTENSIONS: &[&str] =
+    &["stl", "3mf", "obj", "step", "stp", "amf", "gcode", "bgcode"];
 
 #[derive(Default)]
 struct AppState {
@@ -29,6 +31,7 @@ struct AppState {
 enum SlicerKind {
     OrcaSlicer,
     BambuStudio,
+    PrusaSlicer,
 }
 
 #[derive(Debug, Deserialize)]
@@ -315,17 +318,23 @@ fn slicer_kind(id: &str) -> Result<SlicerKind, String> {
     match id {
         "orcaSlicer" => Ok(SlicerKind::OrcaSlicer),
         "bambuStudio" => Ok(SlicerKind::BambuStudio),
+        "prusaSlicer" => Ok(SlicerKind::PrusaSlicer),
         _ => Err("unknown_slicer".into()),
     }
 }
 
-fn is_slicer_extension(path: &Path) -> bool {
+fn is_slicer_extension(kind: SlicerKind, path: &Path) -> bool {
+    let supported = match kind {
+        SlicerKind::PrusaSlicer => PRUSA_SLICER_EXTENSIONS,
+        SlicerKind::OrcaSlicer | SlicerKind::BambuStudio => SLICER_EXTENSIONS,
+    };
     path.extension()
         .and_then(|extension| extension.to_str())
-        .is_some_and(|extension| SLICER_EXTENSIONS.contains(&extension.to_lowercase().as_str()))
+        .is_some_and(|extension| supported.contains(&extension.to_lowercase().as_str()))
 }
 
 fn resolve_slicer_files(
+    kind: SlicerKind,
     roots: &[PathBuf],
     requests: &[SlicerFileRequest],
 ) -> Result<Vec<PathBuf>, String> {
@@ -346,7 +355,7 @@ fn resolve_slicer_files(
         if !requested.starts_with(root) || !requested.is_file() {
             return Err("path_blocked".into());
         }
-        if !is_slicer_extension(&requested) {
+        if !is_slicer_extension(kind, &requested) {
             return Err("unsupported_file".into());
         }
         if !resolved.contains(&requested) {
@@ -358,16 +367,19 @@ fn resolve_slicer_files(
 
 #[cfg(target_os = "macos")]
 fn launch_slicer(kind: SlicerKind, files: &[PathBuf]) -> Result<(), String> {
-    let bundle_identifier = match kind {
-        SlicerKind::OrcaSlicer => "com.orcaslicer.OrcaSlicer",
-        SlicerKind::BambuStudio => "com.bambulab.bambu-studio",
-    };
-    let output = Command::new("/usr/bin/open")
-        .arg("-b")
-        .arg(bundle_identifier)
-        .args(files)
-        .output()
-        .map_err(|_| "launch_failed")?;
+    let mut command = Command::new("/usr/bin/open");
+    match kind {
+        SlicerKind::OrcaSlicer => {
+            command.arg("-b").arg("com.orcaslicer.OrcaSlicer");
+        }
+        SlicerKind::BambuStudio => {
+            command.arg("-b").arg("com.bambulab.bambu-studio");
+        }
+        SlicerKind::PrusaSlicer => {
+            command.arg("-a").arg("PrusaSlicer");
+        }
+    }
+    let output = command.args(files).output().map_err(|_| "launch_failed")?;
     if output.status.success() {
         Ok(())
     } else {
@@ -377,24 +389,34 @@ fn launch_slicer(kind: SlicerKind, files: &[PathBuf]) -> Result<(), String> {
 
 #[cfg(target_os = "windows")]
 fn windows_slicer_candidates(kind: SlicerKind) -> Vec<PathBuf> {
-    let (directory, executable) = match kind {
-        SlicerKind::OrcaSlicer => ("OrcaSlicer", "orca-slicer.exe"),
-        SlicerKind::BambuStudio => ("Bambu Studio", "bambu-studio.exe"),
+    let (directories, executable): (Vec<&[&str]>, &str) = match kind {
+        SlicerKind::OrcaSlicer => (vec![&["OrcaSlicer"]], "orca-slicer.exe"),
+        SlicerKind::BambuStudio => (vec![&["Bambu Studio"]], "bambu-studio.exe"),
+        SlicerKind::PrusaSlicer => (
+            vec![&["Prusa3D", "PrusaSlicer"], &["PrusaSlicer"]],
+            "prusa-slicer.exe",
+        ),
     };
     let mut candidates = Vec::new();
     for variable in ["ProgramFiles", "ProgramW6432", "ProgramFiles(x86)"] {
         if let Some(base) = env::var_os(variable) {
-            candidates.push(PathBuf::from(base).join(directory).join(executable));
+            for directory in &directories {
+                let mut path = PathBuf::from(&base);
+                path.extend(directory.iter().copied());
+                candidates.push(path.join(executable));
+            }
         }
     }
     if let Some(base) = env::var_os("LOCALAPPDATA") {
-        candidates.push(
-            PathBuf::from(&base)
-                .join("Programs")
-                .join(directory)
-                .join(executable),
-        );
-        candidates.push(PathBuf::from(base).join(directory).join(executable));
+        for directory in &directories {
+            let mut programs_path = PathBuf::from(&base).join("Programs");
+            programs_path.extend(directory.iter().copied());
+            candidates.push(programs_path.join(executable));
+
+            let mut direct_path = PathBuf::from(&base);
+            direct_path.extend(directory.iter().copied());
+            candidates.push(direct_path.join(executable));
+        }
     }
     candidates
 }
@@ -410,6 +432,7 @@ fn find_windows_slicer(kind: SlicerKind) -> Option<PathBuf> {
     let executable = match kind {
         SlicerKind::OrcaSlicer => "orca-slicer.exe",
         SlicerKind::BambuStudio => "bambu-studio.exe",
+        SlicerKind::PrusaSlicer => "prusa-slicer.exe",
     };
     let output = Command::new("where.exe").arg(executable).output().ok()?;
     if !output.status.success() {
@@ -445,7 +468,7 @@ fn open_in_slicer(
 ) -> Result<(), String> {
     let kind = slicer_kind(&slicer)?;
     let roots = state.roots.lock().map_err(|_| "library_unavailable")?;
-    let resolved = resolve_slicer_files(&roots, &files)?;
+    let resolved = resolve_slicer_files(kind, &roots, &files)?;
     drop(roots);
     launch_slicer(kind, &resolved)
 }
@@ -532,6 +555,7 @@ mod tests {
     fn slicer_targets_are_strictly_limited() {
         assert_eq!(slicer_kind("orcaSlicer"), Ok(SlicerKind::OrcaSlicer));
         assert_eq!(slicer_kind("bambuStudio"), Ok(SlicerKind::BambuStudio));
+        assert_eq!(slicer_kind("prusaSlicer"), Ok(SlicerKind::PrusaSlicer));
         assert_eq!(slicer_kind("custom"), Err("unknown_slicer".into()));
     }
 
@@ -544,11 +568,13 @@ mod tests {
             b"solid test\nendsolid test",
         )
         .expect("STL-Testdatei");
+        fs::write(root.join("Project_A/model.ply"), b"ply\n").expect("PLY-Testdatei");
         fs::write(root.join("notes.pdf"), b"test").expect("PDF-Testdatei");
         let canonical_root = root.canonicalize().expect("kanonischer Testordner");
         let roots = vec![canonical_root];
 
         let valid = resolve_slicer_files(
+            SlicerKind::PrusaSlicer,
             &roots,
             &[SlicerFileRequest {
                 root_index: 0,
@@ -559,6 +585,7 @@ mod tests {
         assert_eq!(valid.len(), 1);
 
         let unsupported = resolve_slicer_files(
+            SlicerKind::PrusaSlicer,
             &roots,
             &[SlicerFileRequest {
                 root_index: 0,
@@ -568,6 +595,7 @@ mod tests {
         assert_eq!(unsupported, Err("unsupported_file".into()));
 
         let blocked = resolve_slicer_files(
+            SlicerKind::PrusaSlicer,
             &roots,
             &[SlicerFileRequest {
                 root_index: 1,
@@ -575,6 +603,26 @@ mod tests {
             }],
         );
         assert_eq!(blocked, Err("path_blocked".into()));
+
+        let orca_ply = resolve_slicer_files(
+            SlicerKind::OrcaSlicer,
+            &roots,
+            &[SlicerFileRequest {
+                root_index: 0,
+                relative_path: "Project_A/model.ply".into(),
+            }],
+        );
+        assert!(orca_ply.is_ok());
+
+        let prusa_ply = resolve_slicer_files(
+            SlicerKind::PrusaSlicer,
+            &roots,
+            &[SlicerFileRequest {
+                root_index: 0,
+                relative_path: "Project_A/model.ply".into(),
+            }],
+        );
+        assert_eq!(prusa_ply, Err("unsupported_file".into()));
 
         fs::remove_dir_all(root).expect("Testordner entfernen");
     }

@@ -8,12 +8,14 @@ import {
   slicerLabel
 } from "../src/slicer-preferences.js";
 
-test("OrcaSlicer ist der sichere Standard und Bambu Studio bleibt auswählbar", () => {
+test("OrcaSlicer ist der sichere Standard und die bekannten Slicer bleiben auswählbar", () => {
   assert.equal(DEFAULT_SLICER, "orcaSlicer");
   assert.equal(normalizeSlicer(null), "orcaSlicer");
   assert.equal(normalizeSlicer("bambuStudio"), "bambuStudio");
+  assert.equal(normalizeSlicer("prusaSlicer"), "prusaSlicer");
   assert.equal(normalizeSlicer("custom-command"), "orcaSlicer");
   assert.equal(slicerLabel("bambuStudio"), "Bambu Studio");
+  assert.equal(slicerLabel("prusaSlicer"), "PrusaSlicer");
 });
 
 test("nur von den Standard-Slicern unterstützte Druckdateien sind auswählbar", () => {
@@ -23,6 +25,8 @@ test("nur von den Standard-Slicern unterstützte Druckdateien sind auswählbar",
   for (const extension of ["pdf", "png", "f3d", "fcstd", "zip"]) {
     assert.equal(isSlicerCompatible(extension), false);
   }
+  assert.equal(isSlicerCompatible("ply", "orcaSlicer"), true);
+  assert.equal(isSlicerCompatible("ply", "prusaSlicer"), false);
 });
 
 test("native Fehlercodes werden auf lokalisierbare Meldungen abgebildet", () => {
