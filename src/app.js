@@ -31,6 +31,7 @@ import { isSlicerCompatible, normalizeSlicer, slicerErrorKey, slicerLabel } from
 import { normalizeViewMode, toggleViewMode } from "./view-preferences.js";
 import { normalizeThemePreference, resolveTheme, THEME_STORAGE_KEY } from "./theme-preferences.js";
 import { releaseViewerModel } from "./viewer-lifecycle.js";
+import { compatibleSelection, fileSelectionKey, selectionPayload } from "./file-selection.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -73,9 +74,12 @@ const state = {
   projectPage: 1,
   projectPath: "",
   projectSelection: new Set(),
+  librarySelection: new Set(),
+  viewerFileKey: null,
   scanning: false,
   fileIndex: new Map()
 };
+let slicerOpening = false;
 
 const byId = id => document.getElementById(id);
 
@@ -196,7 +200,12 @@ function fileCard(file) {
   const viewable = isViewable(file);
   const root = rootOf(file);
   const ariaLabel = `${t("cards.openFile", { name: file.name })}${viewable ? t("cards.openFileViewerSuffix") : ""}`;
-  return `<button class="card file-card" type="button" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? 'data-viewable="true"' : ""} aria-label="${escapeHtml(ariaLabel)}" style="--tone:${CATEGORIES[category].color}"><div class="card-cover file-cover ${previewCoverClass(file)}" ${previewAttributes(file)} aria-hidden="true">${demoPreviewMarkup(file)}<span class="file-mark">${escapeHtml(file.extension.toUpperCase() || t("common.file").toUpperCase())}</span><span class="kind-flag file-flag">${t("common.file")}</span></div><div class="card-body"><div class="entry-kind">${t("cards.fileEntry", { extension: escapeHtml(file.extension || "–") })}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : t("common.mainFolder"))}</span></div><div class="badges"><span class="badge">${categoryLabel(category)}</span>${viewable ? `<span class="badge">${t("cards.preview")}</span>` : ""}<span class="badge source-badge">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>`;
+  const key = fileSelectionKey(file);
+  const compatible = isSlicerCompatible(file.extension, state.slicer);
+  const checked = state.librarySelection.has(key);
+  const selectionTitle = compatible ? t("project.selectForSlicer", { name: file.name }) : t("project.slicerUnsupported");
+  const selectionControl = `<label class="library-file-select" title="${escapeHtml(selectionTitle)}"><input type="checkbox" data-library-path="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" aria-label="${escapeHtml(selectionTitle)}" ${checked ? "checked" : ""} ${compatible ? "" : "disabled"}></label>`;
+  return `<article class="card file-card ${checked ? "is-selected" : ""}" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? 'data-viewable="true"' : ""} style="--tone:${CATEGORIES[category].color}"><button class="file-card-open" type="button" aria-label="${escapeHtml(ariaLabel)}"><div class="card-cover file-cover ${previewCoverClass(file)}" ${previewAttributes(file)} aria-hidden="true">${demoPreviewMarkup(file)}<span class="file-mark">${escapeHtml(file.extension.toUpperCase() || t("common.file").toUpperCase())}</span><span class="kind-flag file-flag">${t("common.file")}</span></div><div class="card-body"><div class="entry-kind">${t("cards.fileEntry", { extension: escapeHtml(file.extension || "–") })}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : t("common.mainFolder"))}</span></div><div class="badges"><span class="badge">${categoryLabel(category)}</span>${viewable ? `<span class="badge">${t("cards.preview")}</span>` : ""}<span class="badge source-badge">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>${selectionControl}</article>`;
 }
 
 let libraryRenderSequence = 0;
@@ -225,6 +234,19 @@ function updateSectionLabels() {
   byId("sectionTitle").textContent = state.category === "all"
     ? (state.tab === "projects" ? t("sections.folderOverview") : t("sections.allFiles"))
     : t(state.tab === "projects" ? "sections.categoryFolders" : "sections.categoryFiles", { category: categoryLabel });
+  updateLibrarySelection();
+}
+
+function updateLibrarySelection() {
+  const selection = byId("librarySelection");
+  selection.hidden = state.tab !== "files" || !state.archive;
+  const count = state.librarySelection.size;
+  const slicer = slicerLabel(state.slicer);
+  byId("librarySelectedCount").textContent = nf.format(count);
+  byId("librarySlicerSelect").value = state.slicer;
+  const openButton = byId("openLibrarySelectionInSlicer");
+  openButton.disabled = slicerOpening || count === 0;
+  openButton.textContent = t(slicerOpening ? "project.openingInSlicer" : "project.openInSlicer", { count, slicer });
 }
 
 function scheduleLibraryRender({ resetPage = false, scrollToResults = false } = {}) {
@@ -378,6 +400,8 @@ async function scanLibrary(roots, settings = state.settings, silent = false) {
   if (!roots.length) {
     state.archive = null;
     state.fileIndex = new Map();
+    state.librarySelection.clear();
+    state.projectSelection.clear();
     state.roots = [];
     state.settings = normalizeLibrarySettings(settings);
     state.page = 1;
@@ -390,6 +414,8 @@ async function scanLibrary(roots, settings = state.settings, silent = false) {
     const archive = await invoke("scan_archives", { roots });
     state.archive = archive;
     state.fileIndex = new Map(allFiles().map(file => [`${file.rootIndex}\n${file.path}`, file]));
+    state.librarySelection.clear();
+    state.projectSelection.clear();
     state.roots = archive.roots.map(root => root.path);
     state.settings = normalizeLibrarySettings(settings);
     state.page = 1;
@@ -519,12 +545,10 @@ byId("pagination").addEventListener("click", event => {
 });
 
 const projectDialog = byId("projectDialog");
-const projectFileKey = file => `${file.rootIndex}\n${file.path}`;
-let slicerOpening = false;
 
 function projectCheckbox(file, selectedKeys) {
   const compatible = isSlicerCompatible(file.extension, state.slicer);
-  const checked = selectedKeys.has(projectFileKey(file)) ? "checked" : "";
+  const checked = selectedKeys.has(fileSelectionKey(file)) ? "checked" : "";
   const disabled = compatible ? "" : `disabled title="${escapeHtml(t("project.slicerUnsupported"))}"`;
   return `<input type="checkbox" data-path="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" aria-label="${escapeHtml(t("project.selectFile", { name: file.name }))}" ${checked} ${disabled}>`;
 }
@@ -612,6 +636,62 @@ function updateProjectSelection() {
   openButton.textContent = t(slicerOpening ? "project.openingInSlicer" : "project.openInSlicer", { count, slicer });
 }
 
+function updateViewerSlicerAction() {
+  const file = state.fileIndex.get(state.viewerFileKey);
+  const compatible = file && isSlicerCompatible(file.extension, state.slicer);
+  const slicer = slicerLabel(state.slicer);
+  byId("viewerSlicerSelect").value = state.slicer;
+  const button = byId("openViewerFileInSlicer");
+  button.disabled = slicerOpening || !compatible;
+  button.textContent = t(slicerOpening ? "project.openingInSlicer" : "project.openInSlicer", { count: file ? 1 : 0, slicer });
+}
+
+function updateSelectionControls() {
+  updateLibrarySelection();
+  updateProjectSelection();
+  updateViewerSlicerAction();
+}
+
+function setActiveSlicer(value) {
+  state.slicer = normalizeSlicer(value);
+  localStorage.setItem(SLICER_KEY, state.slicer);
+  const supportsFile = file => isSlicerCompatible(file.extension, state.slicer);
+  state.librarySelection = compatibleSelection(state.librarySelection, state.fileIndex, supportsFile);
+  state.projectSelection = compatibleSelection(state.projectSelection, state.fileIndex, supportsFile);
+  byId("library").querySelectorAll('input[type="checkbox"][data-library-path]').forEach(checkbox => {
+    const file = state.fileIndex.get(`${checkbox.dataset.rootIndex}\n${checkbox.dataset.libraryPath}`);
+    const compatible = file && supportsFile(file);
+    const selectionTitle = compatible ? t("project.selectForSlicer", { name: file.name }) : t("project.slicerUnsupported");
+    checkbox.disabled = !compatible;
+    checkbox.checked = compatible && state.librarySelection.has(fileSelectionKey(file));
+    checkbox.setAttribute("aria-label", selectionTitle);
+    checkbox.closest(".library-file-select")?.setAttribute("title", selectionTitle);
+    checkbox.closest(".file-card")?.classList.toggle("is-selected", checkbox.checked);
+  });
+  if (projectDialog.open && projectDialog.dataset.projectIndex !== undefined) renderProjectContents(Number(projectDialog.dataset.projectIndex));
+  updateSelectionControls();
+}
+
+async function openSelectionInSlicer(selection, buttonId) {
+  const files = selectionPayload(selection, state.fileIndex);
+  if (!files.length || slicerOpening) return;
+  slicerOpening = true;
+  updateSelectionControls();
+  try {
+    await invoke("open_in_slicer", { slicer: state.slicer, files });
+    slicerOpening = false;
+    updateSelectionControls();
+    const button = byId(buttonId);
+    button.textContent = t("project.openedInSlicer", { slicer: slicerLabel(state.slicer) });
+    button.disabled = false;
+    setTimeout(updateSelectionControls, 1400);
+  } catch (error) {
+    slicerOpening = false;
+    updateSelectionControls();
+    window.alert(t(slicerErrorKey(error), { slicer: slicerLabel(state.slicer) }));
+  }
+}
+
 function hydrateProjectPreviews() {
   requestAnimationFrame(() => hydrateModelPreviews(libraryRenderSequence));
 }
@@ -642,6 +722,7 @@ function renderProjectContents(projectIndex) {
 }
 
 byId("library").addEventListener("click", async event => {
+  if (event.target.closest(".library-file-select")) return;
   const card = event.target.closest(".card");
   if (!card) return;
   if (card.dataset.projectIndex !== undefined) {
@@ -654,6 +735,15 @@ byId("library").addEventListener("click", async event => {
   } else if (canOpenModelCard(card)) {
     await openArchiveModel(Number(card.dataset.rootIndex), card.dataset.file);
   }
+});
+byId("library").addEventListener("change", event => {
+  const checkbox = event.target.closest('input[type="checkbox"][data-library-path]');
+  if (!checkbox) return;
+  const key = `${checkbox.dataset.rootIndex}\n${checkbox.dataset.libraryPath}`;
+  if (checkbox.checked) state.librarySelection.add(key);
+  else state.librarySelection.delete(key);
+  checkbox.closest(".file-card")?.classList.toggle("is-selected", checkbox.checked);
+  updateLibrarySelection();
 });
 projectDialog.querySelector("[data-close]").addEventListener("click", () => projectDialog.close());
 projectDialog.addEventListener("click", event => { if (event.target === projectDialog) projectDialog.close(); });
@@ -669,13 +759,7 @@ byId("projectViewToggle").addEventListener("click", () => {
   renderProjectContents(Number(projectDialog.dataset.projectIndex));
 });
 byId("slicerSelect").addEventListener("change", event => {
-  state.slicer = normalizeSlicer(event.target.value);
-  localStorage.setItem(SLICER_KEY, state.slicer);
-  state.projectSelection = new Set([...state.projectSelection].filter(key => {
-    const file = state.fileIndex.get(key);
-    return file && isSlicerCompatible(file.extension, state.slicer);
-  }));
-  renderProjectContents(Number(projectDialog.dataset.projectIndex));
+  setActiveSlicer(event.target.value);
 });
 byId("projectBreadcrumb").addEventListener("click", event => {
   const button = event.target.closest("[data-project-path]");
@@ -720,27 +804,9 @@ projectDialog.addEventListener("change", event => {
   else state.projectSelection.delete(key);
   updateProjectSelection();
 });
-byId("openSelectedInSlicer").addEventListener("click", async () => {
-  const files = [...state.projectSelection].map(key => state.fileIndex.get(key)).filter(Boolean).map(file => ({
-    rootIndex: file.rootIndex,
-    relativePath: file.path
-  }));
-  if (!files.length || slicerOpening) return;
-  slicerOpening = true;
-  updateProjectSelection();
-  try {
-    await invoke("open_in_slicer", { slicer: state.slicer, files });
-    slicerOpening = false;
-    const button = byId("openSelectedInSlicer");
-    button.textContent = t("project.openedInSlicer", { slicer: slicerLabel(state.slicer) });
-    button.disabled = false;
-    setTimeout(() => { if (projectDialog.open) updateProjectSelection(); }, 1400);
-  } catch (error) {
-    slicerOpening = false;
-    updateProjectSelection();
-    window.alert(t(slicerErrorKey(error), { slicer: slicerLabel(state.slicer) }));
-  }
-});
+byId("openSelectedInSlicer").addEventListener("click", () => openSelectionInSlicer(state.projectSelection, "openSelectedInSlicer"));
+byId("librarySlicerSelect").addEventListener("change", event => setActiveSlicer(event.target.value));
+byId("openLibrarySelectionInSlicer").addEventListener("click", () => openSelectionInSlicer(state.librarySelection, "openLibrarySelectionInSlicer"));
 
 function createModelObject(buffer, name, neutralMaterial = false) {
   const extension = name.split(".").pop().toLowerCase();
@@ -946,6 +1012,17 @@ function hydrateModelPreviews(sequence = libraryRenderSequence) {
 }
 
 let renderer, scene, camera, controls, model, animation, viewerGrid;
+function resizeViewer() {
+  if (!renderer) return;
+  const stage = byId("viewerStage");
+  const width = stage.clientWidth;
+  const height = stage.clientHeight;
+  if (!width || !height) return;
+  renderer.setSize(width, height);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+}
+
 function ensureViewer() {
   if (renderer) return;
   const stage = byId("viewerStage");
@@ -961,8 +1038,8 @@ function ensureViewer() {
   const key = new THREE.DirectionalLight(0xffffff, 1.8); key.position.set(1.2, 1.6, .9); scene.add(key);
   const rim = new THREE.DirectionalLight(0x52d7bd, .65); rim.position.set(-1, .5, -1); scene.add(rim);
   viewerGrid = new THREE.GridHelper(500, 50, 0x37545c, 0x1f343a); scene.add(viewerGrid);
-  const resize = () => { const width = stage.clientWidth, height = stage.clientHeight; renderer.setSize(width, height); camera.aspect = width / height; camera.updateProjectionMatrix(); };
-  addEventListener("resize", resize); resize();
+  addEventListener("resize", resizeViewer);
+  resizeViewer();
 }
 
 function startViewerLoop() {
@@ -975,9 +1052,10 @@ function startViewerLoop() {
   animation = requestAnimationFrame(loop);
 }
 
-async function loadModel(file) {
+async function loadModel(file, sourceKey) {
   const buffer = await file.arrayBuffer();
   const object = createModelObject(buffer, file.name);
+  state.viewerFileKey = sourceKey;
   openViewer();
   ensureViewer();
   model = releaseViewerModel(scene, model, disposeModel);
@@ -992,20 +1070,32 @@ async function loadModel(file) {
 async function openArchiveModel(rootIndex, relativePath) {
   try {
     const bytes = await invoke("read_model", { root: state.archive.roots[rootIndex].path, relativePath });
-    await loadModel(new File([new Uint8Array(bytes)], relativePath.split("/").pop()));
+    await loadModel(new File([new Uint8Array(bytes)], relativePath.split("/").pop()), `${rootIndex}\n${relativePath}`);
   } catch (error) { window.alert(t("viewer.loadError", { error })); }
 }
-function openViewer() { byId("viewer").classList.add("open"); byId("viewer").setAttribute("aria-hidden", "false"); requestAnimationFrame(() => { ensureViewer(); startViewerLoop(); }); }
+function openViewer() {
+  byId("viewer").classList.add("open");
+  byId("viewer").setAttribute("aria-hidden", "false");
+  updateViewerSlicerAction();
+  requestAnimationFrame(() => { ensureViewer(); resizeViewer(); startViewerLoop(); });
+}
 function closeViewer() {
   byId("viewer").classList.remove("open");
   byId("viewer").setAttribute("aria-hidden", "true");
   if (animation) cancelAnimationFrame(animation);
   animation = null;
   model = releaseViewerModel(scene, model, disposeModel);
+  state.viewerFileKey = null;
   byId("viewerName").textContent = "STL / 3MF / OBJ";
   byId("viewerInfo").textContent = t("viewer.controls");
+  updateViewerSlicerAction();
 }
 byId("closeViewer").addEventListener("click", closeViewer);
+byId("viewer").addEventListener("click", event => { if (event.target === byId("viewer")) closeViewer(); });
+byId("viewerSlicerSelect").addEventListener("change", event => setActiveSlicer(event.target.value));
+byId("openViewerFileInSlicer").addEventListener("click", () => {
+  if (state.viewerFileKey) openSelectionInSlicer(new Set([state.viewerFileKey]), "openViewerFileInSlicer");
+});
 addEventListener("keydown", event => { if (event.key === "Escape" && byId("viewer").classList.contains("open")) closeViewer(); });
 
 async function restoreConfiguration() {
@@ -1030,6 +1120,7 @@ function refreshLocalizedInterface() {
   render();
   if (libraryDialog.open) renderSettingsDialog();
   if (projectDialog.open && projectDialog.dataset.projectIndex !== undefined) renderProjectContents(Number(projectDialog.dataset.projectIndex));
+  updateSelectionControls();
 }
 
 byId("themeSwitch").addEventListener("click", event => {

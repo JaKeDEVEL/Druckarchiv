@@ -18,8 +18,8 @@ Druckarchiv is a local desktop app for organizing, filtering, and viewing 3D pri
 - grid and list views with navigable subfolders and all files contained within them
 - memory-efficient pagination with 25 or 50 entries per page, including inside open folders
 - locally generated, deferred model thumbnails with visible loading progress; previews can be disabled in library settings
-- an interactive STL, 3MF, and OBJ viewer with rotation, zoom, and pan, available directly inside project folders
-- open selected print files directly in OrcaSlicer, Bambu Studio, or PrusaSlicer; the most recently used slicer is stored locally
+- an interactive STL, 3MF, and OBJ viewer in a focused preview window with rotation, zoom, pan, and a direct slicer action
+- select print files in the main grid or list as well as inside project folders, then open them directly in OrcaSlicer, Bambu Studio, or PrusaSlicer; the most recently used slicer is stored locally
 - German and English interfaces based on the system language, with manual selection and a locally stored preference
 - light, dark, and system-based appearance modes with a locally stored preference
 - no telemetry, no user account, and no uploads
@@ -85,8 +85,8 @@ Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3
 - Raster- und Listenansicht mit navigierbaren Unterordnern und allen darin enthaltenen Dateien
 - speicherschonende Pagination mit wahlweise 25 oder 50 Einträgen pro Seite – auch innerhalb geöffneter Ordner
 - lokal und verzögert erzeugte Modell-Thumbnails mit sichtbarem Ladefortschritt; in der Verwaltung abschaltbar
-- interaktiver STL-/3MF-/OBJ-Viewer mit Drehen, Zoomen und Verschieben – auch direkt aus Projektordnern
-- ausgewählte Druckdateien direkt in OrcaSlicer, Bambu Studio oder PrusaSlicer öffnen; der zuletzt verwendete Slicer bleibt lokal gespeichert
+- interaktiver STL-/3MF-/OBJ-Viewer in einem fokussierten Vorschaufenster mit Drehen, Zoomen, Verschieben und direkter Slicer-Aktion
+- Druckdateien in der normalen Raster- oder Listenansicht sowie in Projektordnern auswählen und direkt in OrcaSlicer, Bambu Studio oder PrusaSlicer öffnen; der zuletzt verwendete Slicer bleibt lokal gespeichert
 - deutsche und englische Oberfläche mit Systemsprache, manuellem Wechsel und lokal gespeichertem Sprachwunsch
 - helle, dunkle oder am System ausgerichtete Darstellung mit lokal gespeicherter Auswahl
 - keine Telemetrie, kein Benutzerkonto und kein Upload

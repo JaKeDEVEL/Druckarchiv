@@ -156,7 +156,8 @@ export default {
     openedInSlicer: "Sent to {slicer} ✓",
     slicerUnsupported: "This file type cannot be sent to a slicer.",
     openViewer: "Open in 3D viewer",
-    selectFile: "Select {name}"
+    selectFile: "Select {name}",
+    selectForSlicer: "Select {name} for the slicer"
   },
   previews: {
     loading: "Loading thumbnails",

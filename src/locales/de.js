@@ -156,7 +156,8 @@ export default {
     openedInSlicer: "An {slicer} übergeben ✓",
     slicerUnsupported: "Dieses Dateiformat kann nicht an einen Slicer übergeben werden.",
     openViewer: "Im 3D-Viewer öffnen",
-    selectFile: "{name} auswählen"
+    selectFile: "{name} auswählen",
+    selectForSlicer: "{name} für den Slicer auswählen"
   },
   previews: {
     loading: "Vorschaubilder werden geladen",
