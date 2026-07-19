@@ -128,11 +128,11 @@
       </div>
     </dialog>
 
-    <dialog id="projectDialog">
-      <div class="modal">
+    <dialog id="projectDialog" class="project-dialog">
+      <div class="modal project-modal">
         <div class="modal-head"><div><small data-i18n="project.eyebrow">Projektordner</small><h3 id="modalTitle"></h3></div><button class="icon" data-close type="button" aria-label="Schließen" data-i18n-aria-label="common.close">×</button></div>
-        <div class="selection"><span><b id="selectedCount">0</b> <span data-i18n="project.selected">Dateien ausgewählt</span></span><button class="tool" id="copySelected" type="button" data-i18n="project.copyPaths" disabled>Pfade kopieren</button></div>
-        <div class="modal-list" id="modalList"></div>
+        <div class="selection"><span><b id="selectedCount">0</b> <span data-i18n="project.selected">Dateien ausgewählt</span></span><div class="project-actions"><button class="tool" id="projectViewToggle" type="button" data-i18n="nav.gridView">Rasteransicht</button><button class="tool" id="copySelected" type="button" data-i18n="project.copyPaths" disabled>Pfade kopieren</button></div></div>
+        <div class="modal-list project-files list" id="modalList"></div>
       </div>
     </dialog>
 

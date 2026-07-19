@@ -26,6 +26,7 @@ import { canOpenModelCard } from "./model-card.js";
 import { createDemoArchive } from "./demo-archive.js";
 import { PAGE_SIZES, normalizePageSize, paginateEntries, paginationTokens } from "./pagination.js";
 import { applyTranslations, formatDateValue, formatNumber, getLocale, onLocaleChange, setLocale, t } from "./i18n.js";
+import { normalizeViewMode, toggleViewMode } from "./view-preferences.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -44,6 +45,7 @@ const nf = { format: formatNumber };
 const df = { format: formatDateValue };
 const STORAGE_KEY = "druckarchiv.library.v1";
 const PAGE_SIZE_KEY = "druckarchiv.page-size.v1";
+const PROJECT_VIEW_KEY = "druckarchiv.project-view.v1";
 const APP_VERSION = __APP_VERSION__;
 const state = {
   archive: null,
@@ -56,6 +58,7 @@ const state = {
   query: "",
   sort: "name",
   view: "grid",
+  projectView: normalizeViewMode(localStorage.getItem(PROJECT_VIEW_KEY)),
   page: 1,
   pageSize: normalizePageSize(localStorage.getItem(PAGE_SIZE_KEY)),
   scanning: false,
@@ -485,22 +488,64 @@ byId("pagination").addEventListener("click", event => {
 });
 
 const projectDialog = byId("projectDialog");
+const projectFileKey = file => `${file.rootIndex}\n${file.path}`;
+
+function selectedProjectFileKeys() {
+  return new Set([...projectDialog.querySelectorAll('input[type="checkbox"]:checked')]
+    .map(box => `${box.dataset.rootIndex}\n${box.dataset.path}`));
+}
+
+function projectCheckbox(file, selectedKeys) {
+  const checked = selectedKeys.has(projectFileKey(file)) ? "checked" : "";
+  return `<input type="checkbox" data-path="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" aria-label="${escapeHtml(t("project.selectFile", { name: file.name }))}" ${checked}>`;
+}
+
+function projectListRow(file, selectedKeys) {
+  const category = categoryOf(file);
+  const name = isViewable(file)
+    ? `<button class="file-preview-button" type="button" data-model-root="${file.rootIndex}" data-model-path="${escapeHtml(file.path)}" title="${escapeHtml(file.path)}"><span>${escapeHtml(file.path)}</span><small>${t("project.openViewer")}</small></button>`
+    : `<span class="file-name" title="${escapeHtml(file.path)}">${escapeHtml(file.path)}</span>`;
+  return `<div class="file-row" style="--tone:${CATEGORIES[category].color}"><span class="dot"></span>${name}<span>${formatSize(file.size)}</span><span class="file-format">${escapeHtml(file.extension.toUpperCase() || t("common.file"))}</span>${projectCheckbox(file, selectedKeys)}</div>`;
+}
+
+function projectGridCard(file, selectedKeys) {
+  const category = categoryOf(file);
+  const viewable = isViewable(file);
+  const parentPath = file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : t("common.mainFolder");
+  const coverContents = `${demoPreviewMarkup(file)}<span class="file-mark">${escapeHtml(file.extension.toUpperCase() || t("common.file").toUpperCase())}</span><span class="kind-flag file-flag">${t(viewable ? "cards.preview" : "common.file")}</span>`;
+  const cover = viewable
+    ? `<button class="project-file-cover ${previewCoverClass(file)}" type="button" data-model-root="${file.rootIndex}" data-model-path="${escapeHtml(file.path)}" ${previewAttributes(file)} aria-label="${escapeHtml(t("cards.openFile", { name: file.name }) + t("cards.openFileViewerSuffix"))}">${coverContents}</button>`
+    : `<div class="project-file-cover" aria-hidden="true">${coverContents}</div>`;
+  return `<article class="project-file-card" style="--tone:${CATEGORIES[category].color}"><label class="project-file-select">${projectCheckbox(file, selectedKeys)}</label>${cover}<div class="project-file-body"><div class="entry-kind">${t("cards.fileEntry", { extension: escapeHtml(file.extension || "–") })}</div><h4 title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</h4><p title="${escapeHtml(parentPath)}">${escapeHtml(parentPath)}</p><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span></div></div></article>`;
+}
+
+function updateProjectSelection() {
+  const count = projectDialog.querySelectorAll('input[type="checkbox"]:checked').length;
+  byId("selectedCount").textContent = nf.format(count);
+  byId("copySelected").disabled = count === 0;
+  byId("copySelected").textContent = t("project.copyPaths");
+}
+
+function hydrateProjectPreviews() {
+  requestAnimationFrame(() => hydrateModelPreviews(libraryRenderSequence));
+}
+
 function renderProjectContents(projectIndex) {
   const project = state.archive.projects[projectIndex];
   if (!project) return;
   const files = filteredProjectFiles(project);
+  const selectedKeys = projectDialog.dataset.projectIndex === String(projectIndex)
+    ? selectedProjectFileKeys()
+    : new Set();
   projectDialog.dataset.projectIndex = String(projectIndex);
   byId("modalTitle").textContent = project.displayName;
-  byId("modalList").innerHTML = files.map(file => {
-    const category = categoryOf(file);
-    const name = isViewable(file)
-      ? `<button class="file-preview-button" type="button" data-model-root="${file.rootIndex}" data-model-path="${escapeHtml(file.path)}" title="${escapeHtml(file.path)}"><span>${escapeHtml(file.path)}</span><small>${t("project.openViewer")}</small></button>`
-      : `<span class="file-name" title="${escapeHtml(file.path)}">${escapeHtml(file.path)}</span>`;
-    return `<div class="file-row" style="--tone:${CATEGORIES[category].color}"><span class="dot"></span>${name}<span>${formatSize(file.size)}</span><span class="file-format">${escapeHtml(file.extension.toUpperCase() || t("common.file"))}</span><input type="checkbox" data-path="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" aria-label="${escapeHtml(t("project.selectFile", { name: file.name }))}"></div>`;
-  }).join("");
-  byId("selectedCount").textContent = "0";
-  byId("copySelected").disabled = true;
-  byId("copySelected").textContent = t("project.copyPaths");
+  const modalList = byId("modalList");
+  modalList.classList.toggle("grid", state.projectView === "grid");
+  modalList.classList.toggle("list", state.projectView === "list");
+  modalList.innerHTML = files.map(file => state.projectView === "grid" ? projectGridCard(file, selectedKeys) : projectListRow(file, selectedKeys)).join("");
+  byId("projectViewToggle").textContent = t(state.projectView === "grid" ? "nav.listView" : "nav.gridView");
+  updateProjectSelection();
+  if (projectDialog.open && state.projectView === "grid") hydrateProjectPreviews();
 }
 
 byId("library").addEventListener("click", async event => {
@@ -509,6 +554,7 @@ byId("library").addEventListener("click", async event => {
   if (card.dataset.projectIndex !== undefined) {
     renderProjectContents(Number(card.dataset.projectIndex));
     projectDialog.showModal();
+    if (state.projectView === "grid") hydrateProjectPreviews();
   } else if (canOpenModelCard(card)) {
     await openArchiveModel(Number(card.dataset.rootIndex), card.dataset.file);
   }
@@ -516,17 +562,18 @@ byId("library").addEventListener("click", async event => {
 projectDialog.querySelector("[data-close]").addEventListener("click", () => projectDialog.close());
 projectDialog.addEventListener("click", event => { if (event.target === projectDialog) projectDialog.close(); });
 projectDialog.addEventListener("close", () => { delete projectDialog.dataset.projectIndex; });
+byId("projectViewToggle").addEventListener("click", () => {
+  state.projectView = toggleViewMode(state.projectView);
+  localStorage.setItem(PROJECT_VIEW_KEY, state.projectView);
+  renderProjectContents(Number(projectDialog.dataset.projectIndex));
+});
 byId("modalList").addEventListener("click", async event => {
   const button = event.target.closest("[data-model-path]");
   if (!button) return;
   projectDialog.close();
   await openArchiveModel(Number(button.dataset.modelRoot), button.dataset.modelPath);
 });
-projectDialog.addEventListener("change", () => {
-  const count = projectDialog.querySelectorAll('input[type="checkbox"]:checked').length;
-  byId("selectedCount").textContent = nf.format(count);
-  byId("copySelected").disabled = count === 0;
-});
+projectDialog.addEventListener("change", updateProjectSelection);
 byId("copySelected").addEventListener("click", async () => {
   const paths = [...projectDialog.querySelectorAll('input[type="checkbox"]:checked')].map(box => {
     const root = state.archive.roots[Number(box.dataset.rootIndex)].path;
