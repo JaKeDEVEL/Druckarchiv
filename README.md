@@ -1,12 +1,14 @@
 # Druckarchiv
 
-Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3D-Druck-Dateien. Man wählt einen Archivordner aus; die App liest dessen Struktur lokal ein und zeigt Projekte, Einzeldateien und Dateitypen als direkt anklickbare Kennzahlen.
+Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3D-Druck-Dateien. Man wählt einen oder mehrere Archivordner aus; die App liest deren Struktur lokal ein und zeigt Projekte, Einzeldateien und Dateitypen als direkt anklickbare Kennzahlen.
 
 ## Aktueller Stand
 
-- nativer Ordnerdialog unter macOS und Windows
+- mehrere Bibliotheksordner über den nativen Ordnerdialog unter macOS und Windows
 - rekursiver, schreibgeschützter Archivscan ohne Verfolgung symbolischer Links
-- KPI-Filter für Projekte, Dateien, STL, 3MF, CAD, G-Code und Sonstige
+- dauerhaft gespeicherte Formatwahl für STL, 3MF, OBJ, weitere Mesh-, CAD-, G-Code- und Referenzformate
+- Ausschlüsse nach Endung, Dateiname oder relativem Pfad mit Platzhaltern
+- KPI-Filter für Projekte, Dateien, STL, 3MF, Mesh, CAD, G-Code und Sonstige
 - Raster- und Listenansicht
 - interaktiver STL-/3MF-Viewer mit Drehen, Zoomen und Verschieben
 - keine Telemetrie, kein Benutzerkonto und kein Upload

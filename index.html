@@ -17,7 +17,7 @@
           <h1>Druck<span>archiv</span></h1>
           <p id="rootLabel">Noch kein Archivordner ausgewählt</p>
         </div>
-        <button class="primary" id="chooseFolder" type="button">Ordner auswählen</button>
+        <button class="primary" id="chooseFolder" type="button">Bibliothek einrichten</button>
       </div>
       <div class="stats" id="stats" aria-label="Archiv-Kennzahlen"></div>
     </header>
@@ -29,6 +29,8 @@
         <option value="date">Zuletzt geändert</option>
         <option value="size">Größe</option>
       </select>
+      <button class="tool" id="refreshLibrary" type="button" disabled>Neu einlesen</button>
+      <button class="tool" id="openLibrarySettings" type="button">Ordner &amp; Formate</button>
       <button class="tool" id="viewToggle" type="button">Listenansicht</button>
       <button class="tool accent" id="openViewer" type="button">3D-Viewer</button>
     </nav>
@@ -47,6 +49,51 @@
         <span>Wähle oben den Ordner aus, in dem deine 3D-Druck-Dateien liegen.</span>
       </div>
     </main>
+
+    <dialog id="libraryDialog" class="settings-dialog">
+      <div class="modal settings-modal">
+        <div class="modal-head">
+          <div><small>Lokale Bibliothek</small><h3>Ordner und Dateitypen</h3></div>
+          <button class="icon" data-close type="button" aria-label="Schließen">×</button>
+        </div>
+        <div class="settings-body">
+          <section class="source-panel">
+            <div class="settings-heading">
+              <div><b>Bibliotheksordner</b><span>Bis zu 32 Quellen, nur lesend</span></div>
+              <button class="tool accent" id="addFolders" type="button">+ Ordner hinzufügen</button>
+            </div>
+            <div class="root-list" id="rootList"></div>
+            <p class="privacy-note">Pfade und Regeln bleiben auf diesem Gerät. Modelle werden nicht hochgeladen.</p>
+          </section>
+
+          <section class="format-panel">
+            <div class="settings-heading">
+              <div><b>Angezeigte Dateitypen</b><span>Wirkt auf Bibliothek und Kennzahlen</span></div>
+              <div class="quick-actions">
+                <button class="mini-action" id="selectPrintFormats" type="button">Nur 3D-Druck</button>
+                <button class="mini-action" id="selectAllFormats" type="button">Alle</button>
+                <button class="mini-action" id="selectNoFormats" type="button">Keine</button>
+              </div>
+            </div>
+            <div class="format-groups" id="formatGroups"></div>
+            <label class="unknown-toggle"><input id="includeUnknown" type="checkbox"><span><b>Weitere Dateitypen</b><small>Auch nicht aufgelistete Endungen anzeigen</small></span></label>
+          </section>
+
+          <section class="exclude-panel">
+            <div class="settings-heading"><div><b>Ausschlüsse</b><span>Haben immer Vorrang vor der Formatwahl</span></div></div>
+            <label class="field-label" for="excludedExtensions">Endungen ausschließen</label>
+            <input id="excludedExtensions" type="text" placeholder="z. B. pdf, zip, bak" spellcheck="false">
+            <label class="field-label" for="excludedFiles">Dateien oder relative Pfade ausschließen</label>
+            <textarea id="excludedFiles" rows="4" placeholder="README*&#10;Entwürfe/*.obj&#10;defektes-modell.stl" spellcheck="false"></textarea>
+            <small class="rule-help">Eine Regel pro Zeile · * und ? sind als Platzhalter erlaubt</small>
+          </section>
+        </div>
+        <div class="settings-footer">
+          <span id="settingsStatus">Noch keine Ordner ausgewählt</span>
+          <div><button class="tool" data-close type="button">Abbrechen</button><button class="primary small" id="applyLibrarySettings" type="button">Übernehmen &amp; neu einlesen</button></div>
+        </div>
+      </div>
+    </dialog>
 
     <dialog id="projectDialog">
       <div class="modal">

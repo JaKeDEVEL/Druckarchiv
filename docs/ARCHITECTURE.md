@@ -4,7 +4,7 @@
 
 ```text
 Nativer Ordnerdialog
-        │ vom Nutzer freigegebener Pfad
+        │ bis zu 32 freigegebene Pfade
         ▼
 Rust-Kern ── schreibgeschützter Scan ──► Archivdaten im Arbeitsspeicher
         │                                      │
@@ -15,7 +15,9 @@ Rust-Kern ── schreibgeschützter Scan ──► Archivdaten im Arbeitsspeich
                                       Three.js / WebGL Viewer
 ```
 
-Die Oberfläche läuft in Tauri über den nativen WebView des Betriebssystems. Rust übernimmt ausschließlich privilegierte Dateisystemoperationen. Das Frontend bekommt keinen allgemeinen Dateisystemzugriff.
+Die Oberfläche läuft in Tauri über den nativen WebView des Betriebssystems. Rust übernimmt ausschließlich privilegierte Dateisystemoperationen. Das Frontend bekommt keinen allgemeinen Dateisystemzugriff. Jede Datei trägt den Index ihres kanonisch geprüften Ursprungsordners; verschachtelte oder doppelte Quellen werden vor dem Scan zusammengeführt.
+
+Formatwahl und Ausschlussregeln filtern die eingelesenen Metadaten im Frontend. Dadurch gelten sie identisch für KPI-Zahlen, Projektkarten, Einzeldateien und Projektinhalte. Nur Ordnerpfade und Regeln werden lokal persistiert, niemals Inventardaten oder Modelldateien.
 
 ## Vorschauen ohne Blender
 
@@ -38,4 +40,3 @@ Damit bleibt der Download klein und der Standard-Viewer funktioniert auf jedem u
 ## Datenschutzgrenze
 
 `_druckarchiv_app` ist die einzige veröffentlichbare Quelle. Der übergeordnete private Archivordner, die generierte HTML-Übersicht, `_uebersicht/inventory.json`, Vorschaubilder und Modellordner gehören ausdrücklich nicht in das Repository. Der Privacy-Check erzwingt diese Grenze zusätzlich.
-

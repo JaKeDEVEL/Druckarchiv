@@ -9,8 +9,9 @@
     "build:web": "vite build --configLoader runner",
     "tauri": "tauri",
     "build": "tauri build",
+    "test": "node --test",
     "check:privacy": "node scripts/privacy-check.mjs",
-    "check": "npm run check:privacy && npm run build:web && cargo check --manifest-path src-tauri/Cargo.toml"
+    "check": "npm test && npm run check:privacy && npm run build:web && cargo test --manifest-path src-tauri/Cargo.toml"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
