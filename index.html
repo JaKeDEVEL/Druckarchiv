@@ -42,6 +42,15 @@
         </div>
         <span id="resultCount">0 Treffer</span>
       </div>
+      <div class="library-loading" id="libraryLoading" role="status" aria-live="polite" hidden>
+        <div class="loading-model" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div><b id="loadingTitle">Ansicht wird vorbereitet</b><span id="loadingDetail">Einträge werden sortiert …</span></div>
+      </div>
+      <div class="preview-status" id="previewStatus" role="status" aria-live="polite" hidden>
+        <span class="preview-pulse" aria-hidden="true"></span>
+        <span id="previewStatusText">Vorschaubilder werden geladen</span>
+        <span class="preview-progress"><i id="previewProgressBar"></i></span>
+      </div>
       <div class="library" id="library"></div>
       <div class="empty" id="empty">
         <b>Bereit für dein Archiv.</b>
@@ -78,6 +87,14 @@
             <label class="unknown-toggle"><input id="includeUnknown" type="checkbox"><span><b>Weitere Dateitypen</b><small>Auch nicht aufgelistete Endungen anzeigen</small></span></label>
           </section>
 
+          <section class="preview-panel">
+            <div class="settings-heading preview-heading">
+              <div><b>3D-Vorschaubilder</b><span>Für STL, 3MF und OBJ – vollständig lokal</span></div>
+              <label class="switch-control"><input id="showPreviews" type="checkbox"><span aria-hidden="true"></span><b>Automatisch laden</b></label>
+            </div>
+            <p>Ausgeschaltet öffnet sich die Bibliothek schneller. Der drehbare 3D-Viewer bleibt weiterhin verfügbar.</p>
+          </section>
+
           <section class="exclude-panel">
             <div class="settings-heading"><div><b>Ausschlüsse</b><span>Haben immer Vorrang vor der Formatwahl</span></div></div>
             <label class="field-label" for="excludedExtensions">Endungen ausschließen</label>
@@ -89,7 +106,7 @@
         </div>
         <div class="settings-footer">
           <span id="settingsStatus">Noch keine Ordner ausgewählt</span>
-          <div><button class="tool" data-close type="button">Abbrechen</button><button class="primary small" id="applyLibrarySettings" type="button">Übernehmen &amp; neu einlesen</button></div>
+          <div><button class="tool" data-close type="button">Abbrechen</button><button class="primary small" id="applyLibrarySettings" type="button">Änderungen übernehmen</button></div>
         </div>
       </div>
     </dialog>

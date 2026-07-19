@@ -57,6 +57,7 @@ export const PRINT_EXTENSIONS = FORMAT_GROUPS.flatMap(group => group.formats.fil
 export function defaultLibrarySettings() {
   return {
     enabledExtensions: FORMAT_GROUPS.flatMap(group => group.formats.filter(format => format.defaultOn).map(format => format.ext)),
+    showPreviews: true,
     includeUnknown: false,
     excludedExtensions: [],
     excludedFiles: []
@@ -93,6 +94,7 @@ export function normalizeLibrarySettings(value = {}) {
     : defaults.enabledExtensions;
   return {
     enabledExtensions: [...new Set(enabled)],
+    showPreviews: typeof value.showPreviews === "boolean" ? value.showPreviews : defaults.showPreviews,
     includeUnknown: Boolean(value.includeUnknown),
     excludedExtensions: Array.isArray(value.excludedExtensions)
       ? [...new Set(value.excludedExtensions.map(normalizeExtension).filter(Boolean))]

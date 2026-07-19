@@ -43,7 +43,8 @@ const state = {
   query: "",
   sort: "name",
   view: "grid",
-  scanning: false
+  scanning: false,
+  fileIndex: new Map()
 };
 
 const byId = id => document.getElementById(id);
@@ -73,7 +74,7 @@ function visibleFiles() {
 }
 
 function previewAttributes(file) {
-  if (!file || !isViewable(file)) return "";
+  if (!state.settings.showPreviews || !file || !isViewable(file)) return "";
   return `data-preview-root="${file.rootIndex}" data-preview-path="${escapeHtml(file.path)}"`;
 }
 
@@ -121,14 +122,71 @@ function fileCard(file) {
   return `<button class="card file-card" type="button" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? "data-viewable" : ""} aria-label="Datei ${escapeHtml(file.name)}${viewable ? " im 3D-Viewer öffnen" : ""}" style="--tone:${CATEGORIES[category].color}"><div class="card-cover file-cover" ${previewAttributes(file)} aria-hidden="true"><span class="file-mark">${escapeHtml(file.extension.toUpperCase() || "DATEI")}</span><span class="kind-flag file-flag">Datei</span></div><div class="card-body"><div class="entry-kind">Datei · .${escapeHtml(file.extension || "–")}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : "Hauptordner")}</span></div><div class="badges"><span class="badge">${CATEGORIES[category].label}</span>${viewable ? '<span class="badge">3D-Vorschau</span>' : ""}<span class="badge source-badge">${escapeHtml(root?.name || "Bibliothek")}</span></div></div></button>`;
 }
 
-function renderLibrary() {
+let libraryRenderSequence = 0;
+let previewProgress = { sequence: 0, total: 0, completed: 0 };
+
+function setLibraryLoading(loading, title = "Ansicht wird vorbereitet", detail = "Einträge werden sortiert …") {
+  const library = byId("library");
+  byId("libraryLoading").hidden = !loading;
+  byId("loadingTitle").textContent = title;
+  byId("loadingDetail").textContent = detail;
+  library.classList.toggle("is-preparing", loading);
+  library.setAttribute("aria-busy", String(loading));
+  if (loading) byId("empty").classList.remove("show");
+}
+
+function resetPreviewProgress(sequence) {
+  previewProgress = { sequence, total: 0, completed: 0 };
+  byId("previewStatus").hidden = true;
+  byId("previewProgressBar").style.width = "0%";
+}
+
+function updateSectionLabels() {
+  byId("sectionKicker").textContent = state.tab === "projects" ? "Projektordner" : "Dateien aus allen Ordnern";
+  byId("sectionTitle").textContent = state.category === "all"
+    ? (state.tab === "projects" ? "Ordnerübersicht" : "Alle Dateien")
+    : `${CATEGORIES[state.category].label}-${state.tab === "projects" ? "Ordner" : "Dateien"}`;
+}
+
+function scheduleLibraryRender() {
+  const sequence = ++libraryRenderSequence;
+  previewObserver?.disconnect();
+  previewQueue.length = 0;
+  resetPreviewProgress(sequence);
+  updateSectionLabels();
+  setLibraryLoading(true, byId("sectionTitle").textContent, state.settings.showPreviews ? "Einträge werden vorbereitet, Vorschauen folgen …" : "Einträge werden vorbereitet …");
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (sequence === libraryRenderSequence) renderLibrary(sequence);
+  }));
+}
+
+function renderEntryBatch(entries, sequence, offset = 0) {
+  if (sequence !== libraryRenderSequence) return;
+  const library = byId("library");
+  const batchSize = state.view === "grid" ? 72 : 140;
+  const end = Math.min(offset + batchSize, entries.length);
+  library.insertAdjacentHTML("beforeend", entries.slice(offset, end).map(entry => state.tab === "projects" ? projectCard(entry) : fileCard(entry)).join(""));
+  hydrateModelPreviews(sequence);
+  if (offset === 0) setLibraryLoading(false);
+  if (end < entries.length) {
+    requestAnimationFrame(() => renderEntryBatch(entries, sequence, end));
+  } else {
+    library.setAttribute("aria-busy", "false");
+  }
+}
+
+function renderLibrary(sequence = ++libraryRenderSequence) {
   const library = byId("library");
   previewObserver?.disconnect();
+  previewQueue.length = 0;
+  resetPreviewProgress(sequence);
   library.classList.toggle("list", state.view === "list");
+  library.innerHTML = "";
   if (!state.archive) {
-    library.innerHTML = "";
+    setLibraryLoading(false);
     byId("empty").classList.add("show");
     byId("resultCount").textContent = "0 Treffer";
+    updateSectionLabels();
     return;
   }
   let entries;
@@ -141,16 +199,16 @@ function renderLibrary() {
     entries = allFiles().filter(file => visibleFile(file) && matchesCategory(file) && matchesQuery(`${file.name} ${file.path} ${rootOf(file)?.name || ""}`));
   }
   entries.sort((a, b) => state.sort === "date" ? b.modified - a.modified : state.sort === "size" ? b.size - a.size : (a.displayName || a.name).localeCompare(b.displayName || b.name, "de"));
-  library.innerHTML = entries.map(entry => state.tab === "projects" ? projectCard(entry) : fileCard(entry)).join("");
-  hydrateModelPreviews();
   byId("empty").classList.toggle("show", !entries.length);
   byId("empty").querySelector("b").textContent = entries.length ? "" : "Keine passenden Einträge.";
   byId("empty").querySelector("span").textContent = entries.length ? "" : "Passe Suche oder Dateitypen in den Bibliothekseinstellungen an.";
   byId("resultCount").textContent = `${nf.format(entries.length)} Treffer`;
-  byId("sectionKicker").textContent = state.tab === "projects" ? "Projektordner" : "Dateien aus allen Ordnern";
-  byId("sectionTitle").textContent = state.category === "all"
-    ? (state.tab === "projects" ? "Ordnerübersicht" : "Alle Dateien")
-    : `${CATEGORIES[state.category].label}-${state.tab === "projects" ? "Ordner" : "Dateien"}`;
+  updateSectionLabels();
+  if (!entries.length) {
+    setLibraryLoading(false);
+    return;
+  }
+  renderEntryBatch(entries, sequence);
 }
 
 function updateRootLabel() {
@@ -188,6 +246,7 @@ function setScanning(scanning) {
 async function scanLibrary(roots, settings = state.settings, silent = false) {
   if (!roots.length) {
     state.archive = null;
+    state.fileIndex = new Map();
     state.roots = [];
     state.settings = normalizeLibrarySettings(settings);
     saveConfiguration();
@@ -198,6 +257,7 @@ async function scanLibrary(roots, settings = state.settings, silent = false) {
   try {
     const archive = await invoke("scan_archives", { roots });
     state.archive = archive;
+    state.fileIndex = new Map(allFiles().map(file => [`${file.rootIndex}\n${file.path}`, file]));
     state.roots = archive.roots.map(root => root.path);
     state.settings = normalizeLibrarySettings(settings);
     saveConfiguration();
@@ -222,6 +282,7 @@ function renderSettingsDialog() {
   const draft = state.pendingSettings || state.settings;
   const enabled = new Set(draft.enabledExtensions);
   byId("formatGroups").innerHTML = FORMAT_GROUPS.map(group => `<fieldset><legend>${group.label}</legend><div>${group.formats.map(format => `<label class="format-chip"><input type="checkbox" value="${format.ext}" ${enabled.has(format.ext) ? "checked" : ""}><span><b>${format.label}</b><small>.${format.ext}</small></span></label>`).join("")}</div></fieldset>`).join("");
+  byId("showPreviews").checked = draft.showPreviews;
   byId("includeUnknown").checked = draft.includeUnknown;
   byId("excludedExtensions").value = draft.excludedExtensions.join(", ");
   byId("excludedFiles").value = draft.excludedFiles.join("\n");
@@ -250,6 +311,7 @@ function settingsFromForm() {
   const enabledExtensions = [...byId("formatGroups").querySelectorAll('input[type="checkbox"]:checked')].map(input => input.value);
   return normalizeLibrarySettings({
     enabledExtensions,
+    showPreviews: byId("showPreviews").checked,
     includeUnknown: byId("includeUnknown").checked,
     excludedExtensions: splitExtensionRules(byId("excludedExtensions").value),
     excludedFiles: splitFileRules(byId("excludedFiles").value)
@@ -281,7 +343,17 @@ byId("selectNoFormats").addEventListener("click", () => {
   byId("includeUnknown").checked = false;
 });
 byId("applyLibrarySettings").addEventListener("click", async () => {
-  const applied = await scanLibrary(state.pendingRoots, settingsFromForm());
+  const nextSettings = settingsFromForm();
+  const rootsChanged = state.pendingRoots.length !== state.roots.length || state.pendingRoots.some((root, index) => root !== state.roots[index]);
+  let applied;
+  if (rootsChanged || !state.archive) {
+    applied = await scanLibrary(state.pendingRoots, nextSettings);
+  } else {
+    state.settings = nextSettings;
+    saveConfiguration();
+    render();
+    applied = true;
+  }
   if (applied) libraryDialog.close();
 });
 
@@ -290,11 +362,17 @@ byId("stats").addEventListener("click", event => {
   if (!tile) return;
   if (tile.dataset.category) state.category = state.category === tile.dataset.category ? "all" : tile.dataset.category;
   if (tile.dataset.tab) { state.tab = tile.dataset.tab; state.category = "all"; }
-  render();
+  renderStats();
+  scheduleLibraryRender();
 });
-byId("search").addEventListener("input", event => { state.query = event.target.value.trim().toLocaleLowerCase("de"); renderLibrary(); });
-byId("sort").addEventListener("change", event => { state.sort = event.target.value; renderLibrary(); });
-byId("viewToggle").addEventListener("click", event => { state.view = state.view === "grid" ? "list" : "grid"; event.currentTarget.textContent = state.view === "grid" ? "Listenansicht" : "Rasteransicht"; renderLibrary(); });
+let searchTimer;
+byId("search").addEventListener("input", event => {
+  state.query = event.target.value.trim().toLocaleLowerCase("de");
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(scheduleLibraryRender, 90);
+});
+byId("sort").addEventListener("change", event => { state.sort = event.target.value; scheduleLibraryRender(); });
+byId("viewToggle").addEventListener("click", event => { state.view = state.view === "grid" ? "list" : "grid"; event.currentTarget.textContent = state.view === "grid" ? "Listenansicht" : "Rasteransicht"; scheduleLibraryRender(); });
 
 const projectDialog = byId("projectDialog");
 byId("library").addEventListener("click", async event => {
@@ -411,6 +489,7 @@ function disposeModel(object) {
 }
 
 const previewCache = new Map();
+const previewPromises = new Map();
 const previewQueue = [];
 let activePreviews = 0;
 let previewObserver;
@@ -439,33 +518,65 @@ async function thumbnailFor(file) {
   const root = rootOf(file);
   const cacheKey = `${root.path}\n${file.path}\n${file.size}\n${file.modified}`;
   if (previewCache.has(cacheKey)) return previewCache.get(cacheKey);
-  if (file.size > MAX_PREVIEW_BYTES) throw new Error("Modell ist für eine automatische Vorschau zu groß.");
-  const bytes = await invoke("read_model", { root: root.path, relativePath: file.path });
-  ensureThumbnailRenderer();
-  const object = createModelObject(new Uint8Array(bytes).buffer, file.name, true);
-  thumbnailScene.add(object);
+  if (previewPromises.has(cacheKey)) return previewPromises.get(cacheKey);
+  const promise = (async () => {
+    if (file.size > MAX_PREVIEW_BYTES) throw new Error("Modell ist für eine automatische Vorschau zu groß.");
+    const bytes = await invoke("read_model", { root: root.path, relativePath: file.path });
+    ensureThumbnailRenderer();
+    const object = createModelObject(new Uint8Array(bytes).buffer, file.name, true);
+    thumbnailScene.add(object);
+    try {
+      frameModel(object, thumbnailCamera, null, 1.32);
+      thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
+      const dataUrl = thumbnailRenderer.domElement.toDataURL("image/webp", .82);
+      if (previewCache.size >= 240) previewCache.delete(previewCache.keys().next().value);
+      previewCache.set(cacheKey, dataUrl);
+      return dataUrl;
+    } finally {
+      thumbnailScene.remove(object);
+      disposeModel(object);
+    }
+  })();
+  previewPromises.set(cacheKey, promise);
   try {
-    frameModel(object, thumbnailCamera, null, 1.32);
-    thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
-    const dataUrl = thumbnailRenderer.domElement.toDataURL("image/webp", .82);
-    if (previewCache.size >= 240) previewCache.delete(previewCache.keys().next().value);
-    previewCache.set(cacheKey, dataUrl);
-    return dataUrl;
+    return await promise;
   } finally {
-    thumbnailScene.remove(object);
-    disposeModel(object);
+    previewPromises.delete(cacheKey);
   }
+}
+
+function updatePreviewStatus(sequence) {
+  if (sequence !== libraryRenderSequence || sequence !== previewProgress.sequence) return;
+  const status = byId("previewStatus");
+  const { total, completed } = previewProgress;
+  if (!state.settings.showPreviews || !total || completed >= total) {
+    status.hidden = true;
+    return;
+  }
+  status.hidden = false;
+  byId("previewStatusText").textContent = `Vorschaubilder ${nf.format(completed)} von ${nf.format(total)} · Einträge sind bereits nutzbar`;
+  byId("previewProgressBar").style.width = `${Math.round(completed / total * 100)}%`;
+}
+
+function finishQueuedPreview(generation) {
+  if (generation !== previewProgress.sequence) return;
+  previewProgress.completed++;
+  updatePreviewStatus(generation);
 }
 
 function pumpPreviewQueue() {
   while (activePreviews < 2 && previewQueue.length) {
-    const cover = previewQueue.shift();
-    if (!cover.isConnected) continue;
+    const { cover, generation } = previewQueue.shift();
+    if (!cover.isConnected) {
+      finishQueuedPreview(generation);
+      continue;
+    }
     activePreviews++;
     const rootIndex = Number(cover.dataset.previewRoot);
-    const file = allFiles().find(item => item.rootIndex === rootIndex && item.path === cover.dataset.previewPath);
+    const file = state.fileIndex.get(`${rootIndex}\n${cover.dataset.previewPath}`);
     if (!file) {
       activePreviews--;
+      finishQueuedPreview(generation);
       continue;
     }
     thumbnailFor(file).then(dataUrl => {
@@ -478,20 +589,28 @@ function pumpPreviewQueue() {
       cover.classList.add("has-thumbnail");
     }).catch(() => cover.isConnected && cover.classList.add("preview-failed")).finally(() => {
       activePreviews--;
+      finishQueuedPreview(generation);
       pumpPreviewQueue();
     });
   }
 }
 
 function queueModelPreview(cover) {
-  if (cover.dataset.previewState) return;
+  if (!state.settings.showPreviews || cover.dataset.previewState) return;
+  const generation = Number(cover.dataset.previewGeneration);
   cover.dataset.previewState = "queued";
-  previewQueue.push(cover);
+  previewQueue.push({ cover, generation });
+  if (generation === previewProgress.sequence) {
+    previewProgress.total++;
+    updatePreviewStatus(generation);
+  }
   pumpPreviewQueue();
 }
 
-function hydrateModelPreviews() {
-  const covers = document.querySelectorAll("[data-preview-path]:not([data-preview-state])");
+function hydrateModelPreviews(sequence = libraryRenderSequence) {
+  if (!state.settings.showPreviews) return;
+  const covers = document.querySelectorAll("[data-preview-path]:not([data-preview-state]):not([data-preview-generation])");
+  covers.forEach(cover => { cover.dataset.previewGeneration = String(sequence); });
   if (!("IntersectionObserver" in window)) {
     covers.forEach(queueModelPreview);
     return;
