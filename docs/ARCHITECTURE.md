@@ -21,15 +21,9 @@ Formatwahl und Ausschlussregeln filtern die eingelesenen Metadaten im Frontend. 
 
 ## Vorschauen ohne Blender
 
-Der interaktive Viewer ist bereits Blender-unabhängig. Für Rastervorschaubilder ist folgender Ausbau vorgesehen:
+Der interaktive Viewer und die Rastervorschaubilder sind Blender-unabhängig. Sichtbare STL-, 3MF- und OBJ-Dateien werden mit begrenzter Parallelität in einem kleinen Offscreen-WebGL-Renderer geladen. Die Geometrie wird über ihre Bounding Sphere zentriert und mit Sicherheitsrand eingepasst, damit lange oder flache Modelle nicht abgeschnitten werden. Die aktuelle Sitzung hält höchstens 240 Vorschaubilder im Arbeitsspeicher; Dateien über 64 MB und defekte Geometrie behalten einen neutralen Platzhalter.
 
-1. sichtbare STL-/3MF-Dateien in einem kleinen Offscreen-WebGL-Renderer laden;
-2. Geometrie über ihre Bounding Box zentrieren und mit Sicherheitsrand einpassen;
-3. PNG/WebP nur in den privaten App-Cache schreiben, Schlüssel aus Pfad, Größe und Änderungszeit;
-4. defekte Geometrie durch einen neutralen Dateityp-Platzhalter ersetzen;
-5. optional: Blender automatisch erkennen und als explizite „Studio-Qualität“ anbieten.
-
-Damit bleibt der Download klein und der Standard-Viewer funktioniert auf jedem unterstützten Rechner.
+Ein späterer persistenter App-Cache kann Pfad, Größe und Änderungszeit als Schlüssel verwenden. Blender bleibt eine optionale spätere „Studio-Qualität“ und ist für den Standardbetrieb nicht erforderlich.
 
 ## Paketierung
 

@@ -17,7 +17,7 @@
           <h1>Druck<span>archiv</span></h1>
           <p id="rootLabel">Noch kein Archivordner ausgewählt</p>
         </div>
-        <button class="primary" id="chooseFolder" type="button">Bibliothek einrichten</button>
+        <button class="primary" id="chooseFolder" type="button">Bibliothek verwalten</button>
       </div>
       <div class="stats" id="stats" aria-label="Archiv-Kennzahlen"></div>
     </header>
@@ -30,7 +30,6 @@
         <option value="size">Größe</option>
       </select>
       <button class="tool" id="refreshLibrary" type="button" disabled>Neu einlesen</button>
-      <button class="tool" id="openLibrarySettings" type="button">Ordner &amp; Formate</button>
       <button class="tool" id="viewToggle" type="button">Listenansicht</button>
       <button class="tool accent" id="openViewer" type="button">3D-Viewer</button>
     </nav>
@@ -38,8 +37,8 @@
     <main>
       <div class="section-head">
         <div>
-          <div class="section-kicker" id="sectionKicker">Projekte</div>
-          <h2 id="sectionTitle">Deine Bibliothek</h2>
+          <div class="section-kicker" id="sectionKicker">Projektordner</div>
+          <h2 id="sectionTitle">Ordnerübersicht</h2>
         </div>
         <span id="resultCount">0 Treffer</span>
       </div>
@@ -68,9 +67,9 @@
 
           <section class="format-panel">
             <div class="settings-heading">
-              <div><b>Angezeigte Dateitypen</b><span>Wirkt auf Bibliothek und Kennzahlen</span></div>
+              <div><b>Angezeigte Dateitypen</b><span>Standard: STL, 3MF, OBJ und G-Code</span></div>
               <div class="quick-actions">
-                <button class="mini-action" id="selectPrintFormats" type="button">Nur 3D-Druck</button>
+                <button class="mini-action" id="selectPrintFormats" type="button">Standard</button>
                 <button class="mini-action" id="selectAllFormats" type="button">Alle</button>
                 <button class="mini-action" id="selectNoFormats" type="button">Keine</button>
               </div>
@@ -104,8 +103,8 @@
     </dialog>
 
     <div class="viewer" id="viewer" aria-hidden="true">
-      <div class="viewer-top"><div><small>Interaktive Vorschau</small><b id="viewerName">STL / 3MF</b></div><button class="icon" id="closeViewer" type="button" aria-label="Viewer schließen">×</button></div>
-      <div class="viewer-stage" id="viewerStage"><div class="viewer-drop" id="viewerDrop"><b>Modell hier ablegen</b><span>oder STL/3MF auswählen</span><button class="primary small" id="pickModel" type="button">Datei auswählen</button><input hidden id="modelInput" type="file" accept=".stl,.3mf"></div></div>
+      <div class="viewer-top"><div><small>Interaktive Vorschau</small><b id="viewerName">STL / 3MF / OBJ</b></div><button class="icon" id="closeViewer" type="button" aria-label="Viewer schließen">×</button></div>
+      <div class="viewer-stage" id="viewerStage"><div class="viewer-drop" id="viewerDrop"><b>Modell hier ablegen</b><span>oder STL, 3MF beziehungsweise OBJ auswählen</span><button class="primary small" id="pickModel" type="button">Datei auswählen</button><input hidden id="modelInput" type="file" accept=".stl,.3mf,.obj"></div></div>
       <div class="viewer-foot"><span id="viewerInfo">Ziehen: drehen · Mausrad: zoomen · Rechtsklick: verschieben</span><span>Blender wird nicht benötigt</span></div>
     </div>
   </body>

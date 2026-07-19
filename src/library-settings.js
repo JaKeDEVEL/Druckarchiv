@@ -6,8 +6,8 @@ export const FORMAT_GROUPS = [
       { ext: "stl", label: "STL", defaultOn: true },
       { ext: "3mf", label: "3MF", defaultOn: true },
       { ext: "obj", label: "OBJ", defaultOn: true },
-      { ext: "ply", label: "PLY", defaultOn: true },
-      { ext: "amf", label: "AMF", defaultOn: true }
+      { ext: "ply", label: "PLY", defaultOn: false },
+      { ext: "amf", label: "AMF", defaultOn: false }
     ]
   },
   {
@@ -15,36 +15,36 @@ export const FORMAT_GROUPS = [
     label: "Druckaufträge",
     formats: [
       { ext: "gcode", label: "G-Code", defaultOn: true },
-      { ext: "bgcode", label: "BG-Code", defaultOn: true },
-      { ext: "chitubox", label: "Chitubox", defaultOn: true },
-      { ext: "ctb", label: "CTB", defaultOn: true },
-      { ext: "goo", label: "GOO", defaultOn: true }
+      { ext: "bgcode", label: "BG-Code", defaultOn: false },
+      { ext: "chitubox", label: "Chitubox", defaultOn: false },
+      { ext: "ctb", label: "CTB", defaultOn: false },
+      { ext: "goo", label: "GOO", defaultOn: false }
     ]
   },
   {
     id: "cad",
     label: "CAD & Quellen",
     formats: [
-      { ext: "step", label: "STEP", defaultOn: true },
-      { ext: "stp", label: "STP", defaultOn: true },
-      { ext: "f3d", label: "Fusion 360", defaultOn: true },
-      { ext: "fcstd", label: "FreeCAD", defaultOn: true },
-      { ext: "scad", label: "OpenSCAD", defaultOn: true },
-      { ext: "iges", label: "IGES", defaultOn: true },
-      { ext: "igs", label: "IGS", defaultOn: true },
-      { ext: "dxf", label: "DXF", defaultOn: true }
+      { ext: "step", label: "STEP", defaultOn: false },
+      { ext: "stp", label: "STP", defaultOn: false },
+      { ext: "f3d", label: "Fusion 360", defaultOn: false },
+      { ext: "fcstd", label: "FreeCAD", defaultOn: false },
+      { ext: "scad", label: "OpenSCAD", defaultOn: false },
+      { ext: "iges", label: "IGES", defaultOn: false },
+      { ext: "igs", label: "IGS", defaultOn: false },
+      { ext: "dxf", label: "DXF", defaultOn: false }
     ]
   },
   {
     id: "reference",
     label: "Referenzen",
     formats: [
-      { ext: "jpg", label: "JPG", defaultOn: true },
-      { ext: "jpeg", label: "JPEG", defaultOn: true },
-      { ext: "png", label: "PNG", defaultOn: true },
-      { ext: "webp", label: "WebP", defaultOn: true },
+      { ext: "jpg", label: "JPG", defaultOn: false },
+      { ext: "jpeg", label: "JPEG", defaultOn: false },
+      { ext: "png", label: "PNG", defaultOn: false },
+      { ext: "webp", label: "WebP", defaultOn: false },
       { ext: "gif", label: "GIF", defaultOn: false },
-      { ext: "svg", label: "SVG", defaultOn: true },
+      { ext: "svg", label: "SVG", defaultOn: false },
       { ext: "pdf", label: "PDF", defaultOn: false },
       { ext: "txt", label: "Text", defaultOn: false }
     ]
@@ -52,7 +52,7 @@ export const FORMAT_GROUPS = [
 ];
 
 export const KNOWN_EXTENSIONS = FORMAT_GROUPS.flatMap(group => group.formats.map(format => format.ext));
-export const PRINT_EXTENSIONS = FORMAT_GROUPS.slice(0, 3).flatMap(group => group.formats.map(format => format.ext));
+export const PRINT_EXTENSIONS = FORMAT_GROUPS.flatMap(group => group.formats.filter(format => format.defaultOn).map(format => format.ext));
 
 export function defaultLibrarySettings() {
   return {

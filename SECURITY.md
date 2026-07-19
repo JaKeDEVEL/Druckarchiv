@@ -5,7 +5,7 @@
 Die Web-Oberfläche erhält nur zwei eng begrenzte Rust-Befehle:
 
 1. bis zu 32 vom Nutzer ausgewählte Ordner schreibgeschützt einlesen;
-2. eine STL-/3MF-Datei innerhalb genau dieses Ordners für den Viewer lesen.
+2. eine STL-, 3MF- oder OBJ-Datei innerhalb genau dieses Ordners für Vorschau und Viewer lesen.
 
 Vor dem Lesen eines Modells wird der kanonische Pfad geprüft. Pfadtraversierung außerhalb der Archivordner, symbolische Links, nicht unterstützte Dateitypen und Modelle über 512 MB werden blockiert. Verschachtelt ausgewählte Quellen werden zusammengeführt, damit Dateien nicht doppelt erfasst werden. Der Scan überspringt versteckte Einträge und ist insgesamt auf 200.000 Dateien begrenzt.
 

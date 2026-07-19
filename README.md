@@ -6,11 +6,12 @@ Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3
 
 - mehrere Bibliotheksordner über den nativen Ordnerdialog unter macOS und Windows
 - rekursiver, schreibgeschützter Archivscan ohne Verfolgung symbolischer Links
-- dauerhaft gespeicherte Formatwahl für STL, 3MF, OBJ, weitere Mesh-, CAD-, G-Code- und Referenzformate
+- einfache Standardauswahl für STL, 3MF, OBJ und G-Code; weitere Mesh-, CAD- und Referenzformate sind Opt-in
 - Ausschlüsse nach Endung, Dateiname oder relativem Pfad mit Platzhaltern
 - KPI-Filter für Projekte, Dateien, STL, 3MF, Mesh, CAD, G-Code und Sonstige
-- Raster- und Listenansicht
-- interaktiver STL-/3MF-Viewer mit Drehen, Zoomen und Verschieben
+- Raster- und Listenansicht mit allen Dateien aus sämtlichen Unterordnern
+- lokal und verzögert erzeugte Modell-Thumbnails
+- interaktiver STL-/3MF-/OBJ-Viewer mit Drehen, Zoomen und Verschieben – auch direkt aus Projektordnern
 - keine Telemetrie, kein Benutzerkonto und kein Upload
 - Blender ist **keine Voraussetzung**
 
@@ -41,7 +42,7 @@ Auf macOS entsteht ein `.app`/`.dmg`, auf Windows ein NSIS-Setup. Die GitHub-Act
 
 ## Vorschau-Strategie
 
-Der drehbare Viewer rendert STL und 3MF direkt mit Three.js/WebGL. Das ist offlinefähig und benötigt Blender nicht. Statische Vorschaubilder werden in einer nächsten Ausbaustufe aus derselben Geometrie lokal erzeugt und im App-Cache abgelegt. Eine vorhandene Blender-Installation kann später optional als „Studio-Render“-Provider verwendet werden, ohne den Standardbetrieb zu beeinflussen.
+Der drehbare Viewer und die Karten-Thumbnails rendern STL, 3MF und OBJ direkt mit Three.js/WebGL. Das ist offlinefähig und benötigt Blender nicht. Thumbnails werden erst erzeugt, wenn eine Karte in die Nähe des sichtbaren Bereichs kommt; höchstens zwei Modelle werden parallel verarbeitet und sehr große Modelle werden übersprungen. Eine vorhandene Blender-Installation kann später optional als „Studio-Render“-Provider verwendet werden, ohne den Standardbetrieb zu beeinflussen.
 
 ## Veröffentlichung
 

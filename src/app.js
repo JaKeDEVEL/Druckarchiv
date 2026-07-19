@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { STLLoader } from "three/addons/loaders/STLLoader.js";
 import { ThreeMFLoader } from "three/addons/loaders/3MFLoader.js";
+import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import {
   FORMAT_GROUPS,
   PRINT_EXTENSIONS,
@@ -25,6 +26,8 @@ const CATEGORIES = {
   other: { label: "Sonstige", color: "var(--dim)", exts: [] }
 };
 const extCategory = new Map(Object.entries(CATEGORIES).flatMap(([key, item]) => item.exts.map(ext => [ext, key])));
+const MODEL_EXTENSIONS = new Set(["stl", "3mf", "obj"]);
+const SETTINGS_VERSION = 2;
 const nf = new Intl.NumberFormat("de-DE");
 const df = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 const STORAGE_KEY = "druckarchiv.library.v1";
@@ -45,6 +48,7 @@ const state = {
 
 const byId = id => document.getElementById(id);
 const categoryOf = file => extCategory.get(file.extension.toLowerCase()) || "other";
+const isViewable = file => MODEL_EXTENSIONS.has(file.extension.toLowerCase());
 const formatSize = bytes => {
   if (bytes >= 1e9) return `${nf.format(Math.round(bytes / 1e8) / 10)} GB`;
   if (bytes >= 1e6) return `${nf.format(Math.round(bytes / 1e5) / 10)} MB`;
@@ -68,16 +72,20 @@ function visibleFiles() {
   return allFiles().filter(visibleFile);
 }
 
+function previewAttributes(file) {
+  if (!file || !isViewable(file)) return "";
+  return `data-preview-root="${file.rootIndex}" data-preview-path="${escapeHtml(file.path)}"`;
+}
+
 function renderStats() {
   const files = visibleFiles();
   const counts = Object.fromEntries(Object.keys(CATEGORIES).map(key => [key, 0]));
   files.forEach(file => counts[categoryOf(file)]++);
   const totalSize = files.reduce((sum, file) => sum + file.size, 0);
   const projects = state.archive?.projects.filter(project => project.files.some(visibleFile)).length || 0;
-  const loose = state.archive?.loose.filter(visibleFile).length || 0;
   const tiles = [
-    { label: "Projekte", value: projects, sub: "Ordner", color: "var(--mint)", tab: "projects" },
-    { label: "Dateien", value: files.length, sub: `${nf.format(loose)} einzeln`, color: "var(--dim)", tab: "loose" },
+    { label: "Projektordner", value: projects, sub: "Ordner mit Dateien", color: "var(--mint)", tab: "projects" },
+    { label: "Alle Dateien", value: files.length, sub: "inkl. Unterordner", color: "var(--dim)", tab: "files" },
     { label: "STL", value: counts.stl, sub: "Modelle", color: "var(--orange)", category: "stl" },
     { label: "3MF", value: counts.m3f, sub: "Druckpakete", color: "var(--mint)", category: "m3f" },
     { label: "Mesh", value: counts.mesh, sub: "OBJ · PLY · AMF", color: "var(--blue)", category: "mesh" },
@@ -102,18 +110,20 @@ function projectCard(project) {
   const size = shownFiles.reduce((sum, file) => sum + file.size, 0);
   const root = rootOf(project);
   const projectIndex = state.archive.projects.indexOf(project);
-  return `<button class="card" type="button" data-project-index="${projectIndex}" style="--tone:${CATEGORIES[dominant].color}"><div class="card-cover" aria-hidden="true">${CATEGORIES[dominant].label}</div><div class="card-body"><h3>${escapeHtml(project.displayName)}</h3><div class="meta"><span>${nf.format(shownFiles.length)} Dateien</span><span>${formatSize(size)}</span><span>${formatDate(project.modified)}</span></div><div class="badges">${badges}<span class="badge source-badge" title="${escapeHtml(root?.path || "")}">${escapeHtml(root?.name || "Ordner")}</span></div></div></button>`;
+  const representative = shownFiles.find(isViewable);
+  return `<button class="card folder-card" type="button" data-project-index="${projectIndex}" aria-label="Projektordner ${escapeHtml(project.displayName)} öffnen" style="--tone:${CATEGORIES[dominant].color}"><div class="card-cover folder-cover" ${previewAttributes(representative)} aria-hidden="true"><span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> Ordner</span><span class="cover-label">${CATEGORIES[dominant].label}</span></div><div class="card-body"><div class="entry-kind">Projektordner</div><h3>${escapeHtml(project.displayName)}</h3><div class="meta"><span>${nf.format(shownFiles.length)} Dateien</span><span>${formatSize(size)}</span><span>${formatDate(project.modified)}</span></div><div class="badges">${badges}<span class="badge source-badge" title="${escapeHtml(root?.path || "")}">${escapeHtml(root?.name || "Bibliothek")}</span></div></div></button>`;
 }
 
 function fileCard(file) {
   const category = categoryOf(file);
-  const viewable = ["stl", "m3f"].includes(category);
+  const viewable = isViewable(file);
   const root = rootOf(file);
-  return `<button class="card" type="button" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? "data-viewable" : ""} style="--tone:${CATEGORIES[category].color}"><div class="card-cover" aria-hidden="true">${escapeHtml(file.extension.toUpperCase() || "DATEI")}</div><div class="card-body"><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span></div><div class="badges"><span class="badge">${CATEGORIES[category].label}</span>${viewable ? '<span class="badge">Drehbar</span>' : ""}<span class="badge source-badge">${escapeHtml(root?.name || "Ordner")}</span></div></div></button>`;
+  return `<button class="card file-card" type="button" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? "data-viewable" : ""} aria-label="Datei ${escapeHtml(file.name)}${viewable ? " im 3D-Viewer öffnen" : ""}" style="--tone:${CATEGORIES[category].color}"><div class="card-cover file-cover" ${previewAttributes(file)} aria-hidden="true"><span class="file-mark">${escapeHtml(file.extension.toUpperCase() || "DATEI")}</span><span class="kind-flag file-flag">Datei</span></div><div class="card-body"><div class="entry-kind">Datei · .${escapeHtml(file.extension || "–")}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : "Hauptordner")}</span></div><div class="badges"><span class="badge">${CATEGORIES[category].label}</span>${viewable ? '<span class="badge">3D-Vorschau</span>' : ""}<span class="badge source-badge">${escapeHtml(root?.name || "Bibliothek")}</span></div></div></button>`;
 }
 
 function renderLibrary() {
   const library = byId("library");
+  previewObserver?.disconnect();
   library.classList.toggle("list", state.view === "list");
   if (!state.archive) {
     library.innerHTML = "";
@@ -128,16 +138,19 @@ function renderLibrary() {
       return files.length && matchesQuery(`${project.displayName} ${project.name} ${files.map(file => file.path).join(" ")}`);
     });
   } else {
-    entries = state.archive.loose.filter(file => visibleFile(file) && matchesCategory(file) && matchesQuery(file.path));
+    entries = allFiles().filter(file => visibleFile(file) && matchesCategory(file) && matchesQuery(`${file.name} ${file.path} ${rootOf(file)?.name || ""}`));
   }
   entries.sort((a, b) => state.sort === "date" ? b.modified - a.modified : state.sort === "size" ? b.size - a.size : (a.displayName || a.name).localeCompare(b.displayName || b.name, "de"));
   library.innerHTML = entries.map(entry => state.tab === "projects" ? projectCard(entry) : fileCard(entry)).join("");
+  hydrateModelPreviews();
   byId("empty").classList.toggle("show", !entries.length);
   byId("empty").querySelector("b").textContent = entries.length ? "" : "Keine passenden Einträge.";
   byId("empty").querySelector("span").textContent = entries.length ? "" : "Passe Suche oder Dateitypen in den Bibliothekseinstellungen an.";
   byId("resultCount").textContent = `${nf.format(entries.length)} Treffer`;
-  byId("sectionKicker").textContent = state.tab === "projects" ? "Projekte" : "Einzeldateien";
-  byId("sectionTitle").textContent = state.category === "all" ? "Deine Bibliothek" : CATEGORIES[state.category].label;
+  byId("sectionKicker").textContent = state.tab === "projects" ? "Projektordner" : "Dateien aus allen Ordnern";
+  byId("sectionTitle").textContent = state.category === "all"
+    ? (state.tab === "projects" ? "Ordnerübersicht" : "Alle Dateien")
+    : `${CATEGORIES[state.category].label}-${state.tab === "projects" ? "Ordner" : "Dateien"}`;
 }
 
 function updateRootLabel() {
@@ -151,14 +164,14 @@ function updateRootLabel() {
   } else {
     byId("rootLabel").textContent = `${nf.format(roots.length)} Ordner · ${roots.map(root => root.name).join(" · ")}`;
   }
-  byId("chooseFolder").textContent = state.roots.length ? "Bibliothek verwalten" : "Bibliothek einrichten";
+  byId("chooseFolder").textContent = "Bibliothek verwalten";
   byId("refreshLibrary").disabled = !state.roots.length || state.scanning;
 }
 
 function render() { updateRootLabel(); renderStats(); renderLibrary(); }
 
 function saveConfiguration() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ roots: state.roots, settings: state.settings }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ settingsVersion: SETTINGS_VERSION, roots: state.roots, settings: state.settings }));
 }
 
 function setScanning(scanning) {
@@ -245,7 +258,6 @@ function settingsFromForm() {
 
 const libraryDialog = byId("libraryDialog");
 byId("chooseFolder").addEventListener("click", openLibraryDialog);
-byId("openLibrarySettings").addEventListener("click", openLibraryDialog);
 byId("addFolders").addEventListener("click", addFolders);
 byId("refreshLibrary").addEventListener("click", () => scanLibrary(state.roots));
 byId("rootList").addEventListener("click", event => {
@@ -292,7 +304,13 @@ byId("library").addEventListener("click", async event => {
     const project = state.archive.projects[Number(card.dataset.projectIndex)];
     const files = filteredProjectFiles(project);
     byId("modalTitle").textContent = project.displayName;
-    byId("modalList").innerHTML = files.map(file => { const category = categoryOf(file); return `<label class="file-row" style="--tone:${CATEGORIES[category].color}"><span class="dot"></span><span title="${escapeHtml(file.path)}">${escapeHtml(file.path)}</span><span>${formatSize(file.size)}</span><input type="checkbox" data-path="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" aria-label="${escapeHtml(file.name)} auswählen"></label>`; }).join("");
+    byId("modalList").innerHTML = files.map(file => {
+      const category = categoryOf(file);
+      const name = isViewable(file)
+        ? `<button class="file-preview-button" type="button" data-model-root="${file.rootIndex}" data-model-path="${escapeHtml(file.path)}" title="${escapeHtml(file.path)}"><span>${escapeHtml(file.path)}</span><small>Im 3D-Viewer öffnen</small></button>`
+        : `<span class="file-name" title="${escapeHtml(file.path)}">${escapeHtml(file.path)}</span>`;
+      return `<div class="file-row" style="--tone:${CATEGORIES[category].color}"><span class="dot"></span>${name}<span>${formatSize(file.size)}</span><span class="file-format">${escapeHtml(file.extension.toUpperCase() || "Datei")}</span><input type="checkbox" data-path="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" aria-label="${escapeHtml(file.name)} auswählen"></div>`;
+    }).join("");
     byId("selectedCount").textContent = "0";
     byId("copySelected").disabled = true;
     projectDialog.showModal();
@@ -302,6 +320,12 @@ byId("library").addEventListener("click", async event => {
 });
 projectDialog.querySelector("[data-close]").addEventListener("click", () => projectDialog.close());
 projectDialog.addEventListener("click", event => { if (event.target === projectDialog) projectDialog.close(); });
+byId("modalList").addEventListener("click", async event => {
+  const button = event.target.closest("[data-model-path]");
+  if (!button) return;
+  projectDialog.close();
+  await openArchiveModel(Number(button.dataset.modelRoot), button.dataset.modelPath);
+});
 projectDialog.addEventListener("change", () => {
   const count = projectDialog.querySelectorAll('input[type="checkbox"]:checked').length;
   byId("selectedCount").textContent = nf.format(count);
@@ -322,7 +346,165 @@ byId("copySelected").addEventListener("click", async () => {
   }
 });
 
-let renderer, scene, camera, controls, model, animation;
+function createModelObject(buffer, name, neutralMaterial = false) {
+  const extension = name.split(".").pop().toLowerCase();
+  let object;
+  if (extension === "stl") {
+    const geometry = new STLLoader().parse(buffer);
+    geometry.computeVertexNormals();
+    object = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0x52d7bd, roughness: .52, metalness: .06, side: THREE.DoubleSide }));
+  } else if (extension === "obj") {
+    object = new OBJLoader().parse(new TextDecoder().decode(buffer));
+  } else if (extension === "3mf") {
+    object = new ThreeMFLoader().parse(buffer);
+  } else {
+    throw new Error("Nicht unterstütztes Modellformat");
+  }
+  if (["stl", "3mf"].includes(extension)) object.rotation.x = -Math.PI / 2;
+  object.traverse(child => {
+    if (!child.isMesh) return;
+    if (neutralMaterial || !child.material) {
+      child.material = new THREE.MeshStandardMaterial({ color: 0x52d7bd, roughness: .52, metalness: .06, side: THREE.DoubleSide });
+    } else if (Array.isArray(child.material)) {
+      child.material.forEach(material => { material.side = THREE.DoubleSide; });
+    } else {
+      child.material.side = THREE.DoubleSide;
+    }
+  });
+  return object;
+}
+
+function frameModel(object, targetCamera, targetControls = null, padding = 1.2) {
+  object.updateMatrixWorld(true);
+  let box = new THREE.Box3().setFromObject(object);
+  if (box.isEmpty()) throw new Error("Das Modell enthält keine darstellbare Geometrie.");
+  const center = box.getCenter(new THREE.Vector3());
+  object.position.sub(center);
+  object.updateMatrixWorld(true);
+  box = new THREE.Box3().setFromObject(object);
+  const dimensions = box.getSize(new THREE.Vector3());
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
+  const radius = Math.max(sphere.radius, .001);
+  const fov = THREE.MathUtils.degToRad(targetCamera.fov);
+  const distance = (radius / Math.sin(fov / 2)) * padding;
+  const direction = new THREE.Vector3(1, .72, 1).normalize();
+  targetCamera.position.copy(direction.multiplyScalar(distance));
+  targetCamera.near = Math.max(radius / 1000, .001);
+  targetCamera.far = Math.max(distance + radius * 8, 100);
+  targetCamera.updateProjectionMatrix();
+  if (targetControls) {
+    targetControls.target.set(0, 0, 0);
+    targetControls.update();
+  } else {
+    targetCamera.lookAt(0, 0, 0);
+  }
+  return dimensions;
+}
+
+function disposeModel(object) {
+  object.traverse(child => {
+    if (!child.isMesh) return;
+    child.geometry?.dispose();
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    materials.filter(Boolean).forEach(material => material.dispose());
+  });
+}
+
+const previewCache = new Map();
+const previewQueue = [];
+let activePreviews = 0;
+let previewObserver;
+let thumbnailRenderer, thumbnailScene, thumbnailCamera;
+const MAX_PREVIEW_BYTES = 64 * 1024 * 1024;
+
+function ensureThumbnailRenderer() {
+  if (thumbnailRenderer) return;
+  thumbnailRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  thumbnailRenderer.setPixelRatio(1);
+  thumbnailRenderer.setSize(420, 240, false);
+  thumbnailRenderer.outputColorSpace = THREE.SRGBColorSpace;
+  thumbnailScene = new THREE.Scene();
+  thumbnailScene.background = new THREE.Color(0x101d21);
+  thumbnailCamera = new THREE.PerspectiveCamera(38, 420 / 240, .001, 100000);
+  thumbnailScene.add(new THREE.HemisphereLight(0xe8fffa, 0x0c1518, 1.75));
+  const key = new THREE.DirectionalLight(0xffffff, 2.25);
+  key.position.set(2, 3, 2);
+  thumbnailScene.add(key);
+  const rim = new THREE.DirectionalLight(0x52d7bd, .9);
+  rim.position.set(-2, 1, -2);
+  thumbnailScene.add(rim);
+}
+
+async function thumbnailFor(file) {
+  const root = rootOf(file);
+  const cacheKey = `${root.path}\n${file.path}\n${file.size}\n${file.modified}`;
+  if (previewCache.has(cacheKey)) return previewCache.get(cacheKey);
+  if (file.size > MAX_PREVIEW_BYTES) throw new Error("Modell ist für eine automatische Vorschau zu groß.");
+  const bytes = await invoke("read_model", { root: root.path, relativePath: file.path });
+  ensureThumbnailRenderer();
+  const object = createModelObject(new Uint8Array(bytes).buffer, file.name, true);
+  thumbnailScene.add(object);
+  try {
+    frameModel(object, thumbnailCamera, null, 1.32);
+    thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
+    const dataUrl = thumbnailRenderer.domElement.toDataURL("image/webp", .82);
+    if (previewCache.size >= 240) previewCache.delete(previewCache.keys().next().value);
+    previewCache.set(cacheKey, dataUrl);
+    return dataUrl;
+  } finally {
+    thumbnailScene.remove(object);
+    disposeModel(object);
+  }
+}
+
+function pumpPreviewQueue() {
+  while (activePreviews < 2 && previewQueue.length) {
+    const cover = previewQueue.shift();
+    if (!cover.isConnected) continue;
+    activePreviews++;
+    const rootIndex = Number(cover.dataset.previewRoot);
+    const file = allFiles().find(item => item.rootIndex === rootIndex && item.path === cover.dataset.previewPath);
+    if (!file) {
+      activePreviews--;
+      continue;
+    }
+    thumbnailFor(file).then(dataUrl => {
+      if (!cover.isConnected || cover.dataset.previewPath !== file.path) return;
+      const image = document.createElement("img");
+      image.className = "model-thumbnail";
+      image.alt = "";
+      image.src = dataUrl;
+      cover.prepend(image);
+      cover.classList.add("has-thumbnail");
+    }).catch(() => cover.isConnected && cover.classList.add("preview-failed")).finally(() => {
+      activePreviews--;
+      pumpPreviewQueue();
+    });
+  }
+}
+
+function queueModelPreview(cover) {
+  if (cover.dataset.previewState) return;
+  cover.dataset.previewState = "queued";
+  previewQueue.push(cover);
+  pumpPreviewQueue();
+}
+
+function hydrateModelPreviews() {
+  const covers = document.querySelectorAll("[data-preview-path]:not([data-preview-state])");
+  if (!("IntersectionObserver" in window)) {
+    covers.forEach(queueModelPreview);
+    return;
+  }
+  previewObserver ||= new IntersectionObserver(entries => entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    previewObserver.unobserve(entry.target);
+    queueModelPreview(entry.target);
+  }), { rootMargin: "180px" });
+  covers.forEach(cover => previewObserver.observe(cover));
+}
+
+let renderer, scene, camera, controls, model, animation, viewerGrid;
 function ensureViewer() {
   if (renderer) return;
   const stage = byId("viewerStage");
@@ -337,7 +519,7 @@ function ensureViewer() {
   scene.add(new THREE.HemisphereLight(0xe8fffa, 0x101a1e, 1.4));
   const key = new THREE.DirectionalLight(0xffffff, 1.8); key.position.set(1.2, 1.6, .9); scene.add(key);
   const rim = new THREE.DirectionalLight(0x52d7bd, .65); rim.position.set(-1, .5, -1); scene.add(rim);
-  const grid = new THREE.GridHelper(500, 50, 0x37545c, 0x1f343a); scene.add(grid);
+  viewerGrid = new THREE.GridHelper(500, 50, 0x37545c, 0x1f343a); scene.add(viewerGrid);
   const resize = () => { const width = stage.clientWidth, height = stage.clientHeight; renderer.setSize(width, height); camera.aspect = width / height; camera.updateProjectionMatrix(); };
   addEventListener("resize", resize); resize();
 }
@@ -356,25 +538,12 @@ async function loadModel(file) {
   openViewer();
   ensureViewer();
   const buffer = await file.arrayBuffer();
-  let object;
-  if (/\.stl$/i.test(file.name)) {
-    const geometry = new STLLoader().parse(buffer); geometry.computeVertexNormals();
-    object = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0x52d7bd, roughness: .52, metalness: .06, side: THREE.DoubleSide }));
-  } else {
-    object = new ThreeMFLoader().parse(buffer);
-    object.traverse(child => { if (child.isMesh) { if (!child.material) child.material = new THREE.MeshStandardMaterial({ color: 0x52d7bd, roughness: .52 }); child.material.side = THREE.DoubleSide; } });
-  }
-  const dimensions = new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());
-  object.rotation.x = -Math.PI / 2;
-  const box = new THREE.Box3().setFromObject(object);
-  const center = box.getCenter(new THREE.Vector3());
-  object.position.set(-center.x, -box.min.y, -center.z);
-  if (model) scene.remove(model);
+  const object = createModelObject(buffer, file.name);
+  if (model) { scene.remove(model); disposeModel(model); }
   model = object; scene.add(model);
-  const size = Math.max(dimensions.x, dimensions.y, dimensions.z) || 10;
-  camera.position.set(size * 1.45, size * 1.05, size * 1.45);
-  camera.near = Math.max(size / 1000, .001); camera.far = size * 100; camera.updateProjectionMatrix();
-  controls.target.set(0, size * .25, 0); controls.update();
+  const dimensions = frameModel(object, camera, controls, 1.3);
+  viewerGrid.position.y = -dimensions.y / 2;
+  viewerGrid.scale.setScalar(Math.max(dimensions.x, dimensions.y, dimensions.z) / 500 || 1);
   byId("viewerDrop").style.display = "none";
   byId("viewerName").textContent = file.name;
   byId("viewerInfo").textContent = `${dimensions.x.toFixed(1)} × ${dimensions.y.toFixed(1)} × ${dimensions.z.toFixed(1)} mm`;
@@ -394,7 +563,7 @@ byId("pickModel").addEventListener("click", () => byId("modelInput").click());
 byId("modelInput").addEventListener("change", event => event.target.files[0] && loadModel(event.target.files[0]));
 for (const eventName of ["dragenter", "dragover"]) byId("viewerStage").addEventListener(eventName, event => { event.preventDefault(); byId("viewerDrop").classList.add("active"); });
 byId("viewerStage").addEventListener("dragleave", () => byId("viewerDrop").classList.remove("active"));
-byId("viewerStage").addEventListener("drop", event => { event.preventDefault(); byId("viewerDrop").classList.remove("active"); const file = [...event.dataTransfer.files].find(item => /\.(stl|3mf)$/i.test(item.name)); if (file) loadModel(file); });
+byId("viewerStage").addEventListener("drop", event => { event.preventDefault(); byId("viewerDrop").classList.remove("active"); const file = [...event.dataTransfer.files].find(item => /\.(stl|3mf|obj)$/i.test(item.name)); if (file) loadModel(file); });
 addEventListener("keydown", event => { if (event.key === "Escape" && byId("viewer").classList.contains("open")) closeViewer(); });
 
 async function restoreConfiguration() {
@@ -402,7 +571,9 @@ async function restoreConfiguration() {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
     if (!saved) return;
     state.roots = Array.isArray(saved.roots) ? saved.roots.filter(root => typeof root === "string" && root) : [];
-    state.settings = normalizeLibrarySettings(saved.settings);
+    state.settings = saved.settingsVersion === SETTINGS_VERSION
+      ? normalizeLibrarySettings(saved.settings)
+      : defaultLibrarySettings();
     render();
     if (state.roots.length) await scanLibrary(state.roots, state.settings, true);
   } catch (_) {

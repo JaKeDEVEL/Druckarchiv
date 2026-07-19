@@ -12,8 +12,12 @@ const file = (name, path = name) => ({ name, path, extension: name.split(".").po
 
 test("druckrelevante Formate sind standardmäßig sichtbar", () => {
   const settings = defaultLibrarySettings();
+  assert.deepEqual(settings.enabledExtensions, ["stl", "3mf", "obj", "gcode"]);
   assert.equal(isFileVisible(file("halter.stl"), settings), true);
   assert.equal(isFileVisible(file("halter.obj"), settings), true);
+  assert.equal(isFileVisible(file("halter.ply"), settings), false);
+  assert.equal(isFileVisible(file("halter.step"), settings), false);
+  assert.equal(isFileVisible(file("referenz.png"), settings), false);
   assert.equal(isFileVisible(file("notizen.docx"), settings), false);
 });
 

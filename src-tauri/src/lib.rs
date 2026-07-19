@@ -257,8 +257,8 @@ fn read_model(root: String, relative_path: String) -> Result<Response, String> {
         .unwrap_or_default()
         .to_string_lossy()
         .to_lowercase();
-    if !matches!(extension.as_str(), "stl" | "3mf") {
-        return Err("Nur STL- und 3MF-Dateien dürfen in den Viewer geladen werden.".into());
+    if !matches!(extension.as_str(), "stl" | "3mf" | "obj") {
+        return Err("Nur STL-, 3MF- und OBJ-Dateien dürfen in den Viewer geladen werden.".into());
     }
     let size = requested
         .metadata()
