@@ -15,18 +15,25 @@ import {
   splitExtensionRules,
   splitFileRules
 } from "./library-settings.js";
+import {
+  CATEGORY_BY_EXTENSION,
+  CATEGORY_EXTENSIONS,
+  KPI_CATEGORY_ORDER,
+  selectedKpiExtensions
+} from "./kpi-settings.js";
 import { canOpenModelCard } from "./model-card.js";
 
 const CATEGORIES = {
-  stl: { label: "STL", color: "var(--orange)", exts: ["stl"] },
-  m3f: { label: "3MF", color: "var(--mint)", exts: ["3mf"] },
-  mesh: { label: "Mesh", color: "var(--blue)", exts: ["obj", "ply", "amf"] },
-  cad: { label: "CAD", color: "var(--violet)", exts: ["step", "stp", "f3d", "fcstd", "scad", "iges", "igs", "dxf"] },
-  gcode: { label: "G-Code", color: "var(--lime)", exts: ["gcode", "bgcode", "chitubox", "ctb", "goo"] },
-  image: { label: "Bilder", color: "var(--blue)", exts: ["jpg", "jpeg", "png", "webp", "gif", "svg", "bmp"] },
+  stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
+  m3f: { label: "3MF", color: "var(--mint)", exts: CATEGORY_EXTENSIONS.m3f },
+  mesh: { label: "Mesh", color: "var(--blue)", exts: CATEGORY_EXTENSIONS.mesh },
+  cad: { label: "CAD", color: "var(--violet)", exts: CATEGORY_EXTENSIONS.cad },
+  gcode: { label: "G-Code", color: "var(--lime)", exts: CATEGORY_EXTENSIONS.gcode },
+  image: { label: "Referenzen", color: "var(--blue)", exts: CATEGORY_EXTENSIONS.image },
   other: { label: "Sonstige", color: "var(--dim)", exts: [] }
 };
-const extCategory = new Map(Object.entries(CATEGORIES).flatMap(([key, item]) => item.exts.map(ext => [ext, key])));
+const extCategory = CATEGORY_BY_EXTENSION;
+const formatLabels = new Map(FORMAT_GROUPS.flatMap(group => group.formats.map(format => [format.ext, format.label])));
 const MODEL_EXTENSIONS = new Set(["stl", "3mf", "obj"]);
 const SETTINGS_VERSION = 2;
 const nf = new Intl.NumberFormat("de-DE");
@@ -79,27 +86,44 @@ function previewAttributes(file) {
   return `data-preview-root="${file.rootIndex}" data-preview-path="${escapeHtml(file.path)}"`;
 }
 
+function kpiDescriptor(category, extensions) {
+  const labels = extensions.map(extension => formatLabels.get(extension) || extension.toUpperCase());
+  const singleLabel = labels.length === 1 ? labels[0] : null;
+  if (category === "stl") return { label: "STL", sub: "Modelle" };
+  if (category === "m3f") return { label: "3MF", sub: "Druckpakete" };
+  if (category === "mesh") return { label: singleLabel || "Mesh", sub: singleLabel ? "Modelldateien" : labels.join(" · ") };
+  if (category === "cad") return { label: singleLabel || "CAD", sub: singleLabel ? "CAD-Quelle" : labels.join(" · ") };
+  if (category === "gcode") return { label: singleLabel || "Druckaufträge", sub: singleLabel ? "Druckauftrag" : labels.join(" · ") };
+  if (state.settings.includeUnknown) return { label: "Sonstige", sub: labels.length ? "inkl. Referenzen" : "weitere Dateitypen" };
+  return { label: singleLabel || "Referenzen", sub: singleLabel ? "Referenzdateien" : labels.join(" · ") };
+}
+
+function activeFormatTiles(counts) {
+  const selected = selectedKpiExtensions(state.settings);
+  return KPI_CATEGORY_ORDER.filter(category => Object.hasOwn(selected, category)).map(category => ({
+    ...kpiDescriptor(category, selected[category]),
+    value: category === "other" ? counts.other + counts.image : counts[category],
+    color: CATEGORIES[category].color,
+    category
+  }));
+}
+
 function renderStats() {
   const files = visibleFiles();
   const counts = Object.fromEntries(Object.keys(CATEGORIES).map(key => [key, 0]));
   files.forEach(file => counts[categoryOf(file)]++);
-  const totalSize = files.reduce((sum, file) => sum + file.size, 0);
   const projects = state.archive?.projects.filter(project => project.files.some(visibleFile)).length || 0;
+  const formatTiles = activeFormatTiles(counts);
+  if (state.category !== "all" && !formatTiles.some(tile => tile.category === state.category)) state.category = "all";
   const tiles = [
     { label: "Projektordner", value: projects, sub: "Ordner mit Dateien", color: "var(--mint)", tab: "projects" },
     { label: "Alle Dateien", value: files.length, sub: "inkl. Unterordner", color: "var(--dim)", tab: "files" },
-    { label: "STL", value: counts.stl, sub: "Modelle", color: "var(--orange)", category: "stl" },
-    { label: "3MF", value: counts.m3f, sub: "Druckpakete", color: "var(--mint)", category: "m3f" },
-    { label: "Mesh", value: counts.mesh, sub: "OBJ · PLY · AMF", color: "var(--blue)", category: "mesh" },
-    { label: "CAD", value: counts.cad, sub: "Quelldateien", color: "var(--violet)", category: "cad" },
-    { label: "G-Code", value: counts.gcode, sub: "Druckaufträge", color: "var(--lime)", category: "gcode" },
-    { label: "Sonstige", value: counts.other + counts.image, sub: "inkl. Bilder", color: "var(--dim)", category: "other" },
-    { label: "Speicher", value: formatSize(totalSize), sub: "gesamt", color: "var(--line)", static: true }
+    ...formatTiles
   ];
   byId("stats").innerHTML = tiles.map(tile => {
     const active = tile.category ? state.category === tile.category : state.category === "all" && state.tab === tile.tab;
-    const attrs = tile.static ? "" : `data-${tile.category ? "category" : "tab"}="${tile.category || tile.tab}" aria-pressed="${active}"`;
-    return `<${tile.static ? "div" : "button"} class="stat ${tile.static ? "" : "action"} ${active ? "on" : ""}" style="--tone:${tile.color}" ${attrs}><label>${tile.label}</label><b>${typeof tile.value === "number" ? nf.format(tile.value) : tile.value}</b><span>${tile.sub}</span></${tile.static ? "div" : "button"}>`;
+    const attrs = `data-${tile.category ? "category" : "tab"}="${tile.category || tile.tab}" aria-pressed="${active}"`;
+    return `<button class="stat action ${active ? "on" : ""}" style="--tone:${tile.color}" ${attrs}><label>${tile.label}</label><b>${nf.format(tile.value)}</b><span>${tile.sub}</span></button>`;
   }).join("");
 }
 
@@ -143,10 +167,12 @@ function resetPreviewProgress(sequence) {
 }
 
 function updateSectionLabels() {
+  const selected = selectedKpiExtensions(state.settings);
+  const categoryLabel = state.category === "all" ? "" : kpiDescriptor(state.category, selected[state.category] || []).label;
   byId("sectionKicker").textContent = state.tab === "projects" ? "Projektordner" : "Dateien aus allen Ordnern";
   byId("sectionTitle").textContent = state.category === "all"
     ? (state.tab === "projects" ? "Ordnerübersicht" : "Alle Dateien")
-    : `${CATEGORIES[state.category].label}-${state.tab === "projects" ? "Ordner" : "Dateien"}`;
+    : `${categoryLabel}-${state.tab === "projects" ? "Ordner" : "Dateien"}`;
 }
 
 function scheduleLibraryRender() {

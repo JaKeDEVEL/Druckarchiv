@@ -8,7 +8,7 @@ Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3
 - rekursiver, schreibgeschützter Archivscan ohne Verfolgung symbolischer Links
 - einfache Standardauswahl für STL, 3MF, OBJ und G-Code; weitere Mesh-, CAD- und Referenzformate sind Opt-in
 - Ausschlüsse nach Endung, Dateiname oder relativem Pfad mit Platzhaltern
-- KPI-Filter für Projekte, Dateien, STL, 3MF, Mesh, CAD, G-Code und Sonstige
+- dynamische KPI-Filter: Neben Projekten und Dateien erscheinen nur die in der Verwaltung aktivierten Formatgruppen
 - Raster- und Listenansicht mit allen Dateien aus sämtlichen Unterordnern
 - lokal und verzögert erzeugte Modell-Thumbnails mit sichtbarem Ladefortschritt; in der Verwaltung abschaltbar
 - interaktiver STL-/3MF-/OBJ-Viewer mit Drehen, Zoomen und Verschieben – auch direkt aus Projektordnern
