@@ -79,6 +79,14 @@ Ohne diese privaten Schlüssel bleiben lokale/ad-hoc Builds möglich, Betriebssy
 
 Weitere Details: [Architektur](docs/ARCHITECTURE.md), [Datenschutz](PRIVACY.md), [Sicherheit](SECURITY.md).
 
+## Projekt unterstützen
+
+Druckarchiv ist kostenlos nutzbar. Wenn dir das Projekt hilft und du seine Weiterentwicklung unterstützen möchtest, kannst du mir über PayPal einen Kaffee spendieren:
+
+[☕ Druckarchiv über PayPal unterstützen](https://paypal.me/jkehl)
+
+Vielen Dank – jede Unterstützung hilft dabei, Druckarchiv weiterzuentwickeln und die Installer für macOS und Windows bereitzustellen.
+
 ## Lizenz
 
 Druckarchiv ist kostenlos für unveränderte, nichtkommerzielle Nutzung. Es ist bewusst **keine Open-Source-Software**. Änderungen, abgeleitete Werke, kommerzielle Nutzung sowie das Kopieren oder erneute Veröffentlichen auf anderen Plattformen sind ohne vorherige schriftliche Erlaubnis nicht gestattet. Ein Link auf das offizielle Repository oder den offiziellen Download darf geteilt werden.
