@@ -72,7 +72,7 @@ jobs:
           subject-path: ${{ matrix.path }}
 
   release:
-    name: Publish GitHub prerelease
+    name: Publish GitHub release
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
@@ -84,21 +84,27 @@ jobs:
         with:
           path: release-assets
           merge-multiple: true
-      - name: Create prerelease and attach installers
+      - name: Create release and attach installers
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_NOTES: |
-            Erste Vorschau von Druckarchiv auf dem Weg zur Version 1.0.
+            Druckarchiv 0.6 ist eine lokal arbeitende Desktop-App zur Organisation von 3D-Druck-Dateien.
 
-            Enthalten sind die lokale Ordnerauswahl, KPI-Filter, Raster- und Listenansicht sowie der interaktive STL-/3MF-Viewer. Blender wird für den Viewer nicht benötigt.
+            Enthalten sind mehrere Bibliotheksordner, frei wählbare Dateitypen, dynamische KPI-Filter, Ausschlussregeln, Raster- und Listenansicht sowie lokale Vorschaubilder. STL-, 3MF- und OBJ-Dateien lassen sich direkt im interaktiven 3D-Viewer drehen, zoomen und verschieben. Blender wird nicht benötigt.
 
-            Hinweis: Diese Vorabversion ist noch nicht mit einem kostenpflichtigen Apple- beziehungsweise Windows-Entwicklerzertifikat signiert. Das Betriebssystem kann deshalb beim ersten Start eine Sicherheitswarnung anzeigen.
+            Hinweis: Die Installer sind noch nicht mit einem kostenpflichtigen Apple- beziehungsweise Windows-Entwicklerzertifikat signiert. Das Betriebssystem kann deshalb beim ersten Start eine Sicherheitswarnung anzeigen.
 
             Lizenz: kostenlose unveränderte, nichtkommerzielle Nutzung. Änderungen, Weiterveröffentlichung und kommerzielle Nutzung sind nicht gestattet.
         run: |
+          title="Druckarchiv $GITHUB_REF_NAME"
+          release_flags=(--latest)
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            title="$title (Preview)"
+            release_flags=(--prerelease)
+          fi
           gh release create "$GITHUB_REF_NAME" release-assets/* \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
-            --prerelease \
-            --title "Druckarchiv $GITHUB_REF_NAME (Preview)" \
+            "${release_flags[@]}" \
+            --title "$title" \
             --notes "$RELEASE_NOTES"

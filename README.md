@@ -46,7 +46,7 @@ Der drehbare Viewer und die Karten-Thumbnails rendern STL, 3MF und OBJ direkt mi
 
 ## Veröffentlichung
 
-Ein Versions-Tag wie `v0.5.0` startet den Workflow `installer-preview.yml`. Er baut ein universelles macOS-DMG für Apple Silicon und Intel sowie ein Windows-x64-Setup, legt automatisch ein GitHub-Prerelease an und hängt beide Installer direkt an. Ein manueller Workflow-Lauf erzeugt nur 14 Tage verfügbare Actions-Artefakte und kein Release.
+Ein Versions-Tag wie `v0.6.0` startet den Workflow `installer-preview.yml`. Er baut ein universelles macOS-DMG für Apple Silicon und Intel sowie ein Windows-x64-Setup und hängt beide Installer an ein GitHub-Release. Stabile Tags werden als reguläres aktuelles Release veröffentlicht; Tags mit einem Vorab-Suffix wie `v0.7.0-beta.1` als Prerelease. Ein manueller Workflow-Lauf erzeugt nur 14 Tage verfügbare Actions-Artefakte und kein Release.
 
 Für eine öffentliche, warnungsfreie Verteilung werden anschließend Plattform-Zertifikate als verschlüsselte Repository-Secrets ergänzt:
 
