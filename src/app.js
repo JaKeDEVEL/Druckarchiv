@@ -28,6 +28,7 @@ const extCategory = new Map(Object.entries(CATEGORIES).flatMap(([key, item]) => 
 const nf = new Intl.NumberFormat("de-DE");
 const df = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
 const STORAGE_KEY = "druckarchiv.library.v1";
+const APP_VERSION = __APP_VERSION__;
 const state = {
   archive: null,
   roots: [],
@@ -410,4 +411,5 @@ async function restoreConfiguration() {
 }
 
 render();
+byId("appVersion").textContent = APP_VERSION.includes("beta") ? `Beta ${APP_VERSION}` : `v${APP_VERSION}`;
 restoreConfiguration();
