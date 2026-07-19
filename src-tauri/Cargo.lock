@@ -641,7 +641,7 @@ dependencies = [
 
 [[package]]
 name = "druckarchiv"
-version = "0.6.0-beta.5"
+version = "0.6.0-beta.6"
 dependencies = [
  "serde",
  "tauri",

@@ -21,6 +21,7 @@ import {
   KPI_CATEGORY_ORDER,
   selectedKpiExtensions
 } from "./kpi-settings.js";
+import { libraryControlState } from "./library-controls.js";
 import { canOpenModelCard } from "./model-card.js";
 
 const CATEGORIES = {
@@ -249,8 +250,7 @@ function updateRootLabel() {
   } else {
     byId("rootLabel").textContent = `${nf.format(roots.length)} Ordner · ${roots.map(root => root.name).join(" · ")}`;
   }
-  byId("chooseFolder").textContent = "Bibliothek verwalten";
-  byId("refreshLibrary").disabled = !state.roots.length || state.scanning;
+  updateLibraryControls();
 }
 
 function render() { updateRootLabel(); renderStats(); renderLibrary(); }
@@ -259,14 +259,32 @@ function saveConfiguration() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ settingsVersion: SETTINGS_VERSION, roots: state.roots, settings: state.settings }));
 }
 
+function updateLibraryControls() {
+  const dialogOpen = byId("libraryDialog").open;
+  const controls = libraryControlState({
+    scanning: state.scanning,
+    rootCount: state.roots.length,
+    pendingRootCount: dialogOpen ? state.pendingRoots.length : state.roots.length
+  });
+  const manageButton = byId("chooseFolder");
+  manageButton.disabled = controls.manageDisabled;
+  manageButton.textContent = "Bibliothek verwalten";
+  manageButton.classList.toggle("is-scanning", state.scanning);
+  byId("refreshLibrary").disabled = controls.refreshDisabled;
+  byId("applyLibrarySettings").disabled = controls.applyDisabled;
+  const settingsStatus = byId("settingsStatus");
+  settingsStatus.textContent = controls.status;
+  settingsStatus.classList.toggle("is-scanning", state.scanning);
+}
+
 function setScanning(scanning) {
   state.scanning = scanning;
-  byId("chooseFolder").disabled = scanning;
-  byId("refreshLibrary").disabled = scanning || !state.roots.length;
-  byId("applyLibrarySettings").disabled = scanning;
+  updateLibraryControls();
   if (scanning) {
-    byId("chooseFolder").textContent = "Bibliothek wird gelesen …";
-    byId("settingsStatus").textContent = "Ordner werden sicher und nur lesend eingelesen …";
+    byId("rootLabel").textContent = `${nf.format(state.roots.length)} ${state.roots.length === 1 ? "Ordner" : "Ordner"} · wird im Hintergrund eingelesen …`;
+    if (!state.archive) setLibraryLoading(true, "Bibliothek wird eingelesen", "Die Verwaltung kann währenddessen bereits geöffnet werden.");
+  } else if (!state.archive) {
+    setLibraryLoading(false);
   }
 }
 
@@ -313,16 +331,14 @@ function renderSettingsDialog() {
   byId("includeUnknown").checked = draft.includeUnknown;
   byId("excludedExtensions").value = draft.excludedExtensions.join(", ");
   byId("excludedFiles").value = draft.excludedFiles.join("\n");
-  byId("settingsStatus").textContent = state.pendingRoots.length
-    ? `${nf.format(state.pendingRoots.length)} Ordner ausgewählt`
-    : "Noch keine Ordner ausgewählt";
+  updateLibraryControls();
 }
 
 function openLibraryDialog() {
   state.pendingRoots = [...state.roots];
   state.pendingSettings = normalizeLibrarySettings(state.settings);
   renderSettingsDialog();
-  byId("libraryDialog").showModal();
+  if (!byId("libraryDialog").open) byId("libraryDialog").showModal();
 }
 
 async function addFolders() {
@@ -357,7 +373,6 @@ byId("rootList").addEventListener("click", event => {
   renderSettingsDialog();
 });
 libraryDialog.querySelectorAll("[data-close]").forEach(button => button.addEventListener("click", () => libraryDialog.close()));
-libraryDialog.addEventListener("click", event => { if (event.target === libraryDialog) libraryDialog.close(); });
 byId("selectPrintFormats").addEventListener("click", () => {
   byId("formatGroups").querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = PRINT_EXTENSIONS.includes(input.value); });
   byId("includeUnknown").checked = false;
