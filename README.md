@@ -14,8 +14,10 @@ Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3
 - Ausschlüsse nach Endung, Dateiname oder relativem Pfad mit Platzhaltern
 - dynamische KPI-Filter: Neben Projekten und Dateien erscheinen nur die in der Verwaltung aktivierten Formatgruppen
 - Raster- und Listenansicht mit allen Dateien aus sämtlichen Unterordnern
+- speicherschonende Pagination mit wahlweise 25 oder 50 Einträgen pro Seite
 - lokal und verzögert erzeugte Modell-Thumbnails mit sichtbarem Ladefortschritt; in der Verwaltung abschaltbar
 - interaktiver STL-/3MF-/OBJ-Viewer mit Drehen, Zoomen und Verschieben – auch direkt aus Projektordnern
+- deutsche und englische Oberfläche mit Systemsprache, manuellem Wechsel und lokal gespeichertem Sprachwunsch
 - keine Telemetrie, kein Benutzerkonto und kein Upload
 - Blender ist **keine Voraussetzung**
 
@@ -66,7 +68,7 @@ Der drehbare Viewer und die Karten-Thumbnails rendern STL, 3MF und OBJ direkt mi
 
 ## Veröffentlichung
 
-Ein Versions-Tag wie `v0.6.1` startet den Workflow `installer-preview.yml`. Er baut ein universelles macOS-DMG für Apple Silicon und Intel sowie ein Windows-x64-Setup und hängt beide Installer an ein GitHub-Release. Stabile Tags werden als reguläres aktuelles Release veröffentlicht; Tags mit einem Vorab-Suffix wie `v0.7.0-beta.1` als Prerelease. Ein manueller Workflow-Lauf erzeugt nur 14 Tage verfügbare Actions-Artefakte und kein Release.
+Ein Versions-Tag wie `v0.7.0` startet den Workflow `installer-preview.yml`. Er baut ein universelles macOS-DMG für Apple Silicon und Intel sowie ein Windows-x64-Setup und hängt beide Installer an ein GitHub-Release. Stabile Tags werden als reguläres aktuelles Release veröffentlicht; Tags mit einem Vorab-Suffix wie `v0.8.0-beta.1` als Prerelease. Ein manueller Workflow-Lauf erzeugt nur 14 Tage verfügbare Actions-Artefakte und kein Release.
 
 Für eine öffentliche, warnungsfreie Verteilung werden anschließend Plattform-Zertifikate als verschlüsselte Repository-Secrets ergänzt:
 

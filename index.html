@@ -13,25 +13,29 @@
       <div class="grid-glow"></div>
       <div class="head">
         <div>
-          <div class="eyebrow">Lokale Modellbibliothek <span class="version-badge" id="appVersion"></span></div>
+          <div class="eyebrow"><span data-i18n="app.tagline">Lokale Modellbibliothek</span> <span class="version-badge" id="appVersion"></span></div>
           <h1>Druck<span>archiv</span></h1>
-          <p id="rootLabel">Noch kein Archivordner ausgewählt</p>
+          <p id="rootLabel" data-i18n="app.noFolder">Noch kein Archivordner ausgewählt</p>
         </div>
-        <button class="primary" id="chooseFolder" type="button">Bibliothek verwalten</button>
+        <button class="primary" id="chooseFolder" type="button" data-i18n="app.manageLibrary">Bibliothek verwalten</button>
       </div>
-      <div class="stats" id="stats" aria-label="Archiv-Kennzahlen"></div>
+      <div class="stats" id="stats" aria-label="Archiv-Kennzahlen" data-i18n-aria-label="stats.label"></div>
     </header>
 
-    <nav class="toolbar" aria-label="Suche und Ansicht">
-      <input id="search" type="search" placeholder="Projekte und Dateien durchsuchen …" autocomplete="off">
-      <select id="sort" aria-label="Sortierung">
-        <option value="name">Name A–Z</option>
-        <option value="date">Zuletzt geändert</option>
-        <option value="size">Größe</option>
+    <nav class="toolbar" aria-label="Suche und Ansicht" data-i18n-aria-label="nav.label">
+      <input id="search" type="search" placeholder="Projekte und Dateien durchsuchen …" data-i18n-placeholder="nav.searchPlaceholder" autocomplete="off">
+      <select id="sort" aria-label="Sortierung" data-i18n-aria-label="nav.sortLabel">
+        <option value="name" data-i18n="nav.sortName">Name A–Z</option>
+        <option value="date" data-i18n="nav.sortDate">Zuletzt geändert</option>
+        <option value="size" data-i18n="nav.sortSize">Größe</option>
       </select>
-      <button class="tool" id="refreshLibrary" type="button" disabled>Neu einlesen</button>
-      <button class="tool" id="viewToggle" type="button">Listenansicht</button>
-      <button class="tool accent" id="openViewer" type="button">3D-Viewer</button>
+      <button class="tool" id="refreshLibrary" type="button" data-i18n="nav.refresh" disabled>Neu einlesen</button>
+      <button class="tool" id="viewToggle" type="button" data-i18n="nav.listView">Listenansicht</button>
+      <select class="locale-select" id="localeSelect" aria-label="Sprache" data-i18n-aria-label="nav.language">
+        <option value="de">DE</option>
+        <option value="en">EN</option>
+      </select>
+      <button class="tool accent" id="openViewer" type="button" data-i18n="nav.viewer">3D-Viewer</button>
     </nav>
 
     <main>
@@ -40,89 +44,102 @@
           <div class="section-kicker" id="sectionKicker">Projektordner</div>
           <h2 id="sectionTitle">Ordnerübersicht</h2>
         </div>
-        <span id="resultCount">0 Treffer</span>
+        <div class="section-results">
+          <span id="resultCount">0 Treffer</span>
+          <label class="page-size-control" id="pageSizeControl" hidden>
+            <span data-i18n="pagination.perPage">Pro Seite</span>
+            <select id="pageSize" aria-label="Treffer pro Seite" data-i18n-aria-label="pagination.perPageLabel">
+              <option value="25">25</option>
+              <option value="50">50</option>
+            </select>
+          </label>
+        </div>
       </div>
       <div class="library-loading" id="libraryLoading" role="status" aria-live="polite" hidden>
         <div class="loading-model" aria-hidden="true"><i></i><i></i><i></i></div>
-        <div><b id="loadingTitle">Ansicht wird vorbereitet</b><span id="loadingDetail">Einträge werden sortiert …</span></div>
+        <div><b id="loadingTitle" data-i18n="loading.preparing">Ansicht wird vorbereitet</b><span id="loadingDetail" data-i18n="loading.sorting">Einträge werden sortiert …</span></div>
       </div>
       <div class="preview-status" id="previewStatus" role="status" aria-live="polite" hidden>
         <span class="preview-pulse" aria-hidden="true"></span>
-        <span id="previewStatusText">Vorschaubilder werden geladen</span>
+        <span id="previewStatusText" data-i18n="previews.loading">Vorschaubilder werden geladen</span>
         <span class="preview-progress"><i id="previewProgressBar"></i></span>
       </div>
       <div class="library" id="library"></div>
       <div class="empty" id="empty">
-        <b>Bereit für dein Archiv.</b>
-        <span>Wähle oben den Ordner aus, in dem deine 3D-Druck-Dateien liegen.</span>
+        <b data-i18n="empty.readyTitle">Bereit für dein Archiv.</b>
+        <span data-i18n="empty.readyDetail">Wähle oben den Ordner aus, in dem deine 3D-Druck-Dateien liegen.</span>
       </div>
+      <nav class="pagination" id="pagination" aria-label="Ergebnisseiten" data-i18n-aria-label="pagination.navigationLabel" hidden>
+        <span id="pageStatus" aria-live="polite"></span>
+        <div class="page-buttons" id="pageButtons"></div>
+      </nav>
     </main>
 
     <dialog id="libraryDialog" class="settings-dialog">
       <div class="modal settings-modal">
         <div class="modal-head">
-          <div><small>Lokale Bibliothek</small><h3>Ordner und Dateitypen</h3></div>
-          <button class="icon" data-close type="button" aria-label="Schließen">×</button>
+          <div><small data-i18n="settings.eyebrow">Lokale Bibliothek</small><h3 data-i18n="settings.title">Ordner und Dateitypen</h3></div>
+          <button class="icon" data-close type="button" aria-label="Schließen" data-i18n-aria-label="common.close">×</button>
         </div>
         <div class="settings-body">
           <section class="source-panel">
             <div class="settings-heading">
-              <div><b>Bibliotheksordner</b><span>Bis zu 32 Quellen, nur lesend</span></div>
-              <button class="tool accent" id="addFolders" type="button">+ Ordner hinzufügen</button>
+              <div><b data-i18n="settings.foldersTitle">Bibliotheksordner</b><span data-i18n="settings.foldersDetail">Bis zu 32 Quellen, nur lesend</span></div>
+              <button class="tool accent" id="addFolders" type="button" data-i18n="settings.addFolders">+ Ordner hinzufügen</button>
             </div>
             <div class="root-list" id="rootList"></div>
-            <p class="privacy-note">Pfade und Regeln bleiben auf diesem Gerät. Modelle werden nicht hochgeladen.</p>
+            <p class="privacy-note" data-i18n="settings.privacy">Pfade und Regeln bleiben auf diesem Gerät. Modelle werden nicht hochgeladen.</p>
           </section>
 
           <section class="format-panel">
             <div class="settings-heading">
-              <div><b>Angezeigte Dateitypen</b><span>Standard: STL, 3MF, OBJ und G-Code</span></div>
+              <div><b data-i18n="settings.formatsTitle">Angezeigte Dateitypen</b><span data-i18n="settings.formatsDetail">Standard: STL, 3MF, OBJ und G-Code</span></div>
               <div class="quick-actions">
-                <button class="mini-action" id="selectPrintFormats" type="button">Standard</button>
-                <button class="mini-action" id="selectAllFormats" type="button">Alle</button>
-                <button class="mini-action" id="selectNoFormats" type="button">Keine</button>
+                <button class="mini-action" id="selectPrintFormats" type="button" data-i18n="settings.standard">Standard</button>
+                <button class="mini-action" id="selectAllFormats" type="button" data-i18n="settings.all">Alle</button>
+                <button class="mini-action" id="selectNoFormats" type="button" data-i18n="settings.none">Keine</button>
               </div>
             </div>
             <div class="format-groups" id="formatGroups"></div>
-            <label class="unknown-toggle"><input id="includeUnknown" type="checkbox"><span><b>Weitere Dateitypen</b><small>Auch nicht aufgelistete Endungen anzeigen</small></span></label>
+            <label class="unknown-toggle"><input id="includeUnknown" type="checkbox"><span><b data-i18n="settings.unknownTitle">Weitere Dateitypen</b><small data-i18n="settings.unknownDetail">Auch nicht aufgelistete Endungen anzeigen</small></span></label>
           </section>
 
           <section class="preview-panel">
             <div class="settings-heading preview-heading">
-              <div><b>3D-Vorschaubilder</b><span>Für STL, 3MF und OBJ – vollständig lokal</span></div>
-              <label class="switch-control"><input id="showPreviews" type="checkbox"><span aria-hidden="true"></span><b>Automatisch laden</b></label>
+              <div><b data-i18n="settings.previewsTitle">3D-Vorschaubilder</b><span data-i18n="settings.previewsDetail">Für STL, 3MF und OBJ – vollständig lokal</span></div>
+              <label class="switch-control"><input id="showPreviews" type="checkbox"><span aria-hidden="true"></span><b data-i18n="settings.previewsAutomatic">Automatisch laden</b></label>
             </div>
-            <p>Ausgeschaltet öffnet sich die Bibliothek schneller. Der drehbare 3D-Viewer bleibt weiterhin verfügbar.</p>
+            <p data-i18n="settings.previewsHelp">Ausgeschaltet öffnet sich die Bibliothek schneller. Der drehbare 3D-Viewer bleibt weiterhin verfügbar.</p>
           </section>
 
           <section class="exclude-panel">
-            <div class="settings-heading"><div><b>Ausschlüsse</b><span>Haben immer Vorrang vor der Formatwahl</span></div></div>
-            <label class="field-label" for="excludedExtensions">Endungen ausschließen</label>
-            <input id="excludedExtensions" type="text" placeholder="z. B. pdf, zip, bak" spellcheck="false">
-            <label class="field-label" for="excludedFiles">Dateien oder relative Pfade ausschließen</label>
-            <textarea id="excludedFiles" rows="4" placeholder="README*&#10;Entwürfe/*.obj&#10;defektes-modell.stl" spellcheck="false"></textarea>
-            <small class="rule-help">Eine Regel pro Zeile · * und ? sind als Platzhalter erlaubt</small>
+            <div class="settings-heading"><div><b data-i18n="settings.exclusionsTitle">Ausschlüsse</b><span data-i18n="settings.exclusionsDetail">Haben immer Vorrang vor der Formatwahl</span></div></div>
+            <label class="field-label" for="excludedExtensions" data-i18n="settings.excludedExtensions">Endungen ausschließen</label>
+            <input id="excludedExtensions" type="text" placeholder="z. B. pdf, zip, bak" data-i18n-placeholder="settings.excludedExtensionsPlaceholder" spellcheck="false">
+            <label class="field-label" for="excludedFiles" data-i18n="settings.excludedFiles">Dateien oder relative Pfade ausschließen</label>
+            <textarea id="excludedFiles" rows="4" placeholder="README*&#10;Entwürfe/*.obj&#10;defektes-modell.stl" data-i18n-placeholder="settings.excludedFilesPlaceholder" spellcheck="false"></textarea>
+            <small class="rule-help" data-i18n="settings.rulesHelp">Eine Regel pro Zeile · * und ? sind als Platzhalter erlaubt</small>
           </section>
         </div>
         <div class="settings-footer">
-          <span class="settings-status" id="settingsStatus" role="status" aria-live="polite">Noch keine Ordner ausgewählt</span>
-          <div><button class="tool" data-close type="button">Abbrechen</button><button class="primary small" id="applyLibrarySettings" type="button">Änderungen übernehmen</button></div>
+          <span class="settings-status" id="settingsStatus" role="status" aria-live="polite" data-i18n="settings.statusEmpty">Noch keine Ordner ausgewählt</span>
+          <div><button class="tool" data-close type="button" data-i18n="common.cancel">Abbrechen</button><button class="primary small" id="applyLibrarySettings" type="button" data-i18n="settings.apply">Änderungen übernehmen</button></div>
         </div>
       </div>
     </dialog>
 
     <dialog id="projectDialog">
       <div class="modal">
-        <div class="modal-head"><div><small>Projektordner</small><h3 id="modalTitle"></h3></div><button class="icon" data-close type="button" aria-label="Schließen">×</button></div>
-        <div class="selection"><span><b id="selectedCount">0</b> Dateien ausgewählt</span><button class="tool" id="copySelected" type="button" disabled>Pfade kopieren</button></div>
+        <div class="modal-head"><div><small data-i18n="project.eyebrow">Projektordner</small><h3 id="modalTitle"></h3></div><button class="icon" data-close type="button" aria-label="Schließen" data-i18n-aria-label="common.close">×</button></div>
+        <div class="selection"><span><b id="selectedCount">0</b> <span data-i18n="project.selected">Dateien ausgewählt</span></span><button class="tool" id="copySelected" type="button" data-i18n="project.copyPaths" disabled>Pfade kopieren</button></div>
         <div class="modal-list" id="modalList"></div>
       </div>
     </dialog>
 
     <div class="viewer" id="viewer" aria-hidden="true">
-      <div class="viewer-top"><div><small>Interaktive Vorschau</small><b id="viewerName">STL / 3MF / OBJ</b></div><button class="icon" id="closeViewer" type="button" aria-label="Viewer schließen">×</button></div>
-      <div class="viewer-stage" id="viewerStage"><div class="viewer-drop" id="viewerDrop"><b>Modell hier ablegen</b><span>oder STL, 3MF beziehungsweise OBJ auswählen</span><button class="primary small" id="pickModel" type="button">Datei auswählen</button><input hidden id="modelInput" type="file" accept=".stl,.3mf,.obj"></div></div>
-      <div class="viewer-foot"><span id="viewerInfo">Ziehen: drehen · Mausrad: zoomen · Rechtsklick: verschieben</span><span>Blender wird nicht benötigt</span></div>
+      <div class="viewer-top"><div><small data-i18n="viewer.eyebrow">Interaktive Vorschau</small><b id="viewerName">STL / 3MF / OBJ</b></div><button class="icon" id="closeViewer" type="button" aria-label="Viewer schließen" data-i18n-aria-label="viewer.close">×</button></div>
+      <div class="viewer-stage" id="viewerStage"><div class="viewer-drop" id="viewerDrop"><b data-i18n="viewer.dropTitle">Modell hier ablegen</b><span data-i18n="viewer.dropDetail">oder STL, 3MF beziehungsweise OBJ auswählen</span><button class="primary small" id="pickModel" type="button" data-i18n="viewer.chooseFile">Datei auswählen</button><input hidden id="modelInput" type="file" accept=".stl,.3mf,.obj"></div></div>
+      <div class="viewer-foot"><span id="viewerInfo" data-i18n="viewer.controls">Ziehen: drehen · Mausrad: zoomen · Rechtsklick: verschieben</span><span data-i18n="viewer.blenderNotRequired">Blender wird nicht benötigt</span></div>
     </div>
   </body>
 </html>

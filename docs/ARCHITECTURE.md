@@ -21,9 +21,13 @@ Formatwahl und Ausschlussregeln filtern die eingelesenen Metadaten im Frontend. 
 
 ## Vorschauen ohne Blender
 
-Der interaktive Viewer und die Rastervorschaubilder sind Blender-unabhängig. Ein KPI-Wechsel aktualisiert zuerst den aktiven Filter und rendert große Ergebnismengen anschließend in begrenzten Kartenpaketen. Sichtbare STL-, 3MF- und OBJ-Dateien werden mit begrenzter Parallelität in einem kleinen Offscreen-WebGL-Renderer geladen; ein Fortschrittsindikator macht diese zweite Phase sichtbar. Doppelte gleichzeitige Modellanfragen werden zusammengeführt und alte Warteschlangen beim Ansichtswechsel verworfen. Die Geometrie wird über ihre Bounding Sphere zentriert und mit Sicherheitsrand eingepasst, damit lange oder flache Modelle nicht abgeschnitten werden. Die aktuelle Sitzung hält höchstens 240 Vorschaubilder im Arbeitsspeicher; Dateien über 64 MB und defekte Geometrie behalten einen neutralen Platzhalter. Nutzer können automatische Karten-Vorschauen abschalten, ohne den interaktiven Viewer zu deaktivieren.
+Der interaktive Viewer und die Rastervorschaubilder sind Blender-unabhängig. Große Ergebnismengen werden auf 25 oder 50 Einträge pro Seite begrenzt; nur die aktuelle Seite erzeugt DOM-Karten und Preview-Aufträge. Sichtbare STL-, 3MF- und OBJ-Dateien werden mit begrenzter Parallelität in einem kleinen Offscreen-WebGL-Renderer geladen; ein Fortschrittsindikator macht diese zweite Phase sichtbar. Doppelte gleichzeitige Modellanfragen werden zusammengeführt und alte Warteschlangen beim Ansichtswechsel verworfen. Die Geometrie wird über ihre Bounding Sphere zentriert und mit Sicherheitsrand eingepasst, damit lange oder flache Modelle nicht abgeschnitten werden. Die aktuelle Sitzung hält höchstens 240 Vorschaubilder im Arbeitsspeicher; Dateien über 64 MB und defekte Geometrie behalten einen neutralen Platzhalter. Nutzer können automatische Karten-Vorschauen abschalten, ohne den interaktiven Viewer zu deaktivieren.
 
 Ein späterer persistenter App-Cache kann Pfad, Größe und Änderungszeit als Schlüssel verwenden. Blender bleibt eine optionale spätere „Studio-Qualität“ und ist für den Standardbetrieb nicht erforderlich.
+
+## Lokalisierung
+
+`src/i18n.js` erkennt beim ersten Start die Systemsprache, verwaltet Fallback, Pluralformen sowie lokalisierte Zahlen und Datumswerte. Die eigentlichen Texte liegen getrennt unter `src/locales/de.js` und `src/locales/en.js`. Ein manueller Sprachwechsel wird ausschließlich lokal gespeichert. Statische HTML-Texte verwenden `data-i18n`-Attribute; dynamische Karten, Dialoge, Status- und Fehlermeldungen greifen auf dieselbe Übersetzungsfunktion zu.
 
 ## Paketierung
 

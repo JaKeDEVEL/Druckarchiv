@@ -7,7 +7,7 @@ test("die Bibliotheksverwaltung bleibt während eines Scans erreichbar", () => {
   assert.equal(controls.manageDisabled, false);
   assert.equal(controls.refreshDisabled, true);
   assert.equal(controls.applyDisabled, true);
-  assert.match(controls.status, /im Hintergrund eingelesen/);
+  assert.equal(controls.statusKey, "settings.statusScanning");
 });
 
 test("nach dem Scan lassen sich Änderungen wieder übernehmen", () => {
@@ -15,5 +15,6 @@ test("nach dem Scan lassen sich Änderungen wieder übernehmen", () => {
   assert.equal(controls.manageDisabled, false);
   assert.equal(controls.refreshDisabled, false);
   assert.equal(controls.applyDisabled, false);
-  assert.equal(controls.status, "2 Ordner ausgewählt");
+  assert.equal(controls.statusKey, "settings.statusSelected");
+  assert.deepEqual(controls.statusParams, { count: 2 });
 });

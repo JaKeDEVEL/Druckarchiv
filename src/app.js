@@ -24,23 +24,26 @@ import {
 import { libraryControlState } from "./library-controls.js";
 import { canOpenModelCard } from "./model-card.js";
 import { createDemoArchive } from "./demo-archive.js";
+import { PAGE_SIZES, normalizePageSize, paginateEntries, paginationTokens } from "./pagination.js";
+import { applyTranslations, formatDateValue, formatNumber, getLocale, onLocaleChange, setLocale, t } from "./i18n.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
   m3f: { label: "3MF", color: "var(--mint)", exts: CATEGORY_EXTENSIONS.m3f },
-  mesh: { label: "Mesh", color: "var(--blue)", exts: CATEGORY_EXTENSIONS.mesh },
-  cad: { label: "CAD", color: "var(--violet)", exts: CATEGORY_EXTENSIONS.cad },
+  mesh: { labelKey: "categories.mesh", color: "var(--blue)", exts: CATEGORY_EXTENSIONS.mesh },
+  cad: { labelKey: "categories.cad", color: "var(--violet)", exts: CATEGORY_EXTENSIONS.cad },
   gcode: { label: "G-Code", color: "var(--lime)", exts: CATEGORY_EXTENSIONS.gcode },
-  image: { label: "Referenzen", color: "var(--blue)", exts: CATEGORY_EXTENSIONS.image },
-  other: { label: "Sonstige", color: "var(--dim)", exts: [] }
+  image: { labelKey: "categories.references", color: "var(--blue)", exts: CATEGORY_EXTENSIONS.image },
+  other: { labelKey: "categories.other", color: "var(--dim)", exts: [] }
 };
 const extCategory = CATEGORY_BY_EXTENSION;
 const formatLabels = new Map(FORMAT_GROUPS.flatMap(group => group.formats.map(format => [format.ext, format.label])));
 const MODEL_EXTENSIONS = new Set(["stl", "3mf", "obj"]);
 const SETTINGS_VERSION = 2;
-const nf = new Intl.NumberFormat("de-DE");
-const df = new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+const nf = { format: formatNumber };
+const df = { format: formatDateValue };
 const STORAGE_KEY = "druckarchiv.library.v1";
+const PAGE_SIZE_KEY = "druckarchiv.page-size.v1";
 const APP_VERSION = __APP_VERSION__;
 const state = {
   archive: null,
@@ -53,11 +56,14 @@ const state = {
   query: "",
   sort: "name",
   view: "grid",
+  page: 1,
+  pageSize: normalizePageSize(localStorage.getItem(PAGE_SIZE_KEY)),
   scanning: false,
   fileIndex: new Map()
 };
 
 const byId = id => document.getElementById(id);
+const categoryLabel = category => CATEGORIES[category]?.label || t(CATEGORIES[category]?.labelKey || "categories.other");
 const categoryOf = file => extCategory.get(file.extension.toLowerCase()) || "other";
 const isViewable = file => MODEL_EXTENSIONS.has(file.extension.toLowerCase());
 const formatSize = bytes => {
@@ -100,13 +106,13 @@ function previewCoverClass(file) {
 function kpiDescriptor(category, extensions) {
   const labels = extensions.map(extension => formatLabels.get(extension) || extension.toUpperCase());
   const singleLabel = labels.length === 1 ? labels[0] : null;
-  if (category === "stl") return { label: "STL", sub: "Modelle" };
-  if (category === "m3f") return { label: "3MF", sub: "Druckpakete" };
-  if (category === "mesh") return { label: singleLabel || "Mesh", sub: singleLabel ? "Modelldateien" : labels.join(" · ") };
-  if (category === "cad") return { label: singleLabel || "CAD", sub: singleLabel ? "CAD-Quelle" : labels.join(" · ") };
-  if (category === "gcode") return { label: singleLabel || "Druckaufträge", sub: singleLabel ? "Druckauftrag" : labels.join(" · ") };
-  if (state.settings.includeUnknown) return { label: "Sonstige", sub: labels.length ? "inkl. Referenzen" : "weitere Dateitypen" };
-  return { label: singleLabel || "Referenzen", sub: singleLabel ? "Referenzdateien" : labels.join(" · ") };
+  if (category === "stl") return { label: "STL", sub: t("categories.stlSub") };
+  if (category === "m3f") return { label: "3MF", sub: t("categories.threeMfSub") };
+  if (category === "mesh") return { label: singleLabel || t("categories.mesh"), sub: singleLabel ? t("categories.meshSingleSub") : labels.join(" · ") };
+  if (category === "cad") return { label: singleLabel || t("categories.cad"), sub: singleLabel ? t("categories.cadSingleSub") : labels.join(" · ") };
+  if (category === "gcode") return { label: singleLabel || t("categories.printJobs"), sub: singleLabel ? t("categories.printJob") : labels.join(" · ") };
+  if (state.settings.includeUnknown) return { label: t("categories.other"), sub: labels.length ? t("categories.referencesIncluded") : t("categories.moreFileTypes") };
+  return { label: singleLabel || t("categories.references"), sub: singleLabel ? t("categories.referenceFiles") : labels.join(" · ") };
 }
 
 function activeFormatTiles(counts) {
@@ -127,8 +133,8 @@ function renderStats() {
   const formatTiles = activeFormatTiles(counts);
   if (state.category !== "all" && !formatTiles.some(tile => tile.category === state.category)) state.category = "all";
   const tiles = [
-    { label: "Projektordner", value: projects, sub: "Ordner mit Dateien", color: "var(--mint)", tab: "projects" },
-    { label: "Alle Dateien", value: files.length, sub: "inkl. Unterordner", color: "var(--dim)", tab: "files" },
+    { label: t("stats.projectFolders"), value: projects, sub: t("stats.projectFoldersSub"), color: "var(--mint)", tab: "projects" },
+    { label: t("stats.allFiles"), value: files.length, sub: t("stats.allFilesSub"), color: "var(--dim)", tab: "files" },
     ...formatTiles
   ];
   byId("stats").innerHTML = tiles.map(tile => {
@@ -143,25 +149,26 @@ function projectCard(project) {
   const cats = {};
   shownFiles.forEach(file => { const key = categoryOf(file); cats[key] = (cats[key] || 0) + 1; });
   const dominant = Object.entries(cats).sort((a, b) => b[1] - a[1])[0]?.[0] || "other";
-  const badges = Object.entries(cats).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([key, count]) => `<span class="badge">${CATEGORIES[key].label} ${nf.format(count)}</span>`).join("");
+  const badges = Object.entries(cats).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([key, count]) => `<span class="badge">${categoryLabel(key)} ${nf.format(count)}</span>`).join("");
   const size = shownFiles.reduce((sum, file) => sum + file.size, 0);
   const root = rootOf(project);
   const projectIndex = state.archive.projects.indexOf(project);
   const representative = shownFiles.find(isViewable);
-  return `<button class="card folder-card" type="button" data-project-index="${projectIndex}" aria-label="Projektordner ${escapeHtml(project.displayName)} öffnen" style="--tone:${CATEGORIES[dominant].color}"><div class="card-cover folder-cover ${previewCoverClass(representative)}" ${previewAttributes(representative)} aria-hidden="true">${demoPreviewMarkup(representative)}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> Ordner</span><span class="cover-label">${CATEGORIES[dominant].label}</span></div><div class="card-body"><div class="entry-kind">Projektordner</div><h3>${escapeHtml(project.displayName)}</h3><div class="meta"><span>${nf.format(shownFiles.length)} Dateien</span><span>${formatSize(size)}</span><span>${formatDate(project.modified)}</span></div><div class="badges">${badges}<span class="badge source-badge" title="${escapeHtml(root?.path || "")}">${escapeHtml(root?.name || "Bibliothek")}</span></div></div></button>`;
+  return `<button class="card folder-card" type="button" data-project-index="${projectIndex}" aria-label="${escapeHtml(t("cards.openProject", { name: project.displayName }))}" style="--tone:${CATEGORIES[dominant].color}"><div class="card-cover folder-cover ${previewCoverClass(representative)}" ${previewAttributes(representative)} aria-hidden="true">${demoPreviewMarkup(representative)}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> ${t("common.folder")}</span><span class="cover-label">${categoryLabel(dominant)}</span></div><div class="card-body"><div class="entry-kind">${t("cards.projectFolder")}</div><h3>${escapeHtml(project.displayName)}</h3><div class="meta"><span>${t("common.filesCount", { count: shownFiles.length })}</span><span>${formatSize(size)}</span><span>${formatDate(project.modified)}</span></div><div class="badges">${badges}<span class="badge source-badge" title="${escapeHtml(root?.path || "")}">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>`;
 }
 
 function fileCard(file) {
   const category = categoryOf(file);
   const viewable = isViewable(file);
   const root = rootOf(file);
-  return `<button class="card file-card" type="button" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? 'data-viewable="true"' : ""} aria-label="Datei ${escapeHtml(file.name)}${viewable ? " im 3D-Viewer öffnen" : ""}" style="--tone:${CATEGORIES[category].color}"><div class="card-cover file-cover ${previewCoverClass(file)}" ${previewAttributes(file)} aria-hidden="true">${demoPreviewMarkup(file)}<span class="file-mark">${escapeHtml(file.extension.toUpperCase() || "DATEI")}</span><span class="kind-flag file-flag">Datei</span></div><div class="card-body"><div class="entry-kind">Datei · .${escapeHtml(file.extension || "–")}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : "Hauptordner")}</span></div><div class="badges"><span class="badge">${CATEGORIES[category].label}</span>${viewable ? '<span class="badge">3D-Vorschau</span>' : ""}<span class="badge source-badge">${escapeHtml(root?.name || "Bibliothek")}</span></div></div></button>`;
+  const ariaLabel = `${t("cards.openFile", { name: file.name })}${viewable ? t("cards.openFileViewerSuffix") : ""}`;
+  return `<button class="card file-card" type="button" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? 'data-viewable="true"' : ""} aria-label="${escapeHtml(ariaLabel)}" style="--tone:${CATEGORIES[category].color}"><div class="card-cover file-cover ${previewCoverClass(file)}" ${previewAttributes(file)} aria-hidden="true">${demoPreviewMarkup(file)}<span class="file-mark">${escapeHtml(file.extension.toUpperCase() || t("common.file").toUpperCase())}</span><span class="kind-flag file-flag">${t("common.file")}</span></div><div class="card-body"><div class="entry-kind">${t("cards.fileEntry", { extension: escapeHtml(file.extension || "–") })}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : t("common.mainFolder"))}</span></div><div class="badges"><span class="badge">${categoryLabel(category)}</span>${viewable ? `<span class="badge">${t("cards.preview")}</span>` : ""}<span class="badge source-badge">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>`;
 }
 
 let libraryRenderSequence = 0;
 let previewProgress = { sequence: 0, total: 0, completed: 0 };
 
-function setLibraryLoading(loading, title = "Ansicht wird vorbereitet", detail = "Einträge werden sortiert …") {
+function setLibraryLoading(loading, title = t("loading.preparing"), detail = t("loading.sorting")) {
   const library = byId("library");
   byId("libraryLoading").hidden = !loading;
   byId("loadingTitle").textContent = title;
@@ -180,21 +187,25 @@ function resetPreviewProgress(sequence) {
 function updateSectionLabels() {
   const selected = selectedKpiExtensions(state.settings);
   const categoryLabel = state.category === "all" ? "" : kpiDescriptor(state.category, selected[state.category] || []).label;
-  byId("sectionKicker").textContent = state.tab === "projects" ? "Projektordner" : "Dateien aus allen Ordnern";
+  byId("sectionKicker").textContent = state.tab === "projects" ? t("sections.projectFolders") : t("sections.filesFromAllFolders");
   byId("sectionTitle").textContent = state.category === "all"
-    ? (state.tab === "projects" ? "Ordnerübersicht" : "Alle Dateien")
-    : `${categoryLabel}-${state.tab === "projects" ? "Ordner" : "Dateien"}`;
+    ? (state.tab === "projects" ? t("sections.folderOverview") : t("sections.allFiles"))
+    : t(state.tab === "projects" ? "sections.categoryFolders" : "sections.categoryFiles", { category: categoryLabel });
 }
 
-function scheduleLibraryRender() {
+function scheduleLibraryRender({ resetPage = false, scrollToResults = false } = {}) {
+  if (resetPage) state.page = 1;
   const sequence = ++libraryRenderSequence;
   previewObserver?.disconnect();
   previewQueue.length = 0;
   resetPreviewProgress(sequence);
   updateSectionLabels();
-  setLibraryLoading(true, byId("sectionTitle").textContent, state.settings.showPreviews ? "Einträge werden vorbereitet, Vorschauen folgen …" : "Einträge werden vorbereitet …");
+  byId("pagination").hidden = true;
+  setLibraryLoading(true, byId("sectionTitle").textContent, state.settings.showPreviews ? t("loading.preparingWithPreviews") : t("loading.preparingEntries"));
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    if (sequence === libraryRenderSequence) renderLibrary(sequence);
+    if (sequence !== libraryRenderSequence) return;
+    renderLibrary(sequence);
+    if (scrollToResults) byId("sectionTitle").scrollIntoView({ block: "start" });
   }));
 }
 
@@ -213,6 +224,33 @@ function renderEntryBatch(entries, sequence, offset = 0) {
   }
 }
 
+function renderPagination(result) {
+  const pagination = byId("pagination");
+  const pageSizeControl = byId("pageSizeControl");
+  byId("pageSize").value = String(result.pageSize);
+  pageSizeControl.hidden = result.total <= PAGE_SIZES[0];
+
+  if (!result.total) {
+    byId("resultCount").textContent = t("pagination.noResults");
+    pagination.hidden = true;
+    byId("pageButtons").innerHTML = "";
+    return;
+  }
+
+  byId("resultCount").textContent = t("pagination.range", { start: result.start + 1, end: result.end, total: result.total });
+  pagination.hidden = result.totalPages <= 1;
+  byId("pageStatus").textContent = t("pagination.status", { page: result.page, totalPages: result.totalPages });
+  if (pagination.hidden) {
+    byId("pageButtons").innerHTML = "";
+    return;
+  }
+
+  const pageButtons = paginationTokens(result.page, result.totalPages).map(token => token === "ellipsis"
+    ? '<span class="page-ellipsis" aria-hidden="true">…</span>'
+    : `<button class="page-number ${token === result.page ? "current" : ""}" type="button" data-page="${token}" ${token === result.page ? 'aria-current="page"' : ""} aria-label="${t("pagination.pageLabel", { page: token })}">${nf.format(token)}</button>`).join("");
+  byId("pageButtons").innerHTML = `<button class="page-step" type="button" data-page="${result.page - 1}" ${result.page === 1 ? "disabled" : ""} aria-label="${t("pagination.previous")}">←</button>${pageButtons}<button class="page-step" type="button" data-page="${result.page + 1}" ${result.page === result.totalPages ? "disabled" : ""} aria-label="${t("pagination.next")}">→</button>`;
+}
+
 function renderLibrary(sequence = ++libraryRenderSequence) {
   const library = byId("library");
   previewObserver?.disconnect();
@@ -223,7 +261,7 @@ function renderLibrary(sequence = ++libraryRenderSequence) {
   if (!state.archive) {
     setLibraryLoading(false);
     byId("empty").classList.add("show");
-    byId("resultCount").textContent = "0 Treffer";
+    renderPagination(paginateEntries([], state.page, state.pageSize));
     updateSectionLabels();
     return;
   }
@@ -231,34 +269,38 @@ function renderLibrary(sequence = ++libraryRenderSequence) {
   if (state.tab === "projects") {
     entries = state.archive.projects.filter(project => {
       const files = filteredProjectFiles(project);
-      return files.length && matchesQuery(`${project.displayName} ${project.name} ${files.map(file => file.path).join(" ")}`);
+      if (!files.length) return false;
+      if (!state.query || matchesQuery(`${project.displayName} ${project.name}`)) return true;
+      return files.some(file => matchesQuery(file.path));
     });
   } else {
     entries = allFiles().filter(file => visibleFile(file) && matchesCategory(file) && matchesQuery(`${file.name} ${file.path} ${rootOf(file)?.name || ""}`));
   }
-  entries.sort((a, b) => state.sort === "date" ? b.modified - a.modified : state.sort === "size" ? b.size - a.size : (a.displayName || a.name).localeCompare(b.displayName || b.name, "de"));
+  entries.sort((a, b) => state.sort === "date" ? b.modified - a.modified : state.sort === "size" ? b.size - a.size : (a.displayName || a.name).localeCompare(b.displayName || b.name, getLocale()));
   byId("empty").classList.toggle("show", !entries.length);
-  byId("empty").querySelector("b").textContent = entries.length ? "" : "Keine passenden Einträge.";
-  byId("empty").querySelector("span").textContent = entries.length ? "" : "Passe Suche oder Dateitypen in den Bibliothekseinstellungen an.";
-  byId("resultCount").textContent = `${nf.format(entries.length)} Treffer`;
+  byId("empty").querySelector("b").textContent = entries.length ? "" : t("empty.noMatchesTitle");
+  byId("empty").querySelector("span").textContent = entries.length ? "" : t("empty.noMatchesDetail");
+  const pageResult = paginateEntries(entries, state.page, state.pageSize);
+  state.page = pageResult.page;
+  renderPagination(pageResult);
   updateSectionLabels();
   if (!entries.length) {
     setLibraryLoading(false);
     return;
   }
-  renderEntryBatch(entries, sequence);
+  renderEntryBatch(pageResult.items, sequence);
 }
 
 function updateRootLabel() {
   const roots = state.archive?.roots || [];
   if (!roots.length) {
     byId("rootLabel").textContent = state.roots.length
-      ? `${nf.format(state.roots.length)} gespeicherte Ordner · Neu einlesen erforderlich`
-      : "Noch keine Bibliotheksordner ausgewählt";
+      ? t("roots.savedNeedsRefresh", { count: state.roots.length })
+      : t("app.noFolder");
   } else if (roots.length === 1) {
     byId("rootLabel").textContent = roots[0].path;
   } else {
-    byId("rootLabel").textContent = `${nf.format(roots.length)} Ordner · ${roots.map(root => root.name).join(" · ")}`;
+    byId("rootLabel").textContent = t("roots.multiple", { count: roots.length, names: roots.map(root => root.name).join(" · ") });
   }
   updateLibraryControls();
 }
@@ -278,12 +320,12 @@ function updateLibraryControls() {
   });
   const manageButton = byId("chooseFolder");
   manageButton.disabled = controls.manageDisabled;
-  manageButton.textContent = "Bibliothek verwalten";
+  manageButton.textContent = t("app.manageLibrary");
   manageButton.classList.toggle("is-scanning", state.scanning);
   byId("refreshLibrary").disabled = controls.refreshDisabled;
   byId("applyLibrarySettings").disabled = controls.applyDisabled;
   const settingsStatus = byId("settingsStatus");
-  settingsStatus.textContent = controls.status;
+  settingsStatus.textContent = t(controls.statusKey, controls.statusParams);
   settingsStatus.classList.toggle("is-scanning", state.scanning);
 }
 
@@ -291,8 +333,8 @@ function setScanning(scanning) {
   state.scanning = scanning;
   updateLibraryControls();
   if (scanning) {
-    byId("rootLabel").textContent = `${nf.format(state.roots.length)} ${state.roots.length === 1 ? "Ordner" : "Ordner"} · wird im Hintergrund eingelesen …`;
-    if (!state.archive) setLibraryLoading(true, "Bibliothek wird eingelesen", "Die Verwaltung kann währenddessen bereits geöffnet werden.");
+    byId("rootLabel").textContent = t("roots.scanning", { count: state.roots.length });
+    if (!state.archive) setLibraryLoading(true, t("loading.readingLibrary"), t("loading.settingsAvailable"));
   } else if (!state.archive) {
     setLibraryLoading(false);
   }
@@ -304,6 +346,7 @@ async function scanLibrary(roots, settings = state.settings, silent = false) {
     state.fileIndex = new Map();
     state.roots = [];
     state.settings = normalizeLibrarySettings(settings);
+    state.page = 1;
     saveConfiguration();
     render();
     return true;
@@ -315,11 +358,12 @@ async function scanLibrary(roots, settings = state.settings, silent = false) {
     state.fileIndex = new Map(allFiles().map(file => [`${file.rootIndex}\n${file.path}`, file]));
     state.roots = archive.roots.map(root => root.path);
     state.settings = normalizeLibrarySettings(settings);
+    state.page = 1;
     saveConfiguration();
     render();
     return true;
   } catch (error) {
-    if (!silent) window.alert(`Die Bibliothek konnte nicht gelesen werden:\n${error}`);
+    if (!silent) window.alert(t("errors.libraryRead", { error }));
     return false;
   } finally {
     setScanning(false);
@@ -331,12 +375,12 @@ function renderSettingsDialog() {
   const rootList = byId("rootList");
   rootList.innerHTML = state.pendingRoots.length ? state.pendingRoots.map((path, index) => {
     const name = path.split(/[\\/]/).filter(Boolean).pop() || path;
-    return `<div class="root-row"><span class="root-index">${String(index + 1).padStart(2, "0")}</span><span><b>${escapeHtml(name)}</b><small title="${escapeHtml(path)}">${escapeHtml(path)}</small></span><button type="button" data-remove-root="${index}" aria-label="${escapeHtml(name)} entfernen">Entfernen</button></div>`;
-  }).join("") : '<div class="root-empty"><b>Noch keine Quelle</b><span>Füge einen oder mehrere Ordner mit deinen Druckdateien hinzu.</span></div>';
+    return `<div class="root-row"><span class="root-index">${String(index + 1).padStart(2, "0")}</span><span><b>${escapeHtml(name)}</b><small title="${escapeHtml(path)}">${escapeHtml(path)}</small></span><button type="button" data-remove-root="${index}" aria-label="${escapeHtml(t("settings.removeFolder", { name }))}">${t("settings.remove")}</button></div>`;
+  }).join("") : `<div class="root-empty"><b>${t("settings.noSourceTitle")}</b><span>${t("settings.noSourceDetail")}</span></div>`;
 
   const draft = state.pendingSettings || state.settings;
   const enabled = new Set(draft.enabledExtensions);
-  byId("formatGroups").innerHTML = FORMAT_GROUPS.map(group => `<fieldset><legend>${group.label}</legend><div>${group.formats.map(format => `<label class="format-chip"><input type="checkbox" value="${format.ext}" ${enabled.has(format.ext) ? "checked" : ""}><span><b>${format.label}</b><small>.${format.ext}</small></span></label>`).join("")}</div></fieldset>`).join("");
+  byId("formatGroups").innerHTML = FORMAT_GROUPS.map(group => `<fieldset><legend>${t(group.labelKey)}</legend><div>${group.formats.map(format => `<label class="format-chip"><input type="checkbox" value="${format.ext}" ${enabled.has(format.ext) ? "checked" : ""}><span><b>${format.label}</b><small>.${format.ext}</small></span></label>`).join("")}</div></fieldset>`).join("");
   byId("showPreviews").checked = draft.showPreviews;
   byId("includeUnknown").checked = draft.includeUnknown;
   byId("excludedExtensions").value = draft.excludedExtensions.join(", ");
@@ -352,7 +396,7 @@ function openLibraryDialog() {
 }
 
 async function addFolders() {
-  const selected = await open({ directory: true, multiple: true, title: "Bibliotheksordner hinzufügen" });
+  const selected = await open({ directory: true, multiple: true, title: t("settings.addDialogTitle") });
   if (!selected) return;
   state.pendingSettings = settingsFromForm();
   const additions = Array.isArray(selected) ? selected : [selected];
@@ -402,6 +446,7 @@ byId("applyLibrarySettings").addEventListener("click", async () => {
     applied = await scanLibrary(state.pendingRoots, nextSettings);
   } else {
     state.settings = nextSettings;
+    state.page = 1;
     saveConfiguration();
     render();
     applied = true;
@@ -415,34 +460,54 @@ byId("stats").addEventListener("click", event => {
   if (tile.dataset.category) state.category = state.category === tile.dataset.category ? "all" : tile.dataset.category;
   if (tile.dataset.tab) { state.tab = tile.dataset.tab; state.category = "all"; }
   renderStats();
-  scheduleLibraryRender();
+  scheduleLibraryRender({ resetPage: true });
 });
 let searchTimer;
 byId("search").addEventListener("input", event => {
   state.query = event.target.value.trim().toLocaleLowerCase("de");
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(scheduleLibraryRender, 90);
+  searchTimer = setTimeout(() => scheduleLibraryRender({ resetPage: true }), 90);
 });
-byId("sort").addEventListener("change", event => { state.sort = event.target.value; scheduleLibraryRender(); });
-byId("viewToggle").addEventListener("click", event => { state.view = state.view === "grid" ? "list" : "grid"; event.currentTarget.textContent = state.view === "grid" ? "Listenansicht" : "Rasteransicht"; scheduleLibraryRender(); });
+byId("sort").addEventListener("change", event => { state.sort = event.target.value; scheduleLibraryRender({ resetPage: true }); });
+byId("viewToggle").addEventListener("click", event => { state.view = state.view === "grid" ? "list" : "grid"; event.currentTarget.textContent = t(state.view === "grid" ? "nav.listView" : "nav.gridView"); scheduleLibraryRender(); });
+byId("pageSize").addEventListener("change", event => {
+  state.pageSize = normalizePageSize(event.target.value);
+  localStorage.setItem(PAGE_SIZE_KEY, String(state.pageSize));
+  scheduleLibraryRender({ resetPage: true });
+});
+byId("pagination").addEventListener("click", event => {
+  const button = event.target.closest("[data-page]");
+  if (!button || button.disabled) return;
+  const nextPage = Number(button.dataset.page);
+  if (!Number.isInteger(nextPage) || nextPage === state.page) return;
+  state.page = nextPage;
+  scheduleLibraryRender({ scrollToResults: true });
+});
 
 const projectDialog = byId("projectDialog");
+function renderProjectContents(projectIndex) {
+  const project = state.archive.projects[projectIndex];
+  if (!project) return;
+  const files = filteredProjectFiles(project);
+  projectDialog.dataset.projectIndex = String(projectIndex);
+  byId("modalTitle").textContent = project.displayName;
+  byId("modalList").innerHTML = files.map(file => {
+    const category = categoryOf(file);
+    const name = isViewable(file)
+      ? `<button class="file-preview-button" type="button" data-model-root="${file.rootIndex}" data-model-path="${escapeHtml(file.path)}" title="${escapeHtml(file.path)}"><span>${escapeHtml(file.path)}</span><small>${t("project.openViewer")}</small></button>`
+      : `<span class="file-name" title="${escapeHtml(file.path)}">${escapeHtml(file.path)}</span>`;
+    return `<div class="file-row" style="--tone:${CATEGORIES[category].color}"><span class="dot"></span>${name}<span>${formatSize(file.size)}</span><span class="file-format">${escapeHtml(file.extension.toUpperCase() || t("common.file"))}</span><input type="checkbox" data-path="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" aria-label="${escapeHtml(t("project.selectFile", { name: file.name }))}"></div>`;
+  }).join("");
+  byId("selectedCount").textContent = "0";
+  byId("copySelected").disabled = true;
+  byId("copySelected").textContent = t("project.copyPaths");
+}
+
 byId("library").addEventListener("click", async event => {
   const card = event.target.closest(".card");
   if (!card) return;
   if (card.dataset.projectIndex !== undefined) {
-    const project = state.archive.projects[Number(card.dataset.projectIndex)];
-    const files = filteredProjectFiles(project);
-    byId("modalTitle").textContent = project.displayName;
-    byId("modalList").innerHTML = files.map(file => {
-      const category = categoryOf(file);
-      const name = isViewable(file)
-        ? `<button class="file-preview-button" type="button" data-model-root="${file.rootIndex}" data-model-path="${escapeHtml(file.path)}" title="${escapeHtml(file.path)}"><span>${escapeHtml(file.path)}</span><small>Im 3D-Viewer öffnen</small></button>`
-        : `<span class="file-name" title="${escapeHtml(file.path)}">${escapeHtml(file.path)}</span>`;
-      return `<div class="file-row" style="--tone:${CATEGORIES[category].color}"><span class="dot"></span>${name}<span>${formatSize(file.size)}</span><span class="file-format">${escapeHtml(file.extension.toUpperCase() || "Datei")}</span><input type="checkbox" data-path="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" aria-label="${escapeHtml(file.name)} auswählen"></div>`;
-    }).join("");
-    byId("selectedCount").textContent = "0";
-    byId("copySelected").disabled = true;
+    renderProjectContents(Number(card.dataset.projectIndex));
     projectDialog.showModal();
   } else if (canOpenModelCard(card)) {
     await openArchiveModel(Number(card.dataset.rootIndex), card.dataset.file);
@@ -450,6 +515,7 @@ byId("library").addEventListener("click", async event => {
 });
 projectDialog.querySelector("[data-close]").addEventListener("click", () => projectDialog.close());
 projectDialog.addEventListener("click", event => { if (event.target === projectDialog) projectDialog.close(); });
+projectDialog.addEventListener("close", () => { delete projectDialog.dataset.projectIndex; });
 byId("modalList").addEventListener("click", async event => {
   const button = event.target.closest("[data-model-path]");
   if (!button) return;
@@ -469,10 +535,10 @@ byId("copySelected").addEventListener("click", async () => {
   }).join("\n");
   try {
     await navigator.clipboard.writeText(paths);
-    byId("copySelected").textContent = "Kopiert ✓";
-    setTimeout(() => { byId("copySelected").textContent = "Pfade kopieren"; }, 1300);
+    byId("copySelected").textContent = t("project.copied");
+    setTimeout(() => { byId("copySelected").textContent = t("project.copyPaths"); }, 1300);
   } catch (_) {
-    window.prompt("Ausgewählte Pfade:", paths);
+    window.prompt(t("project.selectedPathsPrompt"), paths);
   }
 });
 
@@ -488,7 +554,7 @@ function createModelObject(buffer, name, neutralMaterial = false) {
   } else if (extension === "3mf") {
     object = new ThreeMFLoader().parse(buffer);
   } else {
-    throw new Error("Nicht unterstütztes Modellformat");
+    throw new Error(t("viewer.unsupported"));
   }
   if (["stl", "3mf"].includes(extension)) object.rotation.x = -Math.PI / 2;
   object.traverse(child => {
@@ -507,7 +573,7 @@ function createModelObject(buffer, name, neutralMaterial = false) {
 function frameModel(object, targetCamera, targetControls = null, padding = 1.2) {
   object.updateMatrixWorld(true);
   let box = new THREE.Box3().setFromObject(object);
-  if (box.isEmpty()) throw new Error("Das Modell enthält keine darstellbare Geometrie.");
+  if (box.isEmpty()) throw new Error(t("viewer.emptyGeometry"));
   const center = box.getCenter(new THREE.Vector3());
   object.position.sub(center);
   object.updateMatrixWorld(true);
@@ -572,7 +638,7 @@ async function thumbnailFor(file) {
   if (previewCache.has(cacheKey)) return previewCache.get(cacheKey);
   if (previewPromises.has(cacheKey)) return previewPromises.get(cacheKey);
   const promise = (async () => {
-    if (file.size > MAX_PREVIEW_BYTES) throw new Error("Modell ist für eine automatische Vorschau zu groß.");
+    if (file.size > MAX_PREVIEW_BYTES) throw new Error(t("previews.tooLarge"));
     const bytes = await invoke("read_model", { root: root.path, relativePath: file.path });
     ensureThumbnailRenderer();
     const object = createModelObject(new Uint8Array(bytes).buffer, file.name, true);
@@ -606,7 +672,7 @@ function updatePreviewStatus(sequence) {
     return;
   }
   status.hidden = false;
-  byId("previewStatusText").textContent = `Vorschaubilder ${nf.format(completed)} von ${nf.format(total)} · Einträge sind bereits nutzbar`;
+  byId("previewStatusText").textContent = t("previews.progress", { completed, total });
   byId("previewProgressBar").style.width = `${Math.round(completed / total * 100)}%`;
 }
 
@@ -639,7 +705,11 @@ function pumpPreviewQueue() {
       image.src = dataUrl;
       cover.prepend(image);
       cover.classList.add("has-thumbnail");
-    }).catch(() => cover.isConnected && cover.classList.add("preview-failed")).finally(() => {
+    }).catch(() => {
+      if (!cover.isConnected) return;
+      cover.dataset.previewError = t("previews.unavailable");
+      cover.classList.add("preview-failed");
+    }).finally(() => {
       activePreviews--;
       finishQueuedPreview(generation);
       pumpPreviewQueue();
@@ -724,7 +794,7 @@ async function openArchiveModel(rootIndex, relativePath) {
   try {
     const bytes = await invoke("read_model", { root: state.archive.roots[rootIndex].path, relativePath });
     await loadModel(new File([new Uint8Array(bytes)], relativePath.split("/").pop()));
-  } catch (error) { window.alert(`Das Modell konnte nicht geladen werden:\n${error}`); }
+  } catch (error) { window.alert(t("viewer.loadError", { error })); }
 }
 function openViewer() { byId("viewer").classList.add("open"); byId("viewer").setAttribute("aria-hidden", "false"); requestAnimationFrame(() => { ensureViewer(); startViewerLoop(); }); }
 function closeViewer() { byId("viewer").classList.remove("open"); byId("viewer").setAttribute("aria-hidden", "true"); if (animation) cancelAnimationFrame(animation); animation = null; }
@@ -752,11 +822,25 @@ async function restoreConfiguration() {
   }
 }
 
+function refreshLocalizedInterface() {
+  applyTranslations();
+  byId("localeSelect").value = getLocale();
+  byId("viewToggle").textContent = t(state.view === "grid" ? "nav.listView" : "nav.gridView");
+  render();
+  if (libraryDialog.open) renderSettingsDialog();
+  if (projectDialog.open && projectDialog.dataset.projectIndex !== undefined) renderProjectContents(Number(projectDialog.dataset.projectIndex));
+}
+
+byId("localeSelect").addEventListener("change", event => setLocale(event.target.value));
+onLocaleChange(refreshLocalizedInterface);
+applyTranslations();
+byId("localeSelect").value = getLocale();
 render();
 byId("appVersion").textContent = APP_VERSION.includes("beta") ? `Beta ${APP_VERSION}` : `v${APP_VERSION}`;
 const demoMode = import.meta.env.DEV && new URLSearchParams(location.search).get("demo") === "1";
 if (demoMode) {
-  state.archive = createDemoArchive();
+  const requestedDemoFiles = Number(new URLSearchParams(location.search).get("demoFiles")) || 0;
+  state.archive = createDemoArchive(requestedDemoFiles);
   state.roots = state.archive.roots.map(root => root.path);
   state.fileIndex = new Map(allFiles().map(file => [`${file.rootIndex}\n${file.path}`, file]));
   render();

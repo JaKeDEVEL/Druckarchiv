@@ -1,7 +1,7 @@
 export const FORMAT_GROUPS = [
   {
     id: "models",
-    label: "Modelldateien",
+    labelKey: "formatGroups.models",
     formats: [
       { ext: "stl", label: "STL", defaultOn: true },
       { ext: "3mf", label: "3MF", defaultOn: true },
@@ -12,7 +12,7 @@ export const FORMAT_GROUPS = [
   },
   {
     id: "printer",
-    label: "Druckaufträge",
+    labelKey: "formatGroups.printJobs",
     formats: [
       { ext: "gcode", label: "G-Code", defaultOn: true },
       { ext: "bgcode", label: "BG-Code", defaultOn: false },
@@ -23,7 +23,7 @@ export const FORMAT_GROUPS = [
   },
   {
     id: "cad",
-    label: "CAD & Quellen",
+    labelKey: "formatGroups.cadSources",
     formats: [
       { ext: "step", label: "STEP", defaultOn: false },
       { ext: "stp", label: "STP", defaultOn: false },
@@ -37,7 +37,7 @@ export const FORMAT_GROUPS = [
   },
   {
     id: "reference",
-    label: "Referenzen",
+    labelKey: "formatGroups.references",
     formats: [
       { ext: "jpg", label: "JPG", defaultOn: false },
       { ext: "jpeg", label: "JPEG", defaultOn: false },

@@ -35,7 +35,7 @@ function demoFile(rootIndex, projectName, baseName, extension, projectIndex, off
   };
 }
 
-export function createDemoArchive() {
+export function createDemoArchive(minimumFileCount = 0) {
   const definitions = [
     [0, "Werkstatthelfer", "Kabelclip"],
     [0, "Organizer-System", "Schubladenmodul"],
@@ -60,6 +60,13 @@ export function createDemoArchive() {
     demoFile(0, "", "Kalibrierwuerfel", "stl", 0, 5),
     demoFile(1, "", "PLA-Profil", "gcode", 1, 5)
   ].map(file => ({ ...file, path: file.name }));
+  const currentFileCount = loose.length + projects.reduce((sum, project) => sum + project.files.length, 0);
+  const targetFileCount = Math.min(Math.max(Math.trunc(Number(minimumFileCount) || 0), currentFileCount), 10_000);
+  for (let index = currentFileCount; index < targetFileCount; index++) {
+    const extension = extensions[index % extensions.length];
+    const baseName = `Demo-Modell-${String(index + 1).padStart(4, "0")}`;
+    loose.push(demoFile(index % 2, "Lasttest", baseName, extension, index % previewByProject.length, index % 12));
+  }
   return {
     roots: [
       { name: "Modelle", path: "/Druckarchiv-Demo/Modelle" },
