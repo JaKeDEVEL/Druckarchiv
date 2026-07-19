@@ -92,7 +92,7 @@ jobs:
 
             Enthalten sind mehrere Bibliotheksordner, frei wählbare Dateitypen, dynamische KPI-Filter, Ausschlussregeln, Raster- und Listenansicht sowie lokale Vorschaubilder. STL-, 3MF- und OBJ-Dateien lassen sich direkt im interaktiven 3D-Viewer drehen, zoomen und verschieben. Blender wird nicht benötigt.
 
-            Neu in Version 0.7: Eine Seitennavigation mit 25 oder 50 Treffern hält auch Bibliotheken mit mehreren Tausend Dateien flüssig. Die Oberfläche ist jetzt vollständig auf Deutsch und Englisch verfügbar, erkennt beim ersten Start die Systemsprache und merkt sich die manuelle Sprachauswahl.
+            Version 0.7.1 behebt unter Windows ein zusätzlich geöffnetes Terminalfenster. Druckarchiv startet dort jetzt wie vorgesehen als reine Desktop-App; das Schließen eines Konsolenfensters kann die App nicht mehr unbeabsichtigt beenden.
 
             Hinweis: Die Installer sind noch nicht mit einem kostenpflichtigen Apple- beziehungsweise Windows-Entwicklerzertifikat signiert. Das Betriebssystem kann deshalb beim ersten Start eine Sicherheitswarnung anzeigen.
 
