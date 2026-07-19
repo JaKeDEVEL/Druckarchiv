@@ -1,7 +1,12 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+#[cfg(target_os = "windows")]
+use std::env;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+use std::process::Command;
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::Mutex,
     time::UNIX_EPOCH,
 };
 use tauri::ipc::Response;
@@ -9,7 +14,29 @@ use tauri::ipc::Response;
 const MAX_FILES: usize = 200_000;
 const MAX_ROOTS: usize = 32;
 const MAX_MODEL_BYTES: u64 = 512 * 1024 * 1024;
+const MAX_SLICER_FILES: usize = 100;
 const EXCLUDED_ROOT_DIRS: &[&str] = &["_uebersicht", "_druckarchiv_app"];
+const SLICER_EXTENSIONS: &[&str] = &[
+    "stl", "3mf", "obj", "step", "stp", "amf", "ply", "gcode", "bgcode",
+];
+
+#[derive(Default)]
+struct AppState {
+    roots: Mutex<Vec<PathBuf>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SlicerKind {
+    OrcaSlicer,
+    BambuStudio,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SlicerFileRequest {
+    root_index: usize,
+    relative_path: String,
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -210,9 +237,7 @@ fn scan_root(
     Ok(())
 }
 
-#[tauri::command]
-fn scan_archives(roots: Vec<String>) -> Result<ArchiveData, String> {
-    let root_paths = canonical_roots(roots)?;
+fn scan_root_paths(root_paths: &[PathBuf]) -> Result<ArchiveData, String> {
     let archive_roots = root_paths
         .iter()
         .map(|path| ArchiveRoot {
@@ -238,6 +263,17 @@ fn scan_archives(roots: Vec<String>) -> Result<ArchiveData, String> {
         projects,
         loose,
     })
+}
+
+#[tauri::command]
+fn scan_archives(
+    roots: Vec<String>,
+    state: tauri::State<'_, AppState>,
+) -> Result<ArchiveData, String> {
+    let root_paths = canonical_roots(roots)?;
+    let archive = scan_root_paths(&root_paths)?;
+    *state.roots.lock().map_err(|_| "library_unavailable")? = root_paths;
+    Ok(archive)
 }
 
 #[tauri::command]
@@ -275,11 +311,155 @@ fn read_model(root: String, relative_path: String) -> Result<Response, String> {
     Ok(Response::new(bytes))
 }
 
+fn slicer_kind(id: &str) -> Result<SlicerKind, String> {
+    match id {
+        "orcaSlicer" => Ok(SlicerKind::OrcaSlicer),
+        "bambuStudio" => Ok(SlicerKind::BambuStudio),
+        _ => Err("unknown_slicer".into()),
+    }
+}
+
+fn is_slicer_extension(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| SLICER_EXTENSIONS.contains(&extension.to_lowercase().as_str()))
+}
+
+fn resolve_slicer_files(
+    roots: &[PathBuf],
+    requests: &[SlicerFileRequest],
+) -> Result<Vec<PathBuf>, String> {
+    if requests.is_empty() {
+        return Err("no_files".into());
+    }
+    if requests.len() > MAX_SLICER_FILES {
+        return Err("too_many_files".into());
+    }
+
+    let mut resolved = Vec::with_capacity(requests.len());
+    for request in requests {
+        let root = roots.get(request.root_index).ok_or("path_blocked")?;
+        let requested = root
+            .join(&request.relative_path)
+            .canonicalize()
+            .map_err(|_| "file_not_found")?;
+        if !requested.starts_with(root) || !requested.is_file() {
+            return Err("path_blocked".into());
+        }
+        if !is_slicer_extension(&requested) {
+            return Err("unsupported_file".into());
+        }
+        if !resolved.contains(&requested) {
+            resolved.push(requested);
+        }
+    }
+    Ok(resolved)
+}
+
+#[cfg(target_os = "macos")]
+fn launch_slicer(kind: SlicerKind, files: &[PathBuf]) -> Result<(), String> {
+    let bundle_identifier = match kind {
+        SlicerKind::OrcaSlicer => "com.orcaslicer.OrcaSlicer",
+        SlicerKind::BambuStudio => "com.bambulab.bambu-studio",
+    };
+    let output = Command::new("/usr/bin/open")
+        .arg("-b")
+        .arg(bundle_identifier)
+        .args(files)
+        .output()
+        .map_err(|_| "launch_failed")?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err("slicer_not_found".into())
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn windows_slicer_candidates(kind: SlicerKind) -> Vec<PathBuf> {
+    let (directory, executable) = match kind {
+        SlicerKind::OrcaSlicer => ("OrcaSlicer", "orca-slicer.exe"),
+        SlicerKind::BambuStudio => ("Bambu Studio", "bambu-studio.exe"),
+    };
+    let mut candidates = Vec::new();
+    for variable in ["ProgramFiles", "ProgramW6432", "ProgramFiles(x86)"] {
+        if let Some(base) = env::var_os(variable) {
+            candidates.push(PathBuf::from(base).join(directory).join(executable));
+        }
+    }
+    if let Some(base) = env::var_os("LOCALAPPDATA") {
+        candidates.push(
+            PathBuf::from(&base)
+                .join("Programs")
+                .join(directory)
+                .join(executable),
+        );
+        candidates.push(PathBuf::from(base).join(directory).join(executable));
+    }
+    candidates
+}
+
+#[cfg(target_os = "windows")]
+fn find_windows_slicer(kind: SlicerKind) -> Option<PathBuf> {
+    if let Some(path) = windows_slicer_candidates(kind)
+        .into_iter()
+        .find(|path| path.is_file())
+    {
+        return Some(path);
+    }
+    let executable = match kind {
+        SlicerKind::OrcaSlicer => "orca-slicer.exe",
+        SlicerKind::BambuStudio => "bambu-studio.exe",
+    };
+    let output = Command::new("where.exe").arg(executable).output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(str::trim)
+        .map(PathBuf::from)
+        .find(|path| path.is_file())
+}
+
+#[cfg(target_os = "windows")]
+fn launch_slicer(kind: SlicerKind, files: &[PathBuf]) -> Result<(), String> {
+    let executable = find_windows_slicer(kind).ok_or("slicer_not_found")?;
+    Command::new(executable)
+        .args(files)
+        .spawn()
+        .map(|_| ())
+        .map_err(|_| "launch_failed".into())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn launch_slicer(_kind: SlicerKind, _files: &[PathBuf]) -> Result<(), String> {
+    Err("unsupported_platform".into())
+}
+
+#[tauri::command]
+fn open_in_slicer(
+    slicer: String,
+    files: Vec<SlicerFileRequest>,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let kind = slicer_kind(&slicer)?;
+    let roots = state.roots.lock().map_err(|_| "library_unavailable")?;
+    let resolved = resolve_slicer_files(&roots, &files)?;
+    drop(roots);
+    launch_slicer(kind, &resolved)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(AppState::default())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![scan_archives, read_model])
+        .invoke_handler(tauri::generate_handler![
+            scan_archives,
+            read_model,
+            open_in_slicer
+        ])
         .run(tauri::generate_context!())
         .expect("Druckarchiv konnte nicht gestartet werden");
 }
@@ -313,11 +493,12 @@ mod tests {
         .expect("STL-Testdatei");
         fs::write(second.join("plate.3mf"), b"test").expect("3MF-Testdatei");
 
-        let archive = scan_archives(vec![
+        let roots = canonical_roots(vec![
             first.to_string_lossy().into_owned(),
             second.to_string_lossy().into_owned(),
         ])
-        .expect("Mehrordner-Scan");
+        .expect("kanonische Testordner");
+        let archive = scan_root_paths(&roots).expect("Mehrordner-Scan");
 
         assert_eq!(archive.roots.len(), 2);
         assert_eq!(archive.projects.len(), 1);
@@ -345,5 +526,56 @@ mod tests {
 
         assert_eq!(roots, vec![canonical_parent]);
         fs::remove_dir_all(parent).expect("Testordner entfernen");
+    }
+
+    #[test]
+    fn slicer_targets_are_strictly_limited() {
+        assert_eq!(slicer_kind("orcaSlicer"), Ok(SlicerKind::OrcaSlicer));
+        assert_eq!(slicer_kind("bambuStudio"), Ok(SlicerKind::BambuStudio));
+        assert_eq!(slicer_kind("custom"), Err("unknown_slicer".into()));
+    }
+
+    #[test]
+    fn slicer_files_must_be_supported_and_inside_a_library() {
+        let root = test_directory("slicer-root");
+        fs::create_dir_all(root.join("Project_A")).expect("Projektordner");
+        fs::write(
+            root.join("Project_A/model.stl"),
+            b"solid test\nendsolid test",
+        )
+        .expect("STL-Testdatei");
+        fs::write(root.join("notes.pdf"), b"test").expect("PDF-Testdatei");
+        let canonical_root = root.canonicalize().expect("kanonischer Testordner");
+        let roots = vec![canonical_root];
+
+        let valid = resolve_slicer_files(
+            &roots,
+            &[SlicerFileRequest {
+                root_index: 0,
+                relative_path: "Project_A/model.stl".into(),
+            }],
+        )
+        .expect("gültige Slicer-Datei");
+        assert_eq!(valid.len(), 1);
+
+        let unsupported = resolve_slicer_files(
+            &roots,
+            &[SlicerFileRequest {
+                root_index: 0,
+                relative_path: "notes.pdf".into(),
+            }],
+        );
+        assert_eq!(unsupported, Err("unsupported_file".into()));
+
+        let blocked = resolve_slicer_files(
+            &roots,
+            &[SlicerFileRequest {
+                root_index: 1,
+                relative_path: "Project_A/model.stl".into(),
+            }],
+        );
+        assert_eq!(blocked, Err("path_blocked".into()));
+
+        fs::remove_dir_all(root).expect("Testordner entfernen");
     }
 }

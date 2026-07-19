@@ -140,9 +140,11 @@ export default {
   project: {
     eyebrow: "Project folder",
     selected: "files selected",
-    copyPaths: "Copy paths",
-    copied: "Copied ✓",
-    selectedPathsPrompt: "Selected paths:",
+    slicerLabel: "Choose slicer",
+    openInSlicer: { one: "Open file in {slicer}", other: "Open {count} files in {slicer}" },
+    openingInSlicer: "Opening in {slicer} …",
+    openedInSlicer: "Sent to {slicer} ✓",
+    slicerUnsupported: "This file type cannot be sent to a slicer.",
     openViewer: "Open in 3D viewer",
     selectFile: "Select {name}"
   },
@@ -165,6 +167,16 @@ export default {
     loadError: "The model could not be loaded:\n{error}"
   },
   errors: {
-    libraryRead: "The library could not be read:\n{error}"
+    libraryRead: "The library could not be read:\n{error}",
+    slicerNoFiles: "Select at least one compatible file.",
+    slicerTooManyFiles: "No more than 100 files can be opened in the slicer at once.",
+    slicerPathBlocked: "A file path is outside the managed library and was blocked.",
+    slicerFileNotFound: "At least one selected file could no longer be found. Rescan the library.",
+    slicerUnsupportedFile: "At least one selected file is not supported by the slicer.",
+    slicerUnknown: "The selected slicer is not allowed.",
+    slicerNotFound: "{slicer} was not found on this device. Install the slicer or choose another one.",
+    slicerPlatform: "Opening files directly in a slicer is not yet supported on this operating system.",
+    slicerLibraryUnavailable: "The library has not finished loading yet.",
+    slicerLaunchFailed: "{slicer} could not be started. Check the installation and try again."
   }
 };

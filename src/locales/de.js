@@ -140,9 +140,11 @@ export default {
   project: {
     eyebrow: "Projektordner",
     selected: "Dateien ausgewählt",
-    copyPaths: "Pfade kopieren",
-    copied: "Kopiert ✓",
-    selectedPathsPrompt: "Ausgewählte Pfade:",
+    slicerLabel: "Slicer auswählen",
+    openInSlicer: { one: "Datei in {slicer} öffnen", other: "{count} Dateien in {slicer} öffnen" },
+    openingInSlicer: "Wird in {slicer} geöffnet …",
+    openedInSlicer: "An {slicer} übergeben ✓",
+    slicerUnsupported: "Dieses Dateiformat kann nicht an einen Slicer übergeben werden.",
     openViewer: "Im 3D-Viewer öffnen",
     selectFile: "{name} auswählen"
   },
@@ -165,6 +167,16 @@ export default {
     loadError: "Das Modell konnte nicht geladen werden:\n{error}"
   },
   errors: {
-    libraryRead: "Die Bibliothek konnte nicht gelesen werden:\n{error}"
+    libraryRead: "Die Bibliothek konnte nicht gelesen werden:\n{error}",
+    slicerNoFiles: "Wähle mindestens eine kompatible Datei aus.",
+    slicerTooManyFiles: "Es können höchstens 100 Dateien gleichzeitig im Slicer geöffnet werden.",
+    slicerPathBlocked: "Ein Dateipfad liegt außerhalb der verwalteten Bibliothek und wurde blockiert.",
+    slicerFileNotFound: "Mindestens eine ausgewählte Datei wurde nicht mehr gefunden. Lies die Bibliothek neu ein.",
+    slicerUnsupportedFile: "Mindestens eine ausgewählte Datei wird vom Slicer nicht unterstützt.",
+    slicerUnknown: "Der ausgewählte Slicer ist nicht zulässig.",
+    slicerNotFound: "{slicer} wurde auf diesem Gerät nicht gefunden. Installiere den Slicer oder wähle einen anderen aus.",
+    slicerPlatform: "Das direkte Öffnen im Slicer wird auf diesem Betriebssystem noch nicht unterstützt.",
+    slicerLibraryUnavailable: "Die Bibliothek ist noch nicht vollständig eingelesen.",
+    slicerLaunchFailed: "{slicer} konnte nicht gestartet werden. Prüfe die Installation und versuche es erneut."
   }
 };

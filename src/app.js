@@ -26,6 +26,7 @@ import { canOpenModelCard } from "./model-card.js";
 import { createDemoArchive } from "./demo-archive.js";
 import { PAGE_SIZES, normalizePageSize, paginateEntries, paginationTokens } from "./pagination.js";
 import { applyTranslations, formatDateValue, formatNumber, getLocale, onLocaleChange, setLocale, t } from "./i18n.js";
+import { isSlicerCompatible, normalizeSlicer, slicerErrorKey, slicerLabel } from "./slicer-preferences.js";
 import { normalizeViewMode, toggleViewMode } from "./view-preferences.js";
 
 const CATEGORIES = {
@@ -46,6 +47,7 @@ const df = { format: formatDateValue };
 const STORAGE_KEY = "druckarchiv.library.v1";
 const PAGE_SIZE_KEY = "druckarchiv.page-size.v1";
 const PROJECT_VIEW_KEY = "druckarchiv.project-view.v1";
+const SLICER_KEY = "druckarchiv.slicer.v1";
 const APP_VERSION = __APP_VERSION__;
 const state = {
   archive: null,
@@ -59,6 +61,7 @@ const state = {
   sort: "name",
   view: "grid",
   projectView: normalizeViewMode(localStorage.getItem(PROJECT_VIEW_KEY)),
+  slicer: normalizeSlicer(localStorage.getItem(SLICER_KEY)),
   page: 1,
   pageSize: normalizePageSize(localStorage.getItem(PAGE_SIZE_KEY)),
   scanning: false,
@@ -489,6 +492,7 @@ byId("pagination").addEventListener("click", event => {
 
 const projectDialog = byId("projectDialog");
 const projectFileKey = file => `${file.rootIndex}\n${file.path}`;
+let slicerOpening = false;
 
 function selectedProjectFileKeys() {
   return new Set([...projectDialog.querySelectorAll('input[type="checkbox"]:checked')]
@@ -496,8 +500,10 @@ function selectedProjectFileKeys() {
 }
 
 function projectCheckbox(file, selectedKeys) {
+  const compatible = isSlicerCompatible(file.extension);
   const checked = selectedKeys.has(projectFileKey(file)) ? "checked" : "";
-  return `<input type="checkbox" data-path="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" aria-label="${escapeHtml(t("project.selectFile", { name: file.name }))}" ${checked}>`;
+  const disabled = compatible ? "" : `disabled title="${escapeHtml(t("project.slicerUnsupported"))}"`;
+  return `<input type="checkbox" data-path="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" aria-label="${escapeHtml(t("project.selectFile", { name: file.name }))}" ${checked} ${disabled}>`;
 }
 
 function projectListRow(file, selectedKeys) {
@@ -521,9 +527,11 @@ function projectGridCard(file, selectedKeys) {
 
 function updateProjectSelection() {
   const count = projectDialog.querySelectorAll('input[type="checkbox"]:checked').length;
+  const slicer = slicerLabel(state.slicer);
   byId("selectedCount").textContent = nf.format(count);
-  byId("copySelected").disabled = count === 0;
-  byId("copySelected").textContent = t("project.copyPaths");
+  const openButton = byId("openSelectedInSlicer");
+  openButton.disabled = slicerOpening || count === 0;
+  openButton.textContent = t(slicerOpening ? "project.openingInSlicer" : "project.openInSlicer", { count, slicer });
 }
 
 function hydrateProjectPreviews() {
@@ -544,6 +552,7 @@ function renderProjectContents(projectIndex) {
   modalList.classList.toggle("list", state.projectView === "list");
   modalList.innerHTML = files.map(file => state.projectView === "grid" ? projectGridCard(file, selectedKeys) : projectListRow(file, selectedKeys)).join("");
   byId("projectViewToggle").textContent = t(state.projectView === "grid" ? "nav.listView" : "nav.gridView");
+  byId("slicerSelect").value = state.slicer;
   updateProjectSelection();
   if (projectDialog.open && state.projectView === "grid") hydrateProjectPreviews();
 }
@@ -567,6 +576,11 @@ byId("projectViewToggle").addEventListener("click", () => {
   localStorage.setItem(PROJECT_VIEW_KEY, state.projectView);
   renderProjectContents(Number(projectDialog.dataset.projectIndex));
 });
+byId("slicerSelect").addEventListener("change", event => {
+  state.slicer = normalizeSlicer(event.target.value);
+  localStorage.setItem(SLICER_KEY, state.slicer);
+  updateProjectSelection();
+});
 byId("modalList").addEventListener("click", async event => {
   const button = event.target.closest("[data-model-path]");
   if (!button) return;
@@ -574,18 +588,25 @@ byId("modalList").addEventListener("click", async event => {
   await openArchiveModel(Number(button.dataset.modelRoot), button.dataset.modelPath);
 });
 projectDialog.addEventListener("change", updateProjectSelection);
-byId("copySelected").addEventListener("click", async () => {
-  const paths = [...projectDialog.querySelectorAll('input[type="checkbox"]:checked')].map(box => {
-    const root = state.archive.roots[Number(box.dataset.rootIndex)].path;
-    const separator = root.includes("\\") ? "\\" : "/";
-    return `${root}${separator}${box.dataset.path.replaceAll("/", separator)}`;
-  }).join("\n");
+byId("openSelectedInSlicer").addEventListener("click", async () => {
+  const files = [...projectDialog.querySelectorAll('input[type="checkbox"]:checked')].map(box => ({
+    rootIndex: Number(box.dataset.rootIndex),
+    relativePath: box.dataset.path
+  }));
+  if (!files.length || slicerOpening) return;
+  slicerOpening = true;
+  updateProjectSelection();
   try {
-    await navigator.clipboard.writeText(paths);
-    byId("copySelected").textContent = t("project.copied");
-    setTimeout(() => { byId("copySelected").textContent = t("project.copyPaths"); }, 1300);
-  } catch (_) {
-    window.prompt(t("project.selectedPathsPrompt"), paths);
+    await invoke("open_in_slicer", { slicer: state.slicer, files });
+    slicerOpening = false;
+    const button = byId("openSelectedInSlicer");
+    button.textContent = t("project.openedInSlicer", { slicer: slicerLabel(state.slicer) });
+    button.disabled = false;
+    setTimeout(() => { if (projectDialog.open) updateProjectSelection(); }, 1400);
+  } catch (error) {
+    slicerOpening = false;
+    updateProjectSelection();
+    window.alert(t(slicerErrorKey(error), { slicer: slicerLabel(state.slicer) }));
   }
 });
 
