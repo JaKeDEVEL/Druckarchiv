@@ -92,7 +92,7 @@ jobs:
 
             Enthalten sind mehrere Bibliotheksordner, frei wählbare Dateitypen, dynamische KPI-Filter, Ausschlussregeln, Raster- und Listenansicht sowie lokale Vorschaubilder. STL-, 3MF- und OBJ-Dateien lassen sich direkt im interaktiven 3D-Viewer drehen, zoomen und verschieben. Blender wird nicht benötigt.
 
-            Neu in Version 0.8.0: Projektordner besitzen jetzt neben der standardmäßigen Listenansicht eine Rasteransicht mit schnellen Vorschaubildern. Die zuletzt verwendete Ansicht wird lokal gespeichert. Ausgewählte Modelldateien lassen sich außerdem direkt in OrcaSlicer oder Bambu Studio öffnen; auch der zuletzt verwendete Slicer bleibt gespeichert.
+            Neu in Version 0.8.5: Unterordner werden in Projektordnern sichtbar und lassen sich über eine übersichtliche Pfadnavigation öffnen. Die Pagination mit 25 oder 50 Einträgen funktioniert nun auch in der Ordneransicht und behält Auswahlen über mehrere Seiten hinweg bei. Neben OrcaSlicer und Bambu Studio wird jetzt auch PrusaSlicer unterstützt; der zuletzt verwendete Slicer bleibt lokal gespeichert.
 
             Hinweis: Die Installer sind noch nicht mit einem kostenpflichtigen Apple- beziehungsweise Windows-Entwicklerzertifikat signiert. Das Betriebssystem kann deshalb beim ersten Start eine Sicherheitswarnung anzeigen.
 
