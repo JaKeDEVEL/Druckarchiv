@@ -25,6 +25,7 @@ import { libraryControlState } from "./library-controls.js";
 import { canOpenModelCard } from "./model-card.js";
 import { createDemoArchive } from "./demo-archive.js";
 import { PAGE_SIZES, normalizePageSize, paginateEntries, paginationTokens } from "./pagination.js";
+import { projectBreadcrumbs, projectBrowserEntries } from "./project-browser.js";
 import { applyTranslations, formatDateValue, formatNumber, getLocale, onLocaleChange, setLocale, t } from "./i18n.js";
 import { isSlicerCompatible, normalizeSlicer, slicerErrorKey, slicerLabel } from "./slicer-preferences.js";
 import { normalizeViewMode, toggleViewMode } from "./view-preferences.js";
@@ -64,6 +65,9 @@ const state = {
   slicer: normalizeSlicer(localStorage.getItem(SLICER_KEY)),
   page: 1,
   pageSize: normalizePageSize(localStorage.getItem(PAGE_SIZE_KEY)),
+  projectPage: 1,
+  projectPath: "",
+  projectSelection: new Set(),
   scanning: false,
   fileIndex: new Map()
 };
@@ -494,11 +498,6 @@ const projectDialog = byId("projectDialog");
 const projectFileKey = file => `${file.rootIndex}\n${file.path}`;
 let slicerOpening = false;
 
-function selectedProjectFileKeys() {
-  return new Set([...projectDialog.querySelectorAll('input[type="checkbox"]:checked')]
-    .map(box => `${box.dataset.rootIndex}\n${box.dataset.path}`));
-}
-
 function projectCheckbox(file, selectedKeys) {
   const compatible = isSlicerCompatible(file.extension);
   const checked = selectedKeys.has(projectFileKey(file)) ? "checked" : "";
@@ -509,9 +508,22 @@ function projectCheckbox(file, selectedKeys) {
 function projectListRow(file, selectedKeys) {
   const category = categoryOf(file);
   const name = isViewable(file)
-    ? `<button class="file-preview-button" type="button" data-model-root="${file.rootIndex}" data-model-path="${escapeHtml(file.path)}" title="${escapeHtml(file.path)}"><span>${escapeHtml(file.path)}</span><small>${t("project.openViewer")}</small></button>`
-    : `<span class="file-name" title="${escapeHtml(file.path)}">${escapeHtml(file.path)}</span>`;
+    ? `<button class="file-preview-button" type="button" data-model-root="${file.rootIndex}" data-model-path="${escapeHtml(file.path)}" title="${escapeHtml(file.path)}"><span>${escapeHtml(file.name)}</span><small>${t("project.openViewer")}</small></button>`
+    : `<span class="file-name" title="${escapeHtml(file.path)}">${escapeHtml(file.name)}</span>`;
   return `<div class="file-row" style="--tone:${CATEGORIES[category].color}"><span class="dot"></span>${name}<span>${formatSize(file.size)}</span><span class="file-format">${escapeHtml(file.extension.toUpperCase() || t("common.file"))}</span>${projectCheckbox(file, selectedKeys)}</div>`;
+}
+
+function projectFolderCategory(folder) {
+  const counts = {};
+  folder.files.forEach(file => {
+    const category = categoryOf(file);
+    counts[category] = (counts[category] || 0) + 1;
+  });
+  return Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] || "other";
+}
+
+function projectFolderListRow(folder) {
+  return `<button class="file-row project-folder-row" type="button" data-project-path="${escapeHtml(folder.path)}" aria-label="${escapeHtml(t("project.openFolder", { name: folder.name }))}"><span class="folder-row-icon" aria-hidden="true"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg></span><span class="folder-row-name"><b>${escapeHtml(folder.name)}</b><small>${t("common.filesCount", { count: folder.files.length })}</small></span><span>${formatSize(folder.size)}</span><span class="file-format">${t("common.folder")}</span><span class="folder-row-arrow" aria-hidden="true">→</span></button>`;
 }
 
 function projectGridCard(file, selectedKeys) {
@@ -525,8 +537,50 @@ function projectGridCard(file, selectedKeys) {
   return `<article class="project-file-card" style="--tone:${CATEGORIES[category].color}"><label class="project-file-select">${projectCheckbox(file, selectedKeys)}</label>${cover}<div class="project-file-body"><div class="entry-kind">${t("cards.fileEntry", { extension: escapeHtml(file.extension || "–") })}</div><h4 title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</h4><p title="${escapeHtml(parentPath)}">${escapeHtml(parentPath)}</p><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span></div></div></article>`;
 }
 
+function projectGridFolder(folder) {
+  const category = projectFolderCategory(folder);
+  const representative = folder.files.find(isViewable);
+  return `<button class="project-file-card project-folder-card" type="button" data-project-path="${escapeHtml(folder.path)}" aria-label="${escapeHtml(t("project.openFolder", { name: folder.name }))}" style="--tone:${CATEGORIES[category].color}"><div class="project-file-cover folder-cover ${previewCoverClass(representative)}" ${previewAttributes(representative)}>${demoPreviewMarkup(representative)}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> ${t("common.folder")}</span></div><div class="project-file-body"><div class="entry-kind">${t("project.subfolder")}</div><h4 title="${escapeHtml(folder.name)}">${escapeHtml(folder.name)}</h4><p>${t("common.filesCount", { count: folder.files.length })}</p><div class="meta"><span>${formatSize(folder.size)}</span><span>${formatDate(folder.modified)}</span></div></div></button>`;
+}
+
+function compareProjectEntries(left, right) {
+  if (left.kind !== right.kind) return left.kind === "folder" ? -1 : 1;
+  if (state.sort === "date") return right.modified - left.modified;
+  if (state.sort === "size") return right.size - left.size;
+  return left.name.localeCompare(right.name, getLocale());
+}
+
+function renderProjectBreadcrumbs(project) {
+  const crumbs = projectBreadcrumbs(project, state.projectPath);
+  byId("projectBreadcrumb").innerHTML = crumbs.map((crumb, index) => {
+    const name = escapeHtml(crumb.name);
+    return index === crumbs.length - 1
+      ? `<span aria-current="page">${name}</span>`
+      : `<button type="button" data-project-path="${escapeHtml(crumb.path)}">${name}</button><i aria-hidden="true">/</i>`;
+  }).join("");
+}
+
+function renderProjectPagination(result) {
+  const pagination = byId("projectPagination");
+  byId("projectPageSize").value = String(result.pageSize);
+  byId("projectPageSizeControl").hidden = result.total <= PAGE_SIZES[0];
+  byId("projectResultCount").textContent = result.total
+    ? t("pagination.range", { start: result.start + 1, end: result.end, total: result.total })
+    : t("pagination.noResults");
+  pagination.hidden = result.totalPages <= 1;
+  byId("projectPageStatus").textContent = t("pagination.status", { page: result.page, totalPages: result.totalPages });
+  if (pagination.hidden) {
+    byId("projectPageButtons").innerHTML = "";
+    return;
+  }
+  const buttons = paginationTokens(result.page, result.totalPages).map(token => token === "ellipsis"
+    ? '<span class="page-ellipsis" aria-hidden="true">…</span>'
+    : `<button class="page-number ${token === result.page ? "current" : ""}" type="button" data-project-page="${token}" ${token === result.page ? 'aria-current="page"' : ""} aria-label="${t("pagination.pageLabel", { page: token })}">${nf.format(token)}</button>`).join("");
+  byId("projectPageButtons").innerHTML = `<button class="page-step" type="button" data-project-page="${result.page - 1}" ${result.page === 1 ? "disabled" : ""} aria-label="${t("pagination.previous")}">←</button>${buttons}<button class="page-step" type="button" data-project-page="${result.page + 1}" ${result.page === result.totalPages ? "disabled" : ""} aria-label="${t("pagination.next")}">→</button>`;
+}
+
 function updateProjectSelection() {
-  const count = projectDialog.querySelectorAll('input[type="checkbox"]:checked').length;
+  const count = state.projectSelection.size;
   const slicer = slicerLabel(state.slicer);
   byId("selectedCount").textContent = nf.format(count);
   const openButton = byId("openSelectedInSlicer");
@@ -542,15 +596,21 @@ function renderProjectContents(projectIndex) {
   const project = state.archive.projects[projectIndex];
   if (!project) return;
   const files = filteredProjectFiles(project);
-  const selectedKeys = projectDialog.dataset.projectIndex === String(projectIndex)
-    ? selectedProjectFileKeys()
-    : new Set();
   projectDialog.dataset.projectIndex = String(projectIndex);
   byId("modalTitle").textContent = project.displayName;
+  renderProjectBreadcrumbs(project);
+  const entries = projectBrowserEntries(project, files, state.projectPath).sort(compareProjectEntries);
+  const pageResult = paginateEntries(entries, state.projectPage, state.pageSize);
+  state.projectPage = pageResult.page;
+  renderProjectPagination(pageResult);
   const modalList = byId("modalList");
   modalList.classList.toggle("grid", state.projectView === "grid");
   modalList.classList.toggle("list", state.projectView === "list");
-  modalList.innerHTML = files.map(file => state.projectView === "grid" ? projectGridCard(file, selectedKeys) : projectListRow(file, selectedKeys)).join("");
+  modalList.innerHTML = pageResult.items.length
+    ? pageResult.items.map(entry => entry.kind === "folder"
+      ? (state.projectView === "grid" ? projectGridFolder(entry) : projectFolderListRow(entry))
+      : (state.projectView === "grid" ? projectGridCard(entry.file, state.projectSelection) : projectListRow(entry.file, state.projectSelection))).join("")
+    : `<div class="project-empty"><b>${t("project.emptyFolder")}</b></div>`;
   byId("projectViewToggle").textContent = t(state.projectView === "grid" ? "nav.listView" : "nav.gridView");
   byId("slicerSelect").value = state.slicer;
   updateProjectSelection();
@@ -561,6 +621,9 @@ byId("library").addEventListener("click", async event => {
   const card = event.target.closest(".card");
   if (!card) return;
   if (card.dataset.projectIndex !== undefined) {
+    state.projectPath = "";
+    state.projectPage = 1;
+    state.projectSelection.clear();
     renderProjectContents(Number(card.dataset.projectIndex));
     projectDialog.showModal();
     if (state.projectView === "grid") hydrateProjectPreviews();
@@ -570,7 +633,12 @@ byId("library").addEventListener("click", async event => {
 });
 projectDialog.querySelector("[data-close]").addEventListener("click", () => projectDialog.close());
 projectDialog.addEventListener("click", event => { if (event.target === projectDialog) projectDialog.close(); });
-projectDialog.addEventListener("close", () => { delete projectDialog.dataset.projectIndex; });
+projectDialog.addEventListener("close", () => {
+  delete projectDialog.dataset.projectIndex;
+  state.projectPath = "";
+  state.projectPage = 1;
+  state.projectSelection.clear();
+});
 byId("projectViewToggle").addEventListener("click", () => {
   state.projectView = toggleViewMode(state.projectView);
   localStorage.setItem(PROJECT_VIEW_KEY, state.projectView);
@@ -581,17 +649,53 @@ byId("slicerSelect").addEventListener("change", event => {
   localStorage.setItem(SLICER_KEY, state.slicer);
   updateProjectSelection();
 });
+byId("projectBreadcrumb").addEventListener("click", event => {
+  const button = event.target.closest("[data-project-path]");
+  if (!button) return;
+  state.projectPath = button.dataset.projectPath;
+  state.projectPage = 1;
+  renderProjectContents(Number(projectDialog.dataset.projectIndex));
+});
 byId("modalList").addEventListener("click", async event => {
+  const folder = event.target.closest("[data-project-path]");
+  if (folder) {
+    state.projectPath = folder.dataset.projectPath;
+    state.projectPage = 1;
+    renderProjectContents(Number(projectDialog.dataset.projectIndex));
+    return;
+  }
   const button = event.target.closest("[data-model-path]");
   if (!button) return;
   projectDialog.close();
   await openArchiveModel(Number(button.dataset.modelRoot), button.dataset.modelPath);
 });
-projectDialog.addEventListener("change", updateProjectSelection);
+byId("projectPageSize").addEventListener("change", event => {
+  state.pageSize = normalizePageSize(event.target.value);
+  localStorage.setItem(PAGE_SIZE_KEY, String(state.pageSize));
+  state.projectPage = 1;
+  renderProjectContents(Number(projectDialog.dataset.projectIndex));
+});
+byId("projectPagination").addEventListener("click", event => {
+  const button = event.target.closest("[data-project-page]");
+  if (!button || button.disabled) return;
+  const page = Number(button.dataset.projectPage);
+  if (!Number.isInteger(page) || page === state.projectPage) return;
+  state.projectPage = page;
+  renderProjectContents(Number(projectDialog.dataset.projectIndex));
+  byId("modalList").scrollTo({ top: 0 });
+});
+projectDialog.addEventListener("change", event => {
+  const checkbox = event.target.closest('input[type="checkbox"][data-path]');
+  if (!checkbox) return;
+  const key = `${checkbox.dataset.rootIndex}\n${checkbox.dataset.path}`;
+  if (checkbox.checked) state.projectSelection.add(key);
+  else state.projectSelection.delete(key);
+  updateProjectSelection();
+});
 byId("openSelectedInSlicer").addEventListener("click", async () => {
-  const files = [...projectDialog.querySelectorAll('input[type="checkbox"]:checked')].map(box => ({
-    rootIndex: Number(box.dataset.rootIndex),
-    relativePath: box.dataset.path
+  const files = [...state.projectSelection].map(key => state.fileIndex.get(key)).filter(Boolean).map(file => ({
+    rootIndex: file.rootIndex,
+    relativePath: file.path
   }));
   if (!files.length || slicerOpening) return;
   slicerOpening = true;

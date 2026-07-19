@@ -13,8 +13,8 @@ Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3
 - einfache Standardauswahl für STL, 3MF, OBJ und G-Code; weitere Mesh-, CAD- und Referenzformate sind Opt-in
 - Ausschlüsse nach Endung, Dateiname oder relativem Pfad mit Platzhaltern
 - dynamische KPI-Filter: Neben Projekten und Dateien erscheinen nur die in der Verwaltung aktivierten Formatgruppen
-- Raster- und Listenansicht mit allen Dateien aus sämtlichen Unterordnern
-- speicherschonende Pagination mit wahlweise 25 oder 50 Einträgen pro Seite
+- Raster- und Listenansicht mit navigierbaren Unterordnern und allen darin enthaltenen Dateien
+- speicherschonende Pagination mit wahlweise 25 oder 50 Einträgen pro Seite – auch innerhalb geöffneter Ordner
 - lokal und verzögert erzeugte Modell-Thumbnails mit sichtbarem Ladefortschritt; in der Verwaltung abschaltbar
 - interaktiver STL-/3MF-/OBJ-Viewer mit Drehen, Zoomen und Verschieben – auch direkt aus Projektordnern
 - ausgewählte Druckdateien direkt in OrcaSlicer oder Bambu Studio öffnen; der zuletzt verwendete Slicer bleibt lokal gespeichert

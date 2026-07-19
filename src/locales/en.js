@@ -140,6 +140,11 @@ export default {
   project: {
     eyebrow: "Project folder",
     selected: "files selected",
+    folderNavigation: "Folder path",
+    paginationLabel: "Pages in the open folder",
+    subfolder: "Subfolder",
+    openFolder: "Open subfolder {name}",
+    emptyFolder: "This folder contains no matching files or subfolders.",
     slicerLabel: "Choose slicer",
     openInSlicer: { one: "Open file in {slicer}", other: "Open {count} files in {slicer}" },
     openingInSlicer: "Opening in {slicer} …",

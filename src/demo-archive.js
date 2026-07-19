@@ -47,6 +47,10 @@ export function createDemoArchive(minimumFileCount = 0) {
   const projects = definitions.map(([rootIndex, name, baseName], projectIndex) => {
     const selectedExtensions = projectIndex % 2 ? extensions : ["stl", "3mf", "gcode"];
     const files = selectedExtensions.map((extension, offset) => demoFile(rootIndex, name, baseName, extension, projectIndex, offset));
+    if (projectIndex === 2) {
+      files[0].path = `${name}/Varianten/${files[0].name}`;
+      files[1].path = `${name}/Varianten/Kompakt/${files[1].name}`;
+    }
     return {
       rootIndex,
       name,
@@ -62,11 +66,16 @@ export function createDemoArchive(minimumFileCount = 0) {
   ].map(file => ({ ...file, path: file.name }));
   const currentFileCount = loose.length + projects.reduce((sum, project) => sum + project.files.length, 0);
   const targetFileCount = Math.min(Math.max(Math.trunc(Number(minimumFileCount) || 0), currentFileCount), 10_000);
+  const loadTestProject = projects[0];
   for (let index = currentFileCount; index < targetFileCount; index++) {
     const extension = extensions[index % extensions.length];
     const baseName = `Demo-Modell-${String(index + 1).padStart(4, "0")}`;
-    loose.push(demoFile(index % 2, "Lasttest", baseName, extension, index % previewByProject.length, index % 12));
+    const file = demoFile(loadTestProject.rootIndex, loadTestProject.name, baseName, extension, index % previewByProject.length, index % 12);
+    file.path = `${loadTestProject.name}/Lasttest/${file.name}`;
+    loadTestProject.files.push(file);
   }
+  loadTestProject.size = loadTestProject.files.reduce((sum, file) => sum + file.size, 0);
+  loadTestProject.modified = Math.max(...loadTestProject.files.map(file => file.modified));
   return {
     roots: [
       { name: "Modelle", path: "/Druckarchiv-Demo/Modelle" },

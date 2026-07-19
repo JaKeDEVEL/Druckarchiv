@@ -16,6 +16,6 @@ test("die Lasttest-Demo kann 4.000 sichere Dateien bereitstellen", () => {
   const files = [...archive.loose, ...archive.projects.flatMap(project => project.files)];
 
   assert.equal(files.length, 4000);
-  assert.match(archive.loose.at(-1).path, /^Lasttest\/Demo-Modell-/);
+  assert.match(archive.projects[0].files.at(-1).path, /^Werkstatthelfer\/Lasttest\/Demo-Modell-/);
   assert.doesNotMatch(JSON.stringify(archive), /Users|janos/i);
 });
