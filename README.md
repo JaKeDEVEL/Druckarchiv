@@ -43,7 +43,9 @@ Der drehbare Viewer rendert STL und 3MF direkt mit Three.js/WebGL. Das ist offli
 
 ## Veröffentlichung
 
-Der Workflow `installer-preview.yml` erzeugt herunterladbare Build-Artefakte. Für eine öffentliche, warnungsfreie Verteilung werden anschließend Plattform-Zertifikate als verschlüsselte Repository-Secrets ergänzt:
+Ein Versions-Tag wie `v0.5.0` startet den Workflow `installer-preview.yml`. Er baut ein universelles macOS-DMG für Apple Silicon und Intel sowie ein Windows-x64-Setup, legt automatisch ein GitHub-Prerelease an und hängt beide Installer direkt an. Ein manueller Workflow-Lauf erzeugt nur 14 Tage verfügbare Actions-Artefakte und kein Release.
+
+Für eine öffentliche, warnungsfreie Verteilung werden anschließend Plattform-Zertifikate als verschlüsselte Repository-Secrets ergänzt:
 
 - macOS: Apple Developer ID plus Notarisierung
 - Windows: Code-Signing-Zertifikat
