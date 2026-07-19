@@ -15,6 +15,7 @@ import {
   splitExtensionRules,
   splitFileRules
 } from "./library-settings.js";
+import { canOpenModelCard } from "./model-card.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: ["stl"] },
@@ -119,7 +120,7 @@ function fileCard(file) {
   const category = categoryOf(file);
   const viewable = isViewable(file);
   const root = rootOf(file);
-  return `<button class="card file-card" type="button" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? "data-viewable" : ""} aria-label="Datei ${escapeHtml(file.name)}${viewable ? " im 3D-Viewer öffnen" : ""}" style="--tone:${CATEGORIES[category].color}"><div class="card-cover file-cover" ${previewAttributes(file)} aria-hidden="true"><span class="file-mark">${escapeHtml(file.extension.toUpperCase() || "DATEI")}</span><span class="kind-flag file-flag">Datei</span></div><div class="card-body"><div class="entry-kind">Datei · .${escapeHtml(file.extension || "–")}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : "Hauptordner")}</span></div><div class="badges"><span class="badge">${CATEGORIES[category].label}</span>${viewable ? '<span class="badge">3D-Vorschau</span>' : ""}<span class="badge source-badge">${escapeHtml(root?.name || "Bibliothek")}</span></div></div></button>`;
+  return `<button class="card file-card" type="button" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? 'data-viewable="true"' : ""} aria-label="Datei ${escapeHtml(file.name)}${viewable ? " im 3D-Viewer öffnen" : ""}" style="--tone:${CATEGORIES[category].color}"><div class="card-cover file-cover" ${previewAttributes(file)} aria-hidden="true"><span class="file-mark">${escapeHtml(file.extension.toUpperCase() || "DATEI")}</span><span class="kind-flag file-flag">Datei</span></div><div class="card-body"><div class="entry-kind">Datei · .${escapeHtml(file.extension || "–")}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : "Hauptordner")}</span></div><div class="badges"><span class="badge">${CATEGORIES[category].label}</span>${viewable ? '<span class="badge">3D-Vorschau</span>' : ""}<span class="badge source-badge">${escapeHtml(root?.name || "Bibliothek")}</span></div></div></button>`;
 }
 
 let libraryRenderSequence = 0;
@@ -392,7 +393,7 @@ byId("library").addEventListener("click", async event => {
     byId("selectedCount").textContent = "0";
     byId("copySelected").disabled = true;
     projectDialog.showModal();
-  } else if (card.dataset.viewable) {
+  } else if (canOpenModelCard(card)) {
     await openArchiveModel(Number(card.dataset.rootIndex), card.dataset.file);
   }
 });
