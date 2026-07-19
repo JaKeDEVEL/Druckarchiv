@@ -1,22 +1,70 @@
-MIT License
+Druckarchiv Non-Commercial Use License 1.0
 
-Copyright (c) 2026 Druckarchiv Contributors
+Copyright (c) 2026 JaKeDEVEL. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This license applies to Druckarchiv, including its original source code,
+compiled application, documentation, and original assets (the "Software").
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. Permission
+
+Subject to this license, you may download, install, and run unmodified copies
+of the Software free of charge, solely for non-commercial purposes. You may
+make the copies technically necessary for installation and one private backup
+copy. You may share a link to the official distribution location.
+
+2. Restrictions
+
+Unless you have prior written permission from the copyright holder, you may
+not:
+
+a. modify, adapt, translate, reverse engineer, or create derivative works
+   based on the Software;
+b. copy, redistribute, publish, upload, mirror, rehost, or otherwise make the
+   Software or its source code available to third parties, whether modified
+   or unmodified, on another platform, service, repository, or medium;
+c. sell, rent, sublicense, bundle, or include the Software in another product
+   or service;
+d. use the Software for any commercial purpose or commercial benefit,
+   including internal business use, paid work, revenue-generating services,
+   advertising, sponsorship, or promotion of commercial activity; or
+e. remove or alter copyright, license, attribution, or proprietary notices.
+
+These restrictions apply only to the extent permitted by applicable law.
+
+3. Hosting-platform permissions
+
+If the copyright holder makes the source code publicly visible on a hosting
+platform, any limited rights required by that platform's terms apply only to
+the extent necessary to provide the platform's functionality. They do not
+grant permission to modify the Software, use it commercially, redistribute it
+outside that platform, or publish an independent copy. Where the platform's
+terms permit platform-native copies such as forks, those permissions are
+limited to that platform and do not expand this license.
+
+4. Third-party components
+
+This license covers only material for which JaKeDEVEL owns the copyright. Any
+third-party libraries, frameworks, fonts, tools, or other components included
+with or used by the Software remain subject to their respective licenses.
+Nothing in this license limits rights granted directly by those third-party
+licenses.
+
+5. Termination
+
+Your permission under this license terminates automatically if you violate
+any of its terms. Upon termination, you must stop using the Software and
+delete all copies in your possession or control.
+
+6. Separate permission
+
+The copyright holder may grant separate written permission for uses that are
+otherwise prohibited by this license. Such permission applies only to the
+recipient and purpose stated in writing.
+
+7. Disclaimer
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
+IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. TO THE MAXIMUM EXTENT
+PERMITTED BY APPLICABLE LAW, THE COPYRIGHT HOLDER SHALL NOT BE LIABLE FOR ANY
+CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.

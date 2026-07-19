@@ -2,8 +2,9 @@
 name = "druckarchiv"
 version = "0.1.0"
 description = "Lokale, private Bibliothek für 3D-Druck-Dateien"
-authors = ["Druckarchiv Contributors"]
+authors = ["JaKeDEVEL"]
 edition = "2021"
+license-file = "../LICENSE"
 
 [lib]
 name = "druckarchiv_lib"
@@ -16,4 +17,3 @@ tauri-build = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
-

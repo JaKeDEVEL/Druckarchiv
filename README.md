@@ -52,3 +52,8 @@ Ohne diese privaten Schlüssel bleiben lokale/ad-hoc Builds möglich, Betriebssy
 
 Weitere Details: [Architektur](docs/ARCHITECTURE.md), [Datenschutz](PRIVACY.md), [Sicherheit](SECURITY.md).
 
+## Lizenz
+
+Druckarchiv ist kostenlos für unveränderte, nichtkommerzielle Nutzung. Es ist bewusst **keine Open-Source-Software**. Änderungen, abgeleitete Werke, kommerzielle Nutzung sowie das Kopieren oder erneute Veröffentlichen auf anderen Plattformen sind ohne vorherige schriftliche Erlaubnis nicht gestattet. Ein Link auf das offizielle Repository oder den offiziellen Download darf geteilt werden.
+
+Die vollständigen Bedingungen stehen in der Datei [LICENSE](LICENSE). Eingebundene Bibliotheken wie Tauri und Three.js behalten ihre eigenen Lizenzen; die Einschränkungen der Druckarchiv-Lizenz ändern deren Rechte nicht.
