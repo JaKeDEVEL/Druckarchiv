@@ -30,6 +30,7 @@ import { applyTranslations, formatDateValue, formatNumber, getLocale, onLocaleCh
 import { isSlicerCompatible, normalizeSlicer, slicerErrorKey, slicerLabel } from "./slicer-preferences.js";
 import { normalizeViewMode, toggleViewMode } from "./view-preferences.js";
 import { normalizeThemePreference, resolveTheme, THEME_STORAGE_KEY } from "./theme-preferences.js";
+import { releaseViewerModel } from "./viewer-lifecycle.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -975,16 +976,15 @@ function startViewerLoop() {
 }
 
 async function loadModel(file) {
-  openViewer();
-  ensureViewer();
   const buffer = await file.arrayBuffer();
   const object = createModelObject(buffer, file.name);
-  if (model) { scene.remove(model); disposeModel(model); }
+  openViewer();
+  ensureViewer();
+  model = releaseViewerModel(scene, model, disposeModel);
   model = object; scene.add(model);
   const dimensions = frameModel(object, camera, controls, 1.3);
   viewerGrid.position.y = -dimensions.y / 2;
   viewerGrid.scale.setScalar(Math.max(dimensions.x, dimensions.y, dimensions.z) / 500 || 1);
-  byId("viewerDrop").style.display = "none";
   byId("viewerName").textContent = file.name;
   byId("viewerInfo").textContent = `${dimensions.x.toFixed(1)} × ${dimensions.y.toFixed(1)} × ${dimensions.z.toFixed(1)} mm`;
 }
@@ -996,14 +996,16 @@ async function openArchiveModel(rootIndex, relativePath) {
   } catch (error) { window.alert(t("viewer.loadError", { error })); }
 }
 function openViewer() { byId("viewer").classList.add("open"); byId("viewer").setAttribute("aria-hidden", "false"); requestAnimationFrame(() => { ensureViewer(); startViewerLoop(); }); }
-function closeViewer() { byId("viewer").classList.remove("open"); byId("viewer").setAttribute("aria-hidden", "true"); if (animation) cancelAnimationFrame(animation); animation = null; }
-byId("openViewer").addEventListener("click", openViewer);
+function closeViewer() {
+  byId("viewer").classList.remove("open");
+  byId("viewer").setAttribute("aria-hidden", "true");
+  if (animation) cancelAnimationFrame(animation);
+  animation = null;
+  model = releaseViewerModel(scene, model, disposeModel);
+  byId("viewerName").textContent = "STL / 3MF / OBJ";
+  byId("viewerInfo").textContent = t("viewer.controls");
+}
 byId("closeViewer").addEventListener("click", closeViewer);
-byId("pickModel").addEventListener("click", () => byId("modelInput").click());
-byId("modelInput").addEventListener("change", event => event.target.files[0] && loadModel(event.target.files[0]));
-for (const eventName of ["dragenter", "dragover"]) byId("viewerStage").addEventListener(eventName, event => { event.preventDefault(); byId("viewerDrop").classList.add("active"); });
-byId("viewerStage").addEventListener("dragleave", () => byId("viewerDrop").classList.remove("active"));
-byId("viewerStage").addEventListener("drop", event => { event.preventDefault(); byId("viewerDrop").classList.remove("active"); const file = [...event.dataTransfer.files].find(item => /\.(stl|3mf|obj)$/i.test(item.name)); if (file) loadModel(file); });
 addEventListener("keydown", event => { if (event.key === "Escape" && byId("viewer").classList.contains("open")) closeViewer(); });
 
 async function restoreConfiguration() {

@@ -21,7 +21,6 @@ export default {
     refresh: "Rescan",
     listView: "List view",
     gridView: "Grid view",
-    viewer: "3D viewer",
     language: "Language"
   },
   stats: {
@@ -168,9 +167,6 @@ export default {
   viewer: {
     eyebrow: "Interactive preview",
     close: "Close viewer",
-    dropTitle: "Drop a model here",
-    dropDetail: "or choose an STL, 3MF or OBJ file",
-    chooseFile: "Choose file",
     controls: "Drag: rotate · Wheel: zoom · Right-click: pan",
     blenderNotRequired: "Blender is not required",
     unsupported: "Unsupported model format",

@@ -42,7 +42,6 @@
         <option value="de">DE</option>
         <option value="en">EN</option>
       </select>
-      <button class="tool accent" id="openViewer" type="button" data-i18n="nav.viewer">3D-Viewer</button>
     </nav>
 
     <main>
@@ -150,7 +149,7 @@
 
     <div class="viewer" id="viewer" aria-hidden="true">
       <div class="viewer-top"><div><small data-i18n="viewer.eyebrow">Interaktive Vorschau</small><b id="viewerName">STL / 3MF / OBJ</b></div><button class="icon" id="closeViewer" type="button" aria-label="Viewer schließen" data-i18n-aria-label="viewer.close">×</button></div>
-      <div class="viewer-stage" id="viewerStage"><div class="viewer-drop" id="viewerDrop"><b data-i18n="viewer.dropTitle">Modell hier ablegen</b><span data-i18n="viewer.dropDetail">oder STL, 3MF beziehungsweise OBJ auswählen</span><button class="primary small" id="pickModel" type="button" data-i18n="viewer.chooseFile">Datei auswählen</button><input hidden id="modelInput" type="file" accept=".stl,.3mf,.obj"></div></div>
+      <div class="viewer-stage" id="viewerStage"></div>
       <div class="viewer-foot"><span id="viewerInfo" data-i18n="viewer.controls">Ziehen: drehen · Mausrad: zoomen · Rechtsklick: verschieben</span><span data-i18n="viewer.blenderNotRequired">Blender wird nicht benötigt</span></div>
     </div>
   </body>

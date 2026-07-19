@@ -21,7 +21,6 @@ export default {
     refresh: "Neu einlesen",
     listView: "Listenansicht",
     gridView: "Rasteransicht",
-    viewer: "3D-Viewer",
     language: "Sprache"
   },
   stats: {
@@ -168,9 +167,6 @@ export default {
   viewer: {
     eyebrow: "Interaktive Vorschau",
     close: "Viewer schließen",
-    dropTitle: "Modell hier ablegen",
-    dropDetail: "oder STL, 3MF beziehungsweise OBJ auswählen",
-    chooseFile: "Datei auswählen",
     controls: "Ziehen: drehen · Mausrad: zoomen · Rechtsklick: verschieben",
     blenderNotRequired: "Blender wird nicht benötigt",
     unsupported: "Nicht unterstütztes Modellformat",
