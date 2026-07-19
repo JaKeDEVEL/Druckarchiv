@@ -23,6 +23,7 @@ import {
 } from "./kpi-settings.js";
 import { libraryControlState } from "./library-controls.js";
 import { canOpenModelCard } from "./model-card.js";
+import { createDemoArchive } from "./demo-archive.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -83,8 +84,17 @@ function visibleFiles() {
 }
 
 function previewAttributes(file) {
-  if (!state.settings.showPreviews || !file || !isViewable(file)) return "";
+  if (!state.settings.showPreviews || !file || !isViewable(file) || file.demoPreview) return "";
   return `data-preview-root="${file.rootIndex}" data-preview-path="${escapeHtml(file.path)}"`;
+}
+
+function demoPreviewMarkup(file) {
+  if (!state.settings.showPreviews || !file?.demoPreview) return "";
+  return `<img class="model-thumbnail" src="${escapeHtml(file.demoPreview)}" alt="">`;
+}
+
+function previewCoverClass(file) {
+  return state.settings.showPreviews && file?.demoPreview ? "has-thumbnail" : "";
 }
 
 function kpiDescriptor(category, extensions) {
@@ -138,14 +148,14 @@ function projectCard(project) {
   const root = rootOf(project);
   const projectIndex = state.archive.projects.indexOf(project);
   const representative = shownFiles.find(isViewable);
-  return `<button class="card folder-card" type="button" data-project-index="${projectIndex}" aria-label="Projektordner ${escapeHtml(project.displayName)} öffnen" style="--tone:${CATEGORIES[dominant].color}"><div class="card-cover folder-cover" ${previewAttributes(representative)} aria-hidden="true"><span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> Ordner</span><span class="cover-label">${CATEGORIES[dominant].label}</span></div><div class="card-body"><div class="entry-kind">Projektordner</div><h3>${escapeHtml(project.displayName)}</h3><div class="meta"><span>${nf.format(shownFiles.length)} Dateien</span><span>${formatSize(size)}</span><span>${formatDate(project.modified)}</span></div><div class="badges">${badges}<span class="badge source-badge" title="${escapeHtml(root?.path || "")}">${escapeHtml(root?.name || "Bibliothek")}</span></div></div></button>`;
+  return `<button class="card folder-card" type="button" data-project-index="${projectIndex}" aria-label="Projektordner ${escapeHtml(project.displayName)} öffnen" style="--tone:${CATEGORIES[dominant].color}"><div class="card-cover folder-cover ${previewCoverClass(representative)}" ${previewAttributes(representative)} aria-hidden="true">${demoPreviewMarkup(representative)}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> Ordner</span><span class="cover-label">${CATEGORIES[dominant].label}</span></div><div class="card-body"><div class="entry-kind">Projektordner</div><h3>${escapeHtml(project.displayName)}</h3><div class="meta"><span>${nf.format(shownFiles.length)} Dateien</span><span>${formatSize(size)}</span><span>${formatDate(project.modified)}</span></div><div class="badges">${badges}<span class="badge source-badge" title="${escapeHtml(root?.path || "")}">${escapeHtml(root?.name || "Bibliothek")}</span></div></div></button>`;
 }
 
 function fileCard(file) {
   const category = categoryOf(file);
   const viewable = isViewable(file);
   const root = rootOf(file);
-  return `<button class="card file-card" type="button" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? 'data-viewable="true"' : ""} aria-label="Datei ${escapeHtml(file.name)}${viewable ? " im 3D-Viewer öffnen" : ""}" style="--tone:${CATEGORIES[category].color}"><div class="card-cover file-cover" ${previewAttributes(file)} aria-hidden="true"><span class="file-mark">${escapeHtml(file.extension.toUpperCase() || "DATEI")}</span><span class="kind-flag file-flag">Datei</span></div><div class="card-body"><div class="entry-kind">Datei · .${escapeHtml(file.extension || "–")}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : "Hauptordner")}</span></div><div class="badges"><span class="badge">${CATEGORIES[category].label}</span>${viewable ? '<span class="badge">3D-Vorschau</span>' : ""}<span class="badge source-badge">${escapeHtml(root?.name || "Bibliothek")}</span></div></div></button>`;
+  return `<button class="card file-card" type="button" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? 'data-viewable="true"' : ""} aria-label="Datei ${escapeHtml(file.name)}${viewable ? " im 3D-Viewer öffnen" : ""}" style="--tone:${CATEGORIES[category].color}"><div class="card-cover file-cover ${previewCoverClass(file)}" ${previewAttributes(file)} aria-hidden="true">${demoPreviewMarkup(file)}<span class="file-mark">${escapeHtml(file.extension.toUpperCase() || "DATEI")}</span><span class="kind-flag file-flag">Datei</span></div><div class="card-body"><div class="entry-kind">Datei · .${escapeHtml(file.extension || "–")}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : "Hauptordner")}</span></div><div class="badges"><span class="badge">${CATEGORIES[category].label}</span>${viewable ? '<span class="badge">3D-Vorschau</span>' : ""}<span class="badge source-badge">${escapeHtml(root?.name || "Bibliothek")}</span></div></div></button>`;
 }
 
 let libraryRenderSequence = 0;
@@ -744,4 +754,12 @@ async function restoreConfiguration() {
 
 render();
 byId("appVersion").textContent = APP_VERSION.includes("beta") ? `Beta ${APP_VERSION}` : `v${APP_VERSION}`;
-restoreConfiguration();
+const demoMode = import.meta.env.DEV && new URLSearchParams(location.search).get("demo") === "1";
+if (demoMode) {
+  state.archive = createDemoArchive();
+  state.roots = state.archive.roots.map(root => root.path);
+  state.fileIndex = new Map(allFiles().map(file => [`${file.rootIndex}\n${file.path}`, file]));
+  render();
+} else {
+  restoreConfiguration();
+}

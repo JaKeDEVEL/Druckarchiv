@@ -88,9 +88,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_NOTES: |
-            Druckarchiv 0.6 ist eine lokal arbeitende Desktop-App zur Organisation von 3D-Druck-Dateien.
+            Druckarchiv ist eine lokal arbeitende Desktop-App zur Organisation von 3D-Druck-Dateien.
 
             Enthalten sind mehrere Bibliotheksordner, frei wählbare Dateitypen, dynamische KPI-Filter, Ausschlussregeln, Raster- und Listenansicht sowie lokale Vorschaubilder. STL-, 3MF- und OBJ-Dateien lassen sich direkt im interaktiven 3D-Viewer drehen, zoomen und verschieben. Blender wird nicht benötigt.
+
+            Neu in dieser Version: ein eigenes DA-App-Icon für macOS und Windows sowie eine überarbeitete Repository-Präsentation mit datenschutzsicheren Demo-Screenshots.
 
             Hinweis: Die Installer sind noch nicht mit einem kostenpflichtigen Apple- beziehungsweise Windows-Entwicklerzertifikat signiert. Das Betriebssystem kann deshalb beim ersten Start eine Sicherheitswarnung anzeigen.
 

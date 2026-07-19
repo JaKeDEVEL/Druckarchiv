@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Druckarchiv DA-App-Icon</title>
+  <desc id="desc">Mintfarbenes D und orangefarbenes A auf einem dunklen technischen App-Icon.</desc>
+  <defs>
+    <linearGradient id="panel" x1="160" y1="100" x2="850" y2="930" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#17272c"/>
+      <stop offset="1" stop-color="#091114"/>
+    </linearGradient>
+    <linearGradient id="mint" x1="250" y1="235" x2="780" y2="810" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#79ead5"/>
+      <stop offset="1" stop-color="#38bca5"/>
+    </linearGradient>
+    <linearGradient id="orange" x1="480" y1="280" x2="680" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffb06f"/>
+      <stop offset="1" stop-color="#ff8440"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(585 440) rotate(122) scale(510)">
+      <stop stop-color="#52d7bd" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#52d7bd" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#020709" flood-opacity=".55"/>
+    </filter>
+  </defs>
+
+  <rect x="42" y="42" width="940" height="940" rx="218" fill="#071013"/>
+  <rect x="66" y="66" width="892" height="892" rx="196" fill="url(#panel)" stroke="#294047" stroke-width="6"/>
+  <rect x="68" y="68" width="888" height="888" rx="194" fill="url(#glow)"/>
+
+  <g opacity=".13" stroke="#68a7de" stroke-width="3">
+    <path d="M160 312H864M160 512H864M160 712H864"/>
+    <path d="M312 160V864M512 160V864M712 160V864"/>
+  </g>
+
+  <g filter="url(#soft-shadow)">
+    <path d="M282 247V777H492C674 777 777 677 777 512C777 347 674 247 492 247H282Z"
+      fill="none" stroke="url(#mint)" stroke-width="92" stroke-linejoin="round"/>
+    <path d="M435 730L567 309L699 730M484 584H650"
+      fill="none" stroke="url(#orange)" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <path d="M235 834H789" stroke="#edf6f3" stroke-opacity=".72" stroke-width="18" stroke-linecap="round"/>
+  <path d="M235 834H405" stroke="#ff9952" stroke-width="18" stroke-linecap="round"/>
+</svg>

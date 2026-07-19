@@ -2,6 +2,10 @@
 
 Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3D-Druck-Dateien. Man wählt einen oder mehrere Archivordner aus; die App liest deren Struktur lokal ein und zeigt Projekte, Einzeldateien und Dateitypen als direkt anklickbare Kennzahlen.
 
+<p align="center">
+  <img src="assets/brand/druckarchiv-promo-square.png" width="720" alt="Druckarchiv – lokale 3D-Druck-Bibliothek für macOS und Windows" />
+</p>
+
 ## Aktueller Stand
 
 - mehrere Bibliotheksordner über den nativen Ordnerdialog unter macOS und Windows
@@ -16,6 +20,22 @@ Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3
 - Blender ist **keine Voraussetzung**
 
 Die App-Basis ist bewusst von einem realen Archiv getrennt. Dieses Repository enthält keine Modelle, Dateinamen, absoluten Benutzerpfade, Vorschaubilder oder Inventardaten.
+
+## Einblick
+
+Alle Aufnahmen verwenden ausschließlich synthetische Demodaten und enthalten keine privaten Dateinamen oder Pfade.
+
+### Projektübersicht
+
+![Druckarchiv Projektübersicht](docs/screenshots/projektuebersicht.png)
+
+### Alle Dateien
+
+![Druckarchiv Dateiansicht](docs/screenshots/dateiansicht.png)
+
+### Bibliothek verwalten
+
+![Druckarchiv Bibliotheksverwaltung](docs/screenshots/bibliothek-verwalten.png)
 
 ## Lokale Entwicklung
 
@@ -46,7 +66,7 @@ Der drehbare Viewer und die Karten-Thumbnails rendern STL, 3MF und OBJ direkt mi
 
 ## Veröffentlichung
 
-Ein Versions-Tag wie `v0.6.0` startet den Workflow `installer-preview.yml`. Er baut ein universelles macOS-DMG für Apple Silicon und Intel sowie ein Windows-x64-Setup und hängt beide Installer an ein GitHub-Release. Stabile Tags werden als reguläres aktuelles Release veröffentlicht; Tags mit einem Vorab-Suffix wie `v0.7.0-beta.1` als Prerelease. Ein manueller Workflow-Lauf erzeugt nur 14 Tage verfügbare Actions-Artefakte und kein Release.
+Ein Versions-Tag wie `v0.6.1` startet den Workflow `installer-preview.yml`. Er baut ein universelles macOS-DMG für Apple Silicon und Intel sowie ein Windows-x64-Setup und hängt beide Installer an ein GitHub-Release. Stabile Tags werden als reguläres aktuelles Release veröffentlicht; Tags mit einem Vorab-Suffix wie `v0.7.0-beta.1` als Prerelease. Ein manueller Workflow-Lauf erzeugt nur 14 Tage verfügbare Actions-Artefakte und kein Release.
 
 Für eine öffentliche, warnungsfreie Verteilung werden anschließend Plattform-Zertifikate als verschlüsselte Repository-Secrets ergänzt:
 
