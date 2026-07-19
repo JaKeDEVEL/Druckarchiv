@@ -1,12 +1,80 @@
 # Druckarchiv
 
+**German translation below — [jump to German](#deutsch).**
+
+Druckarchiv is a local desktop app for organizing, filtering, and viewing 3D printing files. Select one or more library folders and the app will scan their structure locally, presenting projects, individual files, and file types through interactive statistics.
+
+<p align="center">
+  <img src="assets/brand/druckarchiv-promo-square.png" width="720" alt="Druckarchiv, a local 3D printing library for macOS and Windows" />
+</p>
+
+## Current features
+
+- multiple library folders through the native folder picker on macOS and Windows
+- recursive, read-only library scanning without following symbolic links
+- a simple default selection of STL, 3MF, OBJ, and G-code; additional mesh, CAD, and reference formats are opt-in
+- exclusions by extension, file name, or relative path, including wildcard support
+- dynamic KPI filters: only the format groups enabled in library settings appear alongside projects and files
+- grid and list views with navigable subfolders and all files contained within them
+- memory-efficient pagination with 25 or 50 entries per page, including inside open folders
+- locally generated, deferred model thumbnails with visible loading progress; previews can be disabled in library settings
+- an interactive STL, 3MF, and OBJ viewer with rotation, zoom, and pan, available directly inside project folders
+- open selected print files directly in OrcaSlicer, Bambu Studio, or PrusaSlicer; the most recently used slicer is stored locally
+- German and English interfaces based on the system language, with manual selection and a locally stored preference
+- no telemetry, no user account, and no uploads
+- Blender is **not required**
+
+The app is deliberately kept separate from any real-world 3D printing library. This repository contains no models, file names, absolute user paths, thumbnails, or inventory data.
+
+## Screenshots
+
+All screenshots use synthetic demo data only and contain no private file names or paths.
+
+### Project overview
+
+![Druckarchiv project overview](docs/screenshots/projektuebersicht.png)
+
+### All files
+
+![Druckarchiv file view](docs/screenshots/dateiansicht.png)
+
+### Manage library
+
+![Druckarchiv library settings](docs/screenshots/bibliothek-verwalten.png)
+
+## Preview strategy
+
+The interactive viewer and card thumbnails render STL, 3MF, and OBJ files directly with Three.js and WebGL. Everything works offline and does not require Blender. Entries appear progressively so that KPI filters and view changes respond immediately. Thumbnails are generated only when a card approaches the visible area; duplicate requests are combined, no more than two models are processed in parallel, and exceptionally large models are skipped. Automatic previews can be disabled entirely under “Manage library.” A local Blender installation may be supported later as an optional studio-render provider without affecting the standard viewer.
+
+Further information: [Privacy](PRIVACY.md), [Security](SECURITY.md).
+
+## Support the project
+
+Druckarchiv is free to use. If the app helps you and you would like to support its continued development, you can buy me a coffee through PayPal:
+
+[☕ Support Druckarchiv via PayPal](https://paypal.me/jkehl)
+
+Every contribution helps with the continued development of Druckarchiv and the distribution of installers for macOS and Windows.
+
+## License
+
+Druckarchiv may be used free of charge in its unmodified form for non-commercial purposes. It is deliberately **not open-source software**. Modifications, derivative works, commercial use, copying, or redistribution on other platforms are not permitted without prior written authorization. Links to the official repository or official downloads may be shared.
+
+The complete terms are available in [LICENSE](LICENSE). Bundled libraries such as Tauri and Three.js retain their respective licenses; the restrictions of the Druckarchiv license do not alter the rights granted by those licenses.
+
+---
+
+## Deutsch
+
+**Deutsche Übersetzung**
+
 Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3D-Druck-Dateien. Man wählt einen oder mehrere Archivordner aus; die App liest deren Struktur lokal ein und zeigt Projekte, Einzeldateien und Dateitypen als direkt anklickbare Kennzahlen.
 
 <p align="center">
   <img src="assets/brand/druckarchiv-promo-square.png" width="720" alt="Druckarchiv – lokale 3D-Druck-Bibliothek für macOS und Windows" />
 </p>
 
-## Aktueller Stand
+### Aktueller Stand
 
 - mehrere Bibliotheksordner über den nativen Ordnerdialog unter macOS und Windows
 - rekursiver, schreibgeschützter Archivscan ohne Verfolgung symbolischer Links
@@ -24,29 +92,29 @@ Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3
 
 Die App-Basis ist bewusst von einem realen Archiv getrennt. Dieses Repository enthält keine Modelle, Dateinamen, absoluten Benutzerpfade, Vorschaubilder oder Inventardaten.
 
-## Einblick
+### Einblick
 
 Alle Aufnahmen verwenden ausschließlich synthetische Demodaten und enthalten keine privaten Dateinamen oder Pfade.
 
-### Projektübersicht
+#### Projektübersicht
 
 ![Druckarchiv Projektübersicht](docs/screenshots/projektuebersicht.png)
 
-### Alle Dateien
+#### Alle Dateien
 
 ![Druckarchiv Dateiansicht](docs/screenshots/dateiansicht.png)
 
-### Bibliothek verwalten
+#### Bibliothek verwalten
 
 ![Druckarchiv Bibliotheksverwaltung](docs/screenshots/bibliothek-verwalten.png)
 
-## Vorschau-Strategie
+### Vorschau-Strategie
 
 Der drehbare Viewer und die Karten-Thumbnails rendern STL, 3MF und OBJ direkt mit Three.js/WebGL. Das ist offlinefähig und benötigt Blender nicht. Einträge erscheinen gestaffelt, damit KPI- und Ansichtswechsel sofort reagieren. Thumbnails werden erst erzeugt, wenn eine Karte in die Nähe des sichtbaren Bereichs kommt; identische Anfragen werden zusammengeführt, höchstens zwei Modelle parallel verarbeitet und sehr große Modelle übersprungen. In „Bibliothek verwalten“ können automatische Vorschaubilder vollständig abgeschaltet werden. Eine vorhandene Blender-Installation kann später optional als „Studio-Render“-Provider verwendet werden, ohne den Standardbetrieb zu beeinflussen.
 
 Weitere Informationen: [Datenschutz](PRIVACY.md), [Sicherheit](SECURITY.md).
 
-## Projekt unterstützen
+### Projekt unterstützen
 
 Druckarchiv ist kostenlos nutzbar. Wenn dir das Projekt hilft und du seine Weiterentwicklung unterstützen möchtest, kannst du mir über PayPal einen Kaffee spendieren:
 
@@ -54,7 +122,7 @@ Druckarchiv ist kostenlos nutzbar. Wenn dir das Projekt hilft und du seine Weite
 
 Vielen Dank – jede Unterstützung hilft dabei, Druckarchiv weiterzuentwickeln und die Installer für macOS und Windows bereitzustellen.
 
-## Lizenz
+### Lizenz
 
 Druckarchiv ist kostenlos für unveränderte, nichtkommerzielle Nutzung. Es ist bewusst **keine Open-Source-Software**. Änderungen, abgeleitete Werke, kommerzielle Nutzung sowie das Kopieren oder erneute Veröffentlichen auf anderen Plattformen sind ohne vorherige schriftliche Erlaubnis nicht gestattet. Ein Link auf das offizielle Repository oder den offiziellen Download darf geteilt werden.
 
