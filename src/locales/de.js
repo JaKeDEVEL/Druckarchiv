@@ -159,7 +159,7 @@ export default {
     subfolder: "Unterordner",
     openFolder: "Unterordner {name} öffnen",
     emptyFolder: "Dieser Ordner enthält keine passenden Dateien oder Unterordner.",
-    emptyFavorites: "Dieser Ordner enthält keine als Favorit markierten Dateien.",
+    emptyFavorites: "Dieser Ordner enthält keine als Favorit markierten Dateien oder Unterordner.",
     slicerLabel: "Slicer auswählen",
     openInSlicer: { one: "Datei in {slicer} öffnen", other: "{count} Dateien in {slicer} öffnen" },
     openingInSlicer: "Wird in {slicer} geöffnet …",
@@ -178,11 +178,13 @@ export default {
   favorites: {
     filter: "Favoriten · {count}",
     showOnly: "Nur Favoriten anzeigen",
-    showAll: "Alle Dateien anzeigen",
+    showAll: "Alle Einträge anzeigen",
     add: "{name} als Favorit markieren",
     remove: "{name} aus Favoriten entfernen",
+    addFolder: "Ordner {name} als Favorit markieren",
+    removeFolder: "Ordner {name} aus Favoriten entfernen",
     emptyTitle: "Noch keine Favoriten.",
-    emptyDetail: "Markiere Dateien mit dem Stern, damit du sie hier schnell wiederfindest."
+    emptyDetail: "Markiere Dateien oder Ordner mit dem Stern, damit du sie hier schnell wiederfindest."
   },
   viewer: {
     eyebrow: "Interaktive Vorschau",

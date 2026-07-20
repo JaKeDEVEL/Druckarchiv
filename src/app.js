@@ -35,7 +35,7 @@ import { compatibleSelection, fileSelectionKey, selectionPayload } from "./file-
 import { PREVIEW_MATERIAL_OPTIONS } from "./preview-style.js";
 import { DEFAULT_PROJECT_GRID_PAGE_SIZE, projectGridPageCapacity } from "./project-grid-pagination.js";
 import { mergeLibraryRoots, rootDisplayName } from "./library-roots.js";
-import { compareFavoriteState, favoriteFileKey, FAVORITES_STORAGE_KEY, normalizeFavoriteKeys } from "./favorites.js";
+import { compareFavoriteState, favoriteFileKey, favoriteFolderKey, FAVORITES_STORAGE_KEY, folderPathsForFiles, normalizeFavoriteKeys } from "./favorites.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -135,7 +135,23 @@ const visibleFile = file => isFileVisible(file, state.settings, rootOf(file)?.na
 const favoriteKeyOf = file => favoriteFileKey(file, rootOf(file)?.path || "");
 const isFavorite = file => state.favorites.has(favoriteKeyOf(file));
 const matchesFavoriteFilter = file => !state.favoriteOnly || isFavorite(file);
-const filteredProjectFiles = project => project.files.filter(file => visibleFile(file) && matchesCategory(file) && matchesFavoriteFilter(file));
+const filteredProjectFiles = project => project.files.filter(file => visibleFile(file) && matchesCategory(file));
+const projectFolderPath = (project, path = "") => path ? `${project?.name || ""}/${path}`.replace(/^\//, "") : (project?.name || "");
+const folderFavoriteKeyOf = (rootIndex, path) => favoriteFolderKey(state.archive?.roots[rootIndex]?.path || "", path);
+const isFolderFavorite = (rootIndex, path) => state.favorites.has(folderFavoriteKeyOf(rootIndex, path));
+
+function projectHasFavorite(project, files = filteredProjectFiles(project)) {
+  if (files.some(isFavorite)) return true;
+  return folderPathsForFiles(project.name, files).some(path => isFolderFavorite(project.rootIndex, path));
+}
+
+function folderHasFavorite(project, folderPath, files) {
+  const fullPath = projectFolderPath(project, folderPath);
+  if (isFolderFavorite(project.rootIndex, fullPath)) return true;
+  const prefix = `${fullPath}/`;
+  if (files.some(file => isFavorite(file) && file.path.replace(/\\/g, "/").startsWith(prefix))) return true;
+  return folderPathsForFiles(project.name, files).some(path => path.startsWith(prefix) && isFolderFavorite(project.rootIndex, path));
+}
 
 function allFiles() {
   if (!state.archive) return [];
@@ -151,7 +167,17 @@ function saveFavorites() {
 }
 
 function updateFavoriteControls() {
-  const count = visibleFiles().filter(isFavorite).length;
+  const files = state.tab === "files"
+    ? visibleFiles()
+    : (state.archive?.projects || []).flatMap(project => project.files.filter(visibleFile));
+  const favoriteKeys = new Set(files.map(favoriteKeyOf));
+  if (state.tab === "projects") {
+    for (const project of state.archive?.projects || []) {
+      const projectFiles = project.files.filter(visibleFile);
+      for (const path of folderPathsForFiles(project.name, projectFiles)) favoriteKeys.add(folderFavoriteKeyOf(project.rootIndex, path));
+    }
+  }
+  const count = [...favoriteKeys].filter(key => state.favorites.has(key)).length;
   const button = byId("favoriteFilter");
   button.classList.toggle("on", state.favoriteOnly);
   button.setAttribute("aria-pressed", String(state.favoriteOnly));
@@ -163,6 +189,12 @@ function favoriteButton(file, className = "") {
   const favorite = isFavorite(file);
   const label = t(favorite ? "favorites.remove" : "favorites.add", { name: file.name });
   return `<button class="favorite-button ${className} ${favorite ? "on" : ""}" type="button" data-favorite-root="${file.rootIndex}" data-favorite-path="${escapeHtml(file.path)}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" aria-pressed="${favorite}"><span aria-hidden="true">${favorite ? "★" : "☆"}</span></button>`;
+}
+
+function folderFavoriteButton(rootIndex, path, name, className = "") {
+  const favorite = isFolderFavorite(rootIndex, path);
+  const label = t(favorite ? "favorites.removeFolder" : "favorites.addFolder", { name });
+  return `<button class="favorite-button ${className} ${favorite ? "on" : ""}" type="button" data-favorite-folder-root="${rootIndex}" data-favorite-folder-path="${escapeHtml(path)}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" aria-pressed="${favorite}"><span aria-hidden="true">${favorite ? "★" : "☆"}</span></button>`;
 }
 
 function favoriteFileFromControl(control) {
@@ -178,6 +210,19 @@ function toggleFavorite(file) {
   saveFavorites();
   updateFavoriteControls();
   updateViewerFavoriteAction();
+  scheduleLibraryRender({ resetPage: state.favoriteOnly || state.sort === "favorite" });
+  if (projectDialog.open && projectDialog.dataset.projectIndex !== undefined) {
+    renderProjectContents(Number(projectDialog.dataset.projectIndex));
+  }
+}
+
+function toggleFolderFavorite(rootIndex, path) {
+  const key = folderFavoriteKeyOf(rootIndex, path);
+  if (!key) return;
+  if (state.favorites.has(key)) state.favorites.delete(key);
+  else state.favorites.add(key);
+  saveFavorites();
+  updateFavoriteControls();
   scheduleLibraryRender({ resetPage: state.favoriteOnly || state.sort === "favorite" });
   if (projectDialog.open && projectDialog.dataset.projectIndex !== undefined) {
     renderProjectContents(Number(projectDialog.dataset.projectIndex));
@@ -249,7 +294,7 @@ function projectCard(project) {
   const root = rootOf(project);
   const projectIndex = state.archive.projects.indexOf(project);
   const representative = shownFiles.find(isViewable);
-  return `<button class="card folder-card" type="button" data-project-index="${projectIndex}" aria-label="${escapeHtml(t("cards.openProject", { name: project.displayName }))}" style="--tone:${CATEGORIES[dominant].color}"><div class="card-cover folder-cover ${previewCoverClass(representative)}" ${previewAttributes(representative)} aria-hidden="true">${demoPreviewMarkup(representative)}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> ${t("common.folder")}</span><span class="cover-label">${categoryLabel(dominant)}</span></div><div class="card-body"><div class="entry-kind">${t("cards.projectFolder")}</div><h3>${escapeHtml(project.displayName)}</h3><div class="meta"><span>${t("common.filesCount", { count: shownFiles.length })}</span><span>${formatSize(size)}</span><span>${formatDate(project.modified)}</span></div><div class="badges">${badges}<span class="badge source-badge" title="${escapeHtml(root?.path || "")}">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>`;
+  return `<article class="card folder-card" data-project-index="${projectIndex}" style="--tone:${CATEGORIES[dominant].color}"><button class="folder-card-open" type="button" aria-label="${escapeHtml(t("cards.openProject", { name: project.displayName }))}"><div class="card-cover folder-cover ${previewCoverClass(representative)}" ${previewAttributes(representative)} aria-hidden="true">${demoPreviewMarkup(representative)}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> ${t("common.folder")}</span><span class="cover-label">${categoryLabel(dominant)}</span></div><div class="card-body"><div class="entry-kind">${t("cards.projectFolder")}</div><h3>${escapeHtml(project.displayName)}</h3><div class="meta"><span>${t("common.filesCount", { count: shownFiles.length })}</span><span>${formatSize(size)}</span><span>${formatDate(project.modified)}</span></div><div class="badges">${badges}<span class="badge source-badge" title="${escapeHtml(root?.path || "")}">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>${folderFavoriteButton(project.rootIndex, projectFolderPath(project), project.displayName, "library-folder-favorite")}</article>`;
 }
 
 function fileCard(file) {
@@ -389,6 +434,7 @@ function renderLibrary(sequence = ++libraryRenderSequence) {
     entries = state.archive.projects.filter(project => {
       const files = filteredProjectFiles(project);
       if (!files.length) return false;
+      if (state.favoriteOnly && !projectHasFavorite(project, files)) return false;
       if (!state.query || matchesQuery(`${project.displayName} ${project.name}`)) return true;
       return files.some(file => matchesQuery(file.path));
     });
@@ -397,8 +443,8 @@ function renderLibrary(sequence = ++libraryRenderSequence) {
   }
   entries.sort((a, b) => {
     if (state.sort === "favorite") {
-      const leftFavorite = state.tab === "projects" ? filteredProjectFiles(a).some(isFavorite) : isFavorite(a);
-      const rightFavorite = state.tab === "projects" ? filteredProjectFiles(b).some(isFavorite) : isFavorite(b);
+      const leftFavorite = state.tab === "projects" ? isFolderFavorite(a.rootIndex, projectFolderPath(a)) : isFavorite(a);
+      const rightFavorite = state.tab === "projects" ? isFolderFavorite(b.rootIndex, projectFolderPath(b)) : isFavorite(b);
       const favoriteOrder = compareFavoriteState(leftFavorite, rightFavorite);
       if (favoriteOrder) return favoriteOrder;
     }
@@ -683,8 +729,9 @@ function projectFolderCategory(folder) {
   return Object.entries(counts).sort((left, right) => right[1] - left[1])[0]?.[0] || "other";
 }
 
-function projectFolderListRow(folder) {
-  return `<button class="file-row project-folder-row" type="button" data-project-path="${escapeHtml(folder.path)}" aria-label="${escapeHtml(t("project.openFolder", { name: folder.name }))}"><span class="folder-row-icon" aria-hidden="true"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg></span><span class="folder-row-name"><b>${escapeHtml(folder.name)}</b><small>${t("common.filesCount", { count: folder.files.length })}</small></span><span>${formatSize(folder.size)}</span><span class="file-format">${t("common.folder")}</span><span class="folder-row-arrow" aria-hidden="true">→</span></button>`;
+function projectFolderListRow(project, folder) {
+  const path = projectFolderPath(project, folder.path);
+  return `<div class="project-folder-list-item"><button class="file-row project-folder-row" type="button" data-project-path="${escapeHtml(folder.path)}" aria-label="${escapeHtml(t("project.openFolder", { name: folder.name }))}"><span class="folder-row-icon" aria-hidden="true"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg></span><span class="folder-row-name"><b>${escapeHtml(folder.name)}</b><small>${t("common.filesCount", { count: folder.files.length })}</small></span><span>${formatSize(folder.size)}</span><span class="file-format">${t("common.folder")}</span><span class="folder-row-arrow" aria-hidden="true">→</span></button>${folderFavoriteButton(project.rootIndex, path, folder.name, "project-folder-list-favorite")}</div>`;
 }
 
 function projectGridCard(file, selectedKeys) {
@@ -698,17 +745,19 @@ function projectGridCard(file, selectedKeys) {
   return `<article class="project-file-card" style="--tone:${CATEGORIES[category].color}"><label class="project-file-select">${projectCheckbox(file, selectedKeys)}</label>${favoriteButton(file, "project-grid-favorite")}${cover}<div class="project-file-body"><div class="entry-kind">${t("cards.fileEntry", { extension: escapeHtml(file.extension || "–") })}</div><h4 title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</h4><p title="${escapeHtml(parentPath)}">${escapeHtml(parentPath)}</p><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span></div></div></article>`;
 }
 
-function projectGridFolder(folder) {
+function projectGridFolder(project, folder) {
   const category = projectFolderCategory(folder);
   const representative = folder.files.find(isViewable);
-  return `<button class="project-file-card project-folder-card" type="button" data-project-path="${escapeHtml(folder.path)}" aria-label="${escapeHtml(t("project.openFolder", { name: folder.name }))}" style="--tone:${CATEGORIES[category].color}"><div class="project-file-cover folder-cover ${previewCoverClass(representative)}" ${previewAttributes(representative)}>${demoPreviewMarkup(representative)}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> ${t("common.folder")}</span></div><div class="project-file-body"><div class="entry-kind">${t("project.subfolder")}</div><h4 title="${escapeHtml(folder.name)}">${escapeHtml(folder.name)}</h4><p>${t("common.filesCount", { count: folder.files.length })}</p><div class="meta"><span>${formatSize(folder.size)}</span><span>${formatDate(folder.modified)}</span></div></div></button>`;
+  const path = projectFolderPath(project, folder.path);
+  return `<article class="project-file-card project-folder-card" style="--tone:${CATEGORIES[category].color}"><button class="project-folder-card-open" type="button" data-project-path="${escapeHtml(folder.path)}" aria-label="${escapeHtml(t("project.openFolder", { name: folder.name }))}"><div class="project-file-cover folder-cover ${previewCoverClass(representative)}" ${previewAttributes(representative)}>${demoPreviewMarkup(representative)}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> ${t("common.folder")}</span></div><div class="project-file-body"><div class="entry-kind">${t("project.subfolder")}</div><h4 title="${escapeHtml(folder.name)}">${escapeHtml(folder.name)}</h4><p>${t("common.filesCount", { count: folder.files.length })}</p><div class="meta"><span>${formatSize(folder.size)}</span><span>${formatDate(folder.modified)}</span></div></div></button>${folderFavoriteButton(project.rootIndex, path, folder.name, "project-folder-grid-favorite")}</article>`;
 }
 
 function compareProjectEntries(left, right) {
   if (left.kind !== right.kind) return left.kind === "folder" ? -1 : 1;
   if (state.sort === "favorite") {
-    const leftFavorite = left.kind === "folder" ? left.files.some(isFavorite) : isFavorite(left.file);
-    const rightFavorite = right.kind === "folder" ? right.files.some(isFavorite) : isFavorite(right.file);
+    const project = state.archive?.projects[Number(projectDialog.dataset.projectIndex)];
+    const leftFavorite = left.kind === "folder" ? isFolderFavorite(project?.rootIndex, projectFolderPath(project, left.path)) : isFavorite(left.file);
+    const rightFavorite = right.kind === "folder" ? isFolderFavorite(project?.rootIndex, projectFolderPath(project, right.path)) : isFavorite(right.file);
     const favoriteOrder = compareFavoriteState(leftFavorite, rightFavorite);
     if (favoriteOrder) return favoriteOrder;
   }
@@ -840,7 +889,11 @@ function renderProjectContents(projectIndex) {
   projectDialog.dataset.projectIndex = String(projectIndex);
   byId("modalTitle").textContent = project.displayName;
   renderProjectBreadcrumbs(project);
-  const entries = projectBrowserEntries(project, files, state.projectPath).sort(compareProjectEntries);
+  const currentFolderPath = projectFolderPath(project, state.projectPath);
+  const showEntireFolder = state.favoriteOnly && isFolderFavorite(project.rootIndex, currentFolderPath);
+  const entries = projectBrowserEntries(project, files, state.projectPath)
+    .filter(entry => !state.favoriteOnly || showEntireFolder || (entry.kind === "file" ? isFavorite(entry.file) : folderHasFavorite(project, entry.path, files)))
+    .sort(compareProjectEntries);
   const gridMode = state.projectView === "grid";
   const projectPageSize = gridMode ? state.projectGridPageSize : state.pageSize;
   const pageResult = gridMode
@@ -853,7 +906,7 @@ function renderProjectContents(projectIndex) {
   modalList.classList.toggle("list", !gridMode);
   modalList.innerHTML = pageResult.items.length
     ? pageResult.items.map(entry => entry.kind === "folder"
-      ? (gridMode ? projectGridFolder(entry) : projectFolderListRow(entry))
+      ? (gridMode ? projectGridFolder(project, entry) : projectFolderListRow(project, entry))
       : (gridMode ? projectGridCard(entry.file, state.projectSelection) : projectListRow(entry.file, state.projectSelection))).join("")
     : `<div class="project-empty"><b>${t(state.favoriteOnly ? "project.emptyFavorites" : "project.emptyFolder")}</b></div>`;
   byId("projectViewToggle").textContent = t(state.projectView === "grid" ? "nav.listView" : "nav.gridView");
@@ -885,6 +938,11 @@ function scheduleProjectGridCapacitySync() {
 new ResizeObserver(scheduleProjectGridCapacitySync).observe(byId("modalList"));
 
 byId("library").addEventListener("click", async event => {
+  const folderFavoriteControl = event.target.closest("[data-favorite-folder-path]");
+  if (folderFavoriteControl) {
+    toggleFolderFavorite(Number(folderFavoriteControl.dataset.favoriteFolderRoot), folderFavoriteControl.dataset.favoriteFolderPath);
+    return;
+  }
   const favoriteControl = event.target.closest("[data-favorite-path]");
   if (favoriteControl) {
     toggleFavorite(favoriteFileFromControl(favoriteControl));
@@ -942,6 +1000,11 @@ byId("projectBreadcrumb").addEventListener("click", event => {
   renderProjectContents(Number(projectDialog.dataset.projectIndex));
 });
 byId("modalList").addEventListener("click", async event => {
+  const folderFavoriteControl = event.target.closest("[data-favorite-folder-path]");
+  if (folderFavoriteControl) {
+    toggleFolderFavorite(Number(folderFavoriteControl.dataset.favoriteFolderRoot), folderFavoriteControl.dataset.favoriteFolderPath);
+    return;
+  }
   const favoriteControl = event.target.closest("[data-favorite-path]");
   if (favoriteControl) {
     toggleFavorite(favoriteFileFromControl(favoriteControl));

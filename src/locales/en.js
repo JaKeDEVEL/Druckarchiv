@@ -159,7 +159,7 @@ export default {
     subfolder: "Subfolder",
     openFolder: "Open subfolder {name}",
     emptyFolder: "This folder contains no matching files or subfolders.",
-    emptyFavorites: "This folder contains no files marked as favorites.",
+    emptyFavorites: "This folder contains no files or subfolders marked as favorites.",
     slicerLabel: "Choose slicer",
     openInSlicer: { one: "Open file in {slicer}", other: "Open {count} files in {slicer}" },
     openingInSlicer: "Opening in {slicer} …",
@@ -178,11 +178,13 @@ export default {
   favorites: {
     filter: "Favorites · {count}",
     showOnly: "Show favorites only",
-    showAll: "Show all files",
+    showAll: "Show all items",
     add: "Add {name} to favorites",
     remove: "Remove {name} from favorites",
+    addFolder: "Add folder {name} to favorites",
+    removeFolder: "Remove folder {name} from favorites",
     emptyTitle: "No favorites yet.",
-    emptyDetail: "Mark files with the star to find them here quickly."
+    emptyDetail: "Mark files or folders with the star to find them here quickly."
   },
   viewer: {
     eyebrow: "Interactive preview",
