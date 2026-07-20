@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { compareFavoriteState, favoriteFileKey, favoriteFolderKey, folderPathsForFiles, normalizeFavoriteKeys } from "../src/favorites.js";
+import { compareFavoriteState, favoriteFileKey, favoriteFolderKey, favoriteToggleNeedsRender, folderPathsForFiles, normalizeFavoriteKeys } from "../src/favorites.js";
 
 test("Favoritenschlüssel unterscheiden gleiche Dateipfade aus mehreren Bibliotheken", () => {
   const file = { path: "Figuren/Drache.3mf" };
@@ -36,4 +36,11 @@ test("Favoriten werden vor normalen Dateien einsortiert", () => {
   assert.ok(compareFavoriteState(true, false) < 0);
   assert.ok(compareFavoriteState(false, true) > 0);
   assert.equal(compareFavoriteState(true, true), 0);
+});
+
+test("normales Favorisieren benötigt keinen vollständigen Bibliotheks-Render", () => {
+  assert.equal(favoriteToggleNeedsRender(false, "name"), false);
+  assert.equal(favoriteToggleNeedsRender(false, "date"), false);
+  assert.equal(favoriteToggleNeedsRender(true, "name"), true);
+  assert.equal(favoriteToggleNeedsRender(false, "favorite"), true);
 });

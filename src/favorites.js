@@ -38,3 +38,7 @@ export function normalizeFavoriteKeys(value) {
 export function compareFavoriteState(leftFavorite, rightFavorite) {
   return Number(Boolean(rightFavorite)) - Number(Boolean(leftFavorite));
 }
+
+export function favoriteToggleNeedsRender(favoriteOnly, sort) {
+  return Boolean(favoriteOnly) || sort === "favorite";
+}

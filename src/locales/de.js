@@ -20,6 +20,7 @@ export default {
     sortDate: "Zuletzt geändert",
     sortSize: "Größe",
     refresh: "Neu einlesen",
+    viewLabel: "Ansicht",
     listView: "Listenansicht",
     gridView: "Rasteransicht",
     language: "Sprache"

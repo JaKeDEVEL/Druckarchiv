@@ -28,14 +28,14 @@ import { PAGE_SIZES, normalizePageSize, paginateEntries, paginateEntriesAtSize, 
 import { projectBreadcrumbs, projectBrowserEntries } from "./project-browser.js";
 import { applyTranslations, formatDateValue, formatNumber, getLocale, onLocaleChange, setLocale, t } from "./i18n.js";
 import { isSlicerCompatible, normalizeSlicer, slicerErrorKey, slicerLabel } from "./slicer-preferences.js";
-import { normalizeViewMode, toggleViewMode } from "./view-preferences.js";
+import { normalizeViewMode } from "./view-preferences.js";
 import { normalizeThemePreference, resolveTheme, THEME_STORAGE_KEY } from "./theme-preferences.js";
 import { releaseViewerModel } from "./viewer-lifecycle.js";
 import { compatibleSelection, fileSelectionKey, selectionPayload } from "./file-selection.js";
 import { PREVIEW_MATERIAL_OPTIONS } from "./preview-style.js";
 import { DEFAULT_PROJECT_GRID_PAGE_SIZE, projectGridPageCapacity } from "./project-grid-pagination.js";
 import { mergeLibraryRoots, rootDisplayName } from "./library-roots.js";
-import { compareFavoriteState, favoriteFileKey, favoriteFolderKey, FAVORITES_STORAGE_KEY, folderPathsForFiles, normalizeFavoriteKeys } from "./favorites.js";
+import { compareFavoriteState, favoriteFileKey, favoriteFolderKey, favoriteToggleNeedsRender, FAVORITES_STORAGE_KEY, folderPathsForFiles, normalizeFavoriteKeys } from "./favorites.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -93,7 +93,8 @@ const state = {
   librarySelection: new Set(),
   viewerFileKey: null,
   scanning: false,
-  fileIndex: new Map()
+  fileIndex: new Map(),
+  favoriteInventory: { files: new Set(), projects: new Set() }
 };
 let slicerOpening = false;
 
@@ -162,21 +163,24 @@ function visibleFiles() {
   return allFiles().filter(visibleFile);
 }
 
+function rebuildFavoriteInventory() {
+  const fileKeys = new Set();
+  const projectKeys = new Set();
+  for (const file of visibleFiles()) fileKeys.add(favoriteKeyOf(file));
+  for (const project of state.archive?.projects || []) {
+    const files = project.files.filter(visibleFile);
+    for (const file of files) projectKeys.add(favoriteKeyOf(file));
+    for (const path of folderPathsForFiles(project.name, files)) projectKeys.add(folderFavoriteKeyOf(project.rootIndex, path));
+  }
+  state.favoriteInventory = { files: fileKeys, projects: projectKeys };
+}
+
 function saveFavorites() {
   localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify([...state.favorites]));
 }
 
 function updateFavoriteControls() {
-  const files = state.tab === "files"
-    ? visibleFiles()
-    : (state.archive?.projects || []).flatMap(project => project.files.filter(visibleFile));
-  const favoriteKeys = new Set(files.map(favoriteKeyOf));
-  if (state.tab === "projects") {
-    for (const project of state.archive?.projects || []) {
-      const projectFiles = project.files.filter(visibleFile);
-      for (const path of folderPathsForFiles(project.name, projectFiles)) favoriteKeys.add(folderFavoriteKeyOf(project.rootIndex, path));
-    }
-  }
+  const favoriteKeys = state.favoriteInventory[state.tab] || state.favoriteInventory.files;
   const count = [...favoriteKeys].filter(key => state.favorites.has(key)).length;
   const button = byId("favoriteFilter");
   button.classList.toggle("on", state.favoriteOnly);
@@ -194,11 +198,45 @@ function favoriteButton(file, className = "") {
 function folderFavoriteButton(rootIndex, path, name, className = "") {
   const favorite = isFolderFavorite(rootIndex, path);
   const label = t(favorite ? "favorites.removeFolder" : "favorites.addFolder", { name });
-  return `<button class="favorite-button ${className} ${favorite ? "on" : ""}" type="button" data-favorite-folder-root="${rootIndex}" data-favorite-folder-path="${escapeHtml(path)}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" aria-pressed="${favorite}"><span aria-hidden="true">${favorite ? "★" : "☆"}</span></button>`;
+  return `<button class="favorite-button ${className} ${favorite ? "on" : ""}" type="button" data-favorite-folder-root="${rootIndex}" data-favorite-folder-path="${escapeHtml(path)}" data-favorite-folder-name="${escapeHtml(name)}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" aria-pressed="${favorite}"><span aria-hidden="true">${favorite ? "★" : "☆"}</span></button>`;
 }
 
 function favoriteFileFromControl(control) {
   return state.fileIndex.get(`${control.dataset.favoriteRoot}\n${control.dataset.favoritePath}`);
+}
+
+function updateFavoriteButton(control, favorite, label) {
+  control.classList.toggle("on", favorite);
+  control.setAttribute("aria-pressed", String(favorite));
+  control.setAttribute("aria-label", label);
+  control.title = label;
+  control.querySelector("span").textContent = favorite ? "★" : "☆";
+}
+
+function refreshVisibleFavoriteButtons() {
+  document.querySelectorAll("[data-favorite-path]").forEach(control => {
+    const file = favoriteFileFromControl(control);
+    if (!file) return;
+    const favorite = isFavorite(file);
+    updateFavoriteButton(control, favorite, t(favorite ? "favorites.remove" : "favorites.add", { name: file.name }));
+  });
+  document.querySelectorAll("[data-favorite-folder-path]").forEach(control => {
+    const favorite = isFolderFavorite(Number(control.dataset.favoriteFolderRoot), control.dataset.favoriteFolderPath);
+    const name = control.dataset.favoriteFolderName || control.dataset.favoriteFolderPath.split("/").pop();
+    updateFavoriteButton(control, favorite, t(favorite ? "favorites.removeFolder" : "favorites.addFolder", { name }));
+  });
+}
+
+function finishFavoriteToggle() {
+  saveFavorites();
+  refreshVisibleFavoriteButtons();
+  updateFavoriteControls();
+  updateViewerFavoriteAction();
+  const needsRender = favoriteToggleNeedsRender(state.favoriteOnly, state.sort);
+  if (needsRender) scheduleLibraryRender({ resetPage: true, showLoading: false });
+  if (needsRender && projectDialog.open && projectDialog.dataset.projectIndex !== undefined) {
+    renderProjectContents(Number(projectDialog.dataset.projectIndex));
+  }
 }
 
 function toggleFavorite(file) {
@@ -207,13 +245,7 @@ function toggleFavorite(file) {
   if (!key) return;
   if (state.favorites.has(key)) state.favorites.delete(key);
   else state.favorites.add(key);
-  saveFavorites();
-  updateFavoriteControls();
-  updateViewerFavoriteAction();
-  scheduleLibraryRender({ resetPage: state.favoriteOnly || state.sort === "favorite" });
-  if (projectDialog.open && projectDialog.dataset.projectIndex !== undefined) {
-    renderProjectContents(Number(projectDialog.dataset.projectIndex));
-  }
+  finishFavoriteToggle();
 }
 
 function toggleFolderFavorite(rootIndex, path) {
@@ -221,12 +253,7 @@ function toggleFolderFavorite(rootIndex, path) {
   if (!key) return;
   if (state.favorites.has(key)) state.favorites.delete(key);
   else state.favorites.add(key);
-  saveFavorites();
-  updateFavoriteControls();
-  scheduleLibraryRender({ resetPage: state.favoriteOnly || state.sort === "favorite" });
-  if (projectDialog.open && projectDialog.dataset.projectIndex !== undefined) {
-    renderProjectContents(Number(projectDialog.dataset.projectIndex));
-  }
+  finishFavoriteToggle();
 }
 
 function previewAttributes(file) {
@@ -329,6 +356,28 @@ function resetPreviewProgress(sequence) {
   byId("previewProgressBar").style.width = "0%";
 }
 
+function updateViewModeSwitch(containerId, dataKey, activeMode) {
+  byId(containerId).querySelectorAll(`[data-${dataKey}]`).forEach(button => {
+    const mode = button.dataset[dataKey.replace(/-([a-z])/g, (_, char) => char.toUpperCase())];
+    const active = mode === activeMode;
+    const label = t(mode === "grid" ? "nav.gridView" : "nav.listView");
+    button.classList.toggle("on", active);
+    button.setAttribute("aria-pressed", String(active));
+    button.setAttribute("aria-label", label);
+    button.title = label;
+    button.dataset.tooltip = label;
+  });
+}
+
+function updateToolbarControls() {
+  updateViewModeSwitch("viewModeSwitch", "view-mode", state.view);
+  const refresh = byId("refreshLibrary");
+  const refreshLabel = t("nav.refresh");
+  refresh.setAttribute("aria-label", refreshLabel);
+  refresh.title = refreshLabel;
+  refresh.dataset.tooltip = refreshLabel;
+}
+
 function updateSectionLabels() {
   const selected = selectedKpiExtensions(state.settings);
   const categoryLabel = state.category === "all" ? "" : kpiDescriptor(state.category, selected[state.category] || []).label;
@@ -341,6 +390,7 @@ function updateSectionLabels() {
     button.classList.toggle("on", active);
     button.setAttribute("aria-pressed", String(active));
   });
+  updateToolbarControls();
   updateFavoriteControls();
   updateLibrarySelection();
 }
@@ -357,7 +407,7 @@ function updateLibrarySelection() {
   openButton.textContent = t(slicerOpening ? "project.openingInSlicer" : "project.openInSlicer", { count, slicer });
 }
 
-function scheduleLibraryRender({ resetPage = false, scrollToResults = false } = {}) {
+function scheduleLibraryRender({ resetPage = false, scrollToResults = false, showLoading = true } = {}) {
   if (resetPage) state.page = 1;
   const sequence = ++libraryRenderSequence;
   previewObserver?.disconnect();
@@ -365,12 +415,14 @@ function scheduleLibraryRender({ resetPage = false, scrollToResults = false } = 
   resetPreviewProgress(sequence);
   updateSectionLabels();
   byId("pagination").hidden = true;
-  setLibraryLoading(true, byId("sectionTitle").textContent, state.settings.showPreviews ? t("loading.preparingWithPreviews") : t("loading.preparingEntries"));
-  requestAnimationFrame(() => requestAnimationFrame(() => {
+  if (showLoading) setLibraryLoading(true, byId("sectionTitle").textContent, state.settings.showPreviews ? t("loading.preparingWithPreviews") : t("loading.preparingEntries"));
+  const renderNextFrame = () => requestAnimationFrame(() => {
     if (sequence !== libraryRenderSequence) return;
     renderLibrary(sequence);
     if (scrollToResults) byId("sectionTitle").scrollIntoView({ block: "start" });
-  }));
+  });
+  if (showLoading) requestAnimationFrame(renderNextFrame);
+  else renderNextFrame();
 }
 
 function renderEntryBatch(entries, sequence, offset = 0) {
@@ -480,7 +532,7 @@ function updateRootLabel() {
   updateLibraryControls();
 }
 
-function render() { updateRootLabel(); renderStats(); renderLibrary(); }
+function render() { rebuildFavoriteInventory(); updateRootLabel(); renderStats(); renderLibrary(); }
 
 function saveConfiguration() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ settingsVersion: SETTINGS_VERSION, roots: state.roots, settings: state.settings }));
@@ -688,7 +740,12 @@ byId("favoriteFilter").addEventListener("click", () => {
   state.favoriteOnly = !state.favoriteOnly;
   scheduleLibraryRender({ resetPage: true });
 });
-byId("viewToggle").addEventListener("click", event => { state.view = state.view === "grid" ? "list" : "grid"; event.currentTarget.textContent = t(state.view === "grid" ? "nav.listView" : "nav.gridView"); scheduleLibraryRender(); });
+byId("viewModeSwitch").addEventListener("click", event => {
+  const button = event.target.closest("[data-view-mode]");
+  if (!button || button.dataset.viewMode === state.view) return;
+  state.view = button.dataset.viewMode;
+  scheduleLibraryRender();
+});
 byId("pageSize").addEventListener("change", event => {
   state.pageSize = normalizePageSize(event.target.value);
   localStorage.setItem(PAGE_SIZE_KEY, String(state.pageSize));
@@ -717,7 +774,7 @@ function projectListRow(file, selectedKeys) {
   const name = isViewable(file)
     ? `<button class="file-preview-button" type="button" data-model-root="${file.rootIndex}" data-model-path="${escapeHtml(file.path)}" title="${escapeHtml(file.path)}"><span>${escapeHtml(file.name)}</span><small>${t("project.openViewer")}</small></button>`
     : `<span class="file-name" title="${escapeHtml(file.path)}">${escapeHtml(file.name)}</span>`;
-  return `<div class="file-row project-file-row" style="--tone:${CATEGORIES[category].color}"><span class="dot"></span>${name}<span>${formatSize(file.size)}</span><span class="file-format">${escapeHtml(file.extension.toUpperCase() || t("common.file"))}</span>${favoriteButton(file, "project-row-favorite")}${projectCheckbox(file, selectedKeys)}</div>`;
+  return `<div class="file-row project-file-row" style="--tone:${CATEGORIES[category].color}">${favoriteButton(file, "project-row-favorite")}${name}<span>${formatSize(file.size)}</span><span class="file-format">${escapeHtml(file.extension.toUpperCase() || t("common.file"))}</span>${projectCheckbox(file, selectedKeys)}</div>`;
 }
 
 function projectFolderCategory(folder) {
@@ -731,7 +788,7 @@ function projectFolderCategory(folder) {
 
 function projectFolderListRow(project, folder) {
   const path = projectFolderPath(project, folder.path);
-  return `<div class="project-folder-list-item"><button class="file-row project-folder-row" type="button" data-project-path="${escapeHtml(folder.path)}" aria-label="${escapeHtml(t("project.openFolder", { name: folder.name }))}"><span class="folder-row-icon" aria-hidden="true"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg></span><span class="folder-row-name"><b>${escapeHtml(folder.name)}</b><small>${t("common.filesCount", { count: folder.files.length })}</small></span><span>${formatSize(folder.size)}</span><span class="file-format">${t("common.folder")}</span><span class="folder-row-arrow" aria-hidden="true">→</span></button>${folderFavoriteButton(project.rootIndex, path, folder.name, "project-folder-list-favorite")}</div>`;
+  return `<div class="file-row project-folder-list-item">${folderFavoriteButton(project.rootIndex, path, folder.name, "project-folder-list-favorite")}<button class="project-folder-row" type="button" data-project-path="${escapeHtml(folder.path)}" aria-label="${escapeHtml(t("project.openFolder", { name: folder.name }))}"><span class="folder-row-icon" aria-hidden="true"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg></span><span class="folder-row-name"><b>${escapeHtml(folder.name)}</b><small>${t("common.filesCount", { count: folder.files.length })}</small></span><span>${formatSize(folder.size)}</span><span class="file-format">${t("common.folder")}</span><span class="folder-row-arrow" aria-hidden="true">→</span></button></div>`;
 }
 
 function projectGridCard(file, selectedKeys) {
@@ -909,7 +966,7 @@ function renderProjectContents(projectIndex) {
       ? (gridMode ? projectGridFolder(project, entry) : projectFolderListRow(project, entry))
       : (gridMode ? projectGridCard(entry.file, state.projectSelection) : projectListRow(entry.file, state.projectSelection))).join("")
     : `<div class="project-empty"><b>${t(state.favoriteOnly ? "project.emptyFavorites" : "project.emptyFolder")}</b></div>`;
-  byId("projectViewToggle").textContent = t(state.projectView === "grid" ? "nav.listView" : "nav.gridView");
+  updateViewModeSwitch("projectViewModeSwitch", "project-view-mode", state.projectView);
   byId("slicerSelect").value = state.slicer;
   updateProjectSelection();
   if (projectDialog.open && gridMode) hydrateProjectPreviews();
@@ -982,8 +1039,10 @@ projectDialog.addEventListener("close", () => {
   state.projectPage = 1;
   state.projectSelection.clear();
 });
-byId("projectViewToggle").addEventListener("click", () => {
-  state.projectView = toggleViewMode(state.projectView);
+byId("projectViewModeSwitch").addEventListener("click", event => {
+  const button = event.target.closest("[data-project-view-mode]");
+  if (!button || button.dataset.projectViewMode === state.projectView) return;
+  state.projectView = button.dataset.projectViewMode;
   localStorage.setItem(PROJECT_VIEW_KEY, state.projectView);
   state.projectPage = 1;
   renderProjectContents(Number(projectDialog.dataset.projectIndex));
@@ -1376,7 +1435,6 @@ async function restoreConfiguration() {
 function refreshLocalizedInterface() {
   applyTranslations();
   byId("localeSelect").value = getLocale();
-  byId("viewToggle").textContent = t(state.view === "grid" ? "nav.listView" : "nav.gridView");
   render();
   if (libraryDialog.open) renderSettingsDialog();
   if (projectDialog.open && projectDialog.dataset.projectIndex !== undefined) renderProjectContents(Number(projectDialog.dataset.projectIndex));
