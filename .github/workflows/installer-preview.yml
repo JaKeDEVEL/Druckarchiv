@@ -31,6 +31,15 @@ jobs:
             rust_targets: ""
             artifact: Druckarchiv-Windows
             path: src-tauri/target/release/bundle/nsis/*-setup.exe
+          - os: ubuntu-22.04
+            label: Linux x64
+            bundle: deb,appimage
+            target: ""
+            rust_targets: ""
+            artifact: Druckarchiv-Linux-x64
+            path: |
+              src-tauri/target/release/bundle/deb/*.deb
+              src-tauri/target/release/bundle/appimage/*.AppImage
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -43,6 +52,9 @@ jobs:
       - name: Install macOS Rust targets
         if: matrix.rust_targets != ''
         run: rustup target add ${{ matrix.rust_targets }}
+      - name: Install Linux prerequisites
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential curl wget file libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
       - run: npm ci
       - run: npm run check:privacy
       - name: Verify tagged version
@@ -92,7 +104,9 @@ jobs:
 
             Enthalten sind mehrere Bibliotheksordner, frei wählbare Dateitypen, dynamische KPI-Filter, Ausschlussregeln, Raster- und Listenansicht sowie lokale Vorschaubilder. STL-, 3MF- und OBJ-Dateien lassen sich direkt im interaktiven 3D-Viewer drehen, zoomen und verschieben. Blender wird nicht benötigt.
 
-            Neu in Version 0.8.5: Unterordner werden in Projektordnern sichtbar und lassen sich über eine übersichtliche Pfadnavigation öffnen. Die Pagination mit 25 oder 50 Einträgen funktioniert nun auch in der Ordneransicht und behält Auswahlen über mehrere Seiten hinweg bei. Neben OrcaSlicer und Bambu Studio wird jetzt auch PrusaSlicer unterstützt; der zuletzt verwendete Slicer bleibt lokal gespeichert.
+            Neu in Version 0.8.6: Druckdateien lassen sich jetzt auch in der normalen Raster- und Listenansicht auswählen und direkt an OrcaSlicer, Bambu Studio oder PrusaSlicer übergeben. Die interaktive Modellvorschau öffnet sich als kompaktes Fenster und bietet dieselbe Slicer-Aktion. Zusätzlich gibt es einen hellen Modus sowie die automatische Systemdarstellung.
+
+            Erstmals stehen Linux-Pakete für x64 bereit: ein installierbares Debian-Paket und ein portables AppImage. Unter Linux erkennt Druckarchiv native sowie über Flatpak installierte Versionen der unterstützten Slicer.
 
             Hinweis: Die Installer sind noch nicht mit einem kostenpflichtigen Apple- beziehungsweise Windows-Entwicklerzertifikat signiert. Das Betriebssystem kann deshalb beim ersten Start eine Sicherheitswarnung anzeigen.
 

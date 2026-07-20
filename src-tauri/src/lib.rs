@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 #[cfg(target_os = "windows")]
 use std::env;
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 use std::process::Command;
 use std::{
     fs,
@@ -455,7 +455,43 @@ fn launch_slicer(kind: SlicerKind, files: &[PathBuf]) -> Result<(), String> {
         .map_err(|_| "launch_failed".into())
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+#[cfg(any(target_os = "linux", test))]
+fn linux_slicer_targets(kind: SlicerKind) -> (&'static [&'static str], &'static str) {
+    match kind {
+        SlicerKind::OrcaSlicer => (&["orca-slicer", "OrcaSlicer"], "com.orcaslicer.OrcaSlicer"),
+        SlicerKind::BambuStudio => (&["bambu-studio", "BambuStudio"], "com.bambulab.BambuStudio"),
+        SlicerKind::PrusaSlicer => (&["prusa-slicer", "PrusaSlicer"], "com.prusa3d.PrusaSlicer"),
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn launch_slicer(kind: SlicerKind, files: &[PathBuf]) -> Result<(), String> {
+    let (executables, flatpak_id) = linux_slicer_targets(kind);
+    for executable in executables {
+        match Command::new(executable).args(files).spawn() {
+            Ok(_) => return Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(_) => return Err("launch_failed".into()),
+        }
+    }
+
+    let installed_as_flatpak = Command::new("flatpak")
+        .args(["info", flatpak_id])
+        .output()
+        .is_ok_and(|output| output.status.success());
+    if installed_as_flatpak {
+        return Command::new("flatpak")
+            .args(["run", flatpak_id])
+            .args(files)
+            .spawn()
+            .map(|_| ())
+            .map_err(|_| "launch_failed".into());
+    }
+
+    Err("slicer_not_found".into())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 fn launch_slicer(_kind: SlicerKind, _files: &[PathBuf]) -> Result<(), String> {
     Err("unsupported_platform".into())
 }
@@ -557,6 +593,25 @@ mod tests {
         assert_eq!(slicer_kind("bambuStudio"), Ok(SlicerKind::BambuStudio));
         assert_eq!(slicer_kind("prusaSlicer"), Ok(SlicerKind::PrusaSlicer));
         assert_eq!(slicer_kind("custom"), Err("unknown_slicer".into()));
+    }
+
+    #[test]
+    fn linux_slicer_targets_cover_native_and_flatpak_installations() {
+        assert_eq!(
+            linux_slicer_targets(SlicerKind::OrcaSlicer),
+            (
+                &["orca-slicer", "OrcaSlicer"][..],
+                "com.orcaslicer.OrcaSlicer"
+            )
+        );
+        assert_eq!(
+            linux_slicer_targets(SlicerKind::BambuStudio).1,
+            "com.bambulab.BambuStudio"
+        );
+        assert_eq!(
+            linux_slicer_targets(SlicerKind::PrusaSlicer).1,
+            "com.prusa3d.PrusaSlicer"
+        );
     }
 
     #[test]

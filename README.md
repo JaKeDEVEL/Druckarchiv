@@ -5,12 +5,13 @@
 Druckarchiv is a local desktop app for organizing, filtering, and viewing 3D printing files. Select one or more library folders and the app will scan their structure locally, presenting projects, individual files, and file types through interactive statistics.
 
 <p align="center">
-  <img src="assets/brand/druckarchiv-promo-square.png" width="720" alt="Druckarchiv, a local 3D printing library for macOS and Windows" />
+  <img src="assets/brand/druckarchiv-promo-square.png" width="720" alt="Druckarchiv, a local 3D printing library for macOS, Windows, and Linux" />
 </p>
 
 ## Current features
 
-- multiple library folders through the native folder picker on macOS and Windows
+- native desktop packages for macOS, Windows, and Linux; Linux downloads include `.deb` and portable `.AppImage` packages
+- multiple library folders through the native folder picker on macOS, Windows, and Linux
 - recursive, read-only library scanning without following symbolic links
 - a simple default selection of STL, 3MF, OBJ, and G-code; additional mesh, CAD, and reference formats are opt-in
 - exclusions by extension, file name, or relative path, including wildcard support
@@ -55,7 +56,7 @@ Druckarchiv is free to use. If the app helps you and you would like to support i
 
 [☕ Support Druckarchiv via PayPal](https://paypal.me/jkehl)
 
-Every contribution helps with the continued development of Druckarchiv and the distribution of installers for macOS and Windows.
+Every contribution helps with the continued development of Druckarchiv and the distribution of installers for macOS, Windows, and Linux.
 
 ## License
 
@@ -72,12 +73,13 @@ The complete terms are available in [LICENSE](LICENSE). Bundled libraries such a
 Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3D-Druck-Dateien. Man wählt einen oder mehrere Archivordner aus; die App liest deren Struktur lokal ein und zeigt Projekte, Einzeldateien und Dateitypen als direkt anklickbare Kennzahlen.
 
 <p align="center">
-  <img src="assets/brand/druckarchiv-promo-square.png" width="720" alt="Druckarchiv – lokale 3D-Druck-Bibliothek für macOS und Windows" />
+  <img src="assets/brand/druckarchiv-promo-square.png" width="720" alt="Druckarchiv – lokale 3D-Druck-Bibliothek für macOS, Windows und Linux" />
 </p>
 
 ### Aktueller Stand
 
-- mehrere Bibliotheksordner über den nativen Ordnerdialog unter macOS und Windows
+- native Desktop-Pakete für macOS, Windows und Linux; unter Linux stehen `.deb` und ein portables `.AppImage` bereit
+- mehrere Bibliotheksordner über den nativen Ordnerdialog unter macOS, Windows und Linux
 - rekursiver, schreibgeschützter Archivscan ohne Verfolgung symbolischer Links
 - einfache Standardauswahl für STL, 3MF, OBJ und G-Code; weitere Mesh-, CAD- und Referenzformate sind Opt-in
 - Ausschlüsse nach Endung, Dateiname oder relativem Pfad mit Platzhaltern
@@ -122,7 +124,7 @@ Druckarchiv ist kostenlos nutzbar. Wenn dir das Projekt hilft und du seine Weite
 
 [☕ Druckarchiv über PayPal unterstützen](https://paypal.me/jkehl)
 
-Vielen Dank – jede Unterstützung hilft dabei, Druckarchiv weiterzuentwickeln und die Installer für macOS und Windows bereitzustellen.
+Vielen Dank – jede Unterstützung hilft dabei, Druckarchiv weiterzuentwickeln und die Installer für macOS, Windows und Linux bereitzustellen.
 
 ### Lizenz
 
