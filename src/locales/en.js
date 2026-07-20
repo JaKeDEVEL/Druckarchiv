@@ -16,6 +16,7 @@ export default {
     searchPlaceholder: "Search projects and files …",
     sortLabel: "Sort order",
     sortName: "Name A–Z",
+    sortFavorite: "Favorites first",
     sortDate: "Recently modified",
     sortSize: "Size",
     refresh: "Rescan",
@@ -158,6 +159,7 @@ export default {
     subfolder: "Subfolder",
     openFolder: "Open subfolder {name}",
     emptyFolder: "This folder contains no matching files or subfolders.",
+    emptyFavorites: "This folder contains no files marked as favorites.",
     slicerLabel: "Choose slicer",
     openInSlicer: { one: "Open file in {slicer}", other: "Open {count} files in {slicer}" },
     openingInSlicer: "Opening in {slicer} …",
@@ -172,6 +174,15 @@ export default {
     progress: "Thumbnails {completed} of {total} · entries are already usable",
     unavailable: "Preview unavailable",
     tooLarge: "Model is too large for an automatic preview."
+  },
+  favorites: {
+    filter: "Favorites · {count}",
+    showOnly: "Show favorites only",
+    showAll: "Show all files",
+    add: "Add {name} to favorites",
+    remove: "Remove {name} from favorites",
+    emptyTitle: "No favorites yet.",
+    emptyDetail: "Mark files with the star to find them here quickly."
   },
   viewer: {
     eyebrow: "Interactive preview",

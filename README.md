@@ -17,6 +17,7 @@ Druckarchiv is a local desktop app for organizing, filtering, and viewing 3D pri
 - exclusions by extension, file name, or relative path, including wildcard support
 - dynamic KPI filters: only the format groups enabled in library settings appear alongside projects and files
 - grid and list views with navigable subfolders and all files contained within them
+- local file favorites with one-click stars, a dedicated filter, and a “favorites first” sort order
 - memory-efficient pagination with 25 or 50 entries per page, including inside open folders
 - locally generated, deferred model thumbnails with visible loading progress; previews can be disabled in library settings
 - an interactive STL, 3MF, and OBJ viewer in a focused preview window with rotation, zoom, pan, and a direct slicer action
@@ -85,6 +86,7 @@ Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3
 - Ausschlüsse nach Endung, Dateiname oder relativem Pfad mit Platzhaltern
 - dynamische KPI-Filter: Neben Projekten und Dateien erscheinen nur die in der Verwaltung aktivierten Formatgruppen
 - Raster- und Listenansicht mit navigierbaren Unterordnern und allen darin enthaltenen Dateien
+- lokale Datei-Favoriten mit direkt anklickbaren Sternen, eigenem Filter und der Sortierung „Favoriten zuerst“
 - speicherschonende Pagination mit wahlweise 25 oder 50 Einträgen pro Seite – auch innerhalb geöffneter Ordner
 - lokal und verzögert erzeugte Modell-Thumbnails mit sichtbarem Ladefortschritt; in der Verwaltung abschaltbar
 - interaktiver STL-/3MF-/OBJ-Viewer in einem fokussierten Vorschaufenster mit Drehen, Zoomen, Verschieben und direkter Slicer-Aktion

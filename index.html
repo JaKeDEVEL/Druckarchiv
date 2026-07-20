@@ -33,9 +33,11 @@
       <input id="search" type="search" placeholder="Projekte und Dateien durchsuchen …" data-i18n-placeholder="nav.searchPlaceholder" autocomplete="off">
       <select id="sort" aria-label="Sortierung" data-i18n-aria-label="nav.sortLabel">
         <option value="name" data-i18n="nav.sortName">Name A–Z</option>
+        <option value="favorite" data-i18n="nav.sortFavorite">Favoriten zuerst</option>
         <option value="date" data-i18n="nav.sortDate">Zuletzt geändert</option>
         <option value="size" data-i18n="nav.sortSize">Größe</option>
       </select>
+      <button class="tool favorite-filter" id="favoriteFilter" type="button" aria-pressed="false">☆ Favoriten</button>
       <button class="tool" id="refreshLibrary" type="button" data-i18n="nav.refresh" disabled>Neu einlesen</button>
       <button class="tool" id="viewToggle" type="button" data-i18n="nav.listView">Listenansicht</button>
       <select class="locale-select" id="localeSelect" aria-label="Sprache" data-i18n-aria-label="nav.language">
@@ -168,7 +170,7 @@
       <div class="viewer-window" role="dialog" aria-modal="true" aria-labelledby="viewerName">
         <div class="viewer-top">
           <div><small data-i18n="viewer.eyebrow">Interaktive Vorschau</small><b id="viewerName">STL / 3MF / OBJ</b></div>
-          <div class="viewer-actions"><select class="slicer-select" id="viewerSlicerSelect" aria-label="Slicer auswählen" data-i18n-aria-label="project.slicerLabel"><option value="orcaSlicer">OrcaSlicer</option><option value="bambuStudio">Bambu Studio</option><option value="prusaSlicer">PrusaSlicer</option></select><button class="tool accent" id="openViewerFileInSlicer" type="button" disabled>Datei im Slicer öffnen</button><button class="icon" id="closeViewer" type="button" aria-label="Viewer schließen" data-i18n-aria-label="viewer.close">×</button></div>
+          <div class="viewer-actions"><button class="favorite-button viewer-favorite" id="viewerFavorite" type="button" aria-pressed="false" disabled>☆</button><select class="slicer-select" id="viewerSlicerSelect" aria-label="Slicer auswählen" data-i18n-aria-label="project.slicerLabel"><option value="orcaSlicer">OrcaSlicer</option><option value="bambuStudio">Bambu Studio</option><option value="prusaSlicer">PrusaSlicer</option></select><button class="tool accent" id="openViewerFileInSlicer" type="button" disabled>Datei im Slicer öffnen</button><button class="icon" id="closeViewer" type="button" aria-label="Viewer schließen" data-i18n-aria-label="viewer.close">×</button></div>
         </div>
         <div class="viewer-stage" id="viewerStage"></div>
         <div class="viewer-foot"><span id="viewerInfo" data-i18n="viewer.controls">Ziehen: drehen · Mausrad: zoomen · Rechtsklick: verschieben</span><span data-i18n="viewer.blenderNotRequired">Blender wird nicht benötigt</span></div>

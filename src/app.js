@@ -35,6 +35,7 @@ import { compatibleSelection, fileSelectionKey, selectionPayload } from "./file-
 import { PREVIEW_MATERIAL_OPTIONS } from "./preview-style.js";
 import { DEFAULT_PROJECT_GRID_PAGE_SIZE, projectGridPageCapacity } from "./project-grid-pagination.js";
 import { mergeLibraryRoots, rootDisplayName } from "./library-roots.js";
+import { compareFavoriteState, favoriteFileKey, FAVORITES_STORAGE_KEY, normalizeFavoriteKeys } from "./favorites.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -59,6 +60,14 @@ const APP_VERSION = __APP_VERSION__;
 const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 let themePreference = normalizeThemePreference(localStorage.getItem(THEME_STORAGE_KEY));
 let currentTheme = resolveTheme(themePreference, systemThemeQuery.matches);
+function restoredFavoriteKeys() {
+  try {
+    return normalizeFavoriteKeys(JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY) || "[]"));
+  } catch (_) {
+    localStorage.removeItem(FAVORITES_STORAGE_KEY);
+    return [];
+  }
+}
 const state = {
   archive: null,
   roots: [],
@@ -70,6 +79,8 @@ const state = {
   category: "all",
   query: "",
   sort: "name",
+  favoriteOnly: false,
+  favorites: new Set(restoredFavoriteKeys()),
   view: "grid",
   projectView: normalizeViewMode(localStorage.getItem(PROJECT_VIEW_KEY)),
   slicer: normalizeSlicer(localStorage.getItem(SLICER_KEY)),
@@ -121,7 +132,10 @@ const matchesCategory = file => state.category === "all" || (state.category === 
 const matchesQuery = value => !state.query || value.toLocaleLowerCase("de").includes(state.query);
 const rootOf = item => state.archive?.roots[item.rootIndex];
 const visibleFile = file => isFileVisible(file, state.settings, rootOf(file)?.name || "");
-const filteredProjectFiles = project => project.files.filter(file => visibleFile(file) && matchesCategory(file));
+const favoriteKeyOf = file => favoriteFileKey(file, rootOf(file)?.path || "");
+const isFavorite = file => state.favorites.has(favoriteKeyOf(file));
+const matchesFavoriteFilter = file => !state.favoriteOnly || isFavorite(file);
+const filteredProjectFiles = project => project.files.filter(file => visibleFile(file) && matchesCategory(file) && matchesFavoriteFilter(file));
 
 function allFiles() {
   if (!state.archive) return [];
@@ -130,6 +144,44 @@ function allFiles() {
 
 function visibleFiles() {
   return allFiles().filter(visibleFile);
+}
+
+function saveFavorites() {
+  localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify([...state.favorites]));
+}
+
+function updateFavoriteControls() {
+  const count = visibleFiles().filter(isFavorite).length;
+  const button = byId("favoriteFilter");
+  button.classList.toggle("on", state.favoriteOnly);
+  button.setAttribute("aria-pressed", String(state.favoriteOnly));
+  button.setAttribute("aria-label", t(state.favoriteOnly ? "favorites.showAll" : "favorites.showOnly"));
+  button.textContent = `${state.favoriteOnly ? "★" : "☆"} ${t("favorites.filter", { count })}`;
+}
+
+function favoriteButton(file, className = "") {
+  const favorite = isFavorite(file);
+  const label = t(favorite ? "favorites.remove" : "favorites.add", { name: file.name });
+  return `<button class="favorite-button ${className} ${favorite ? "on" : ""}" type="button" data-favorite-root="${file.rootIndex}" data-favorite-path="${escapeHtml(file.path)}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}" aria-pressed="${favorite}"><span aria-hidden="true">${favorite ? "★" : "☆"}</span></button>`;
+}
+
+function favoriteFileFromControl(control) {
+  return state.fileIndex.get(`${control.dataset.favoriteRoot}\n${control.dataset.favoritePath}`);
+}
+
+function toggleFavorite(file) {
+  if (!file) return;
+  const key = favoriteKeyOf(file);
+  if (!key) return;
+  if (state.favorites.has(key)) state.favorites.delete(key);
+  else state.favorites.add(key);
+  saveFavorites();
+  updateFavoriteControls();
+  updateViewerFavoriteAction();
+  scheduleLibraryRender({ resetPage: state.favoriteOnly || state.sort === "favorite" });
+  if (projectDialog.open && projectDialog.dataset.projectIndex !== undefined) {
+    renderProjectContents(Number(projectDialog.dataset.projectIndex));
+  }
 }
 
 function previewAttributes(file) {
@@ -210,7 +262,7 @@ function fileCard(file) {
   const checked = state.librarySelection.has(key);
   const selectionTitle = compatible ? t("project.selectForSlicer", { name: file.name }) : t("project.slicerUnsupported");
   const selectionControl = `<label class="library-file-select" title="${escapeHtml(selectionTitle)}"><input type="checkbox" data-library-path="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" aria-label="${escapeHtml(selectionTitle)}" ${checked ? "checked" : ""} ${compatible ? "" : "disabled"}></label>`;
-  return `<article class="card file-card ${checked ? "is-selected" : ""}" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? 'data-viewable="true"' : ""} style="--tone:${CATEGORIES[category].color}"><button class="file-card-open" type="button" aria-label="${escapeHtml(ariaLabel)}"><div class="card-cover file-cover ${previewCoverClass(file)}" ${previewAttributes(file)} aria-hidden="true">${demoPreviewMarkup(file)}<span class="file-mark">${escapeHtml(file.extension.toUpperCase() || t("common.file").toUpperCase())}</span><span class="kind-flag file-flag">${t("common.file")}</span></div><div class="card-body"><div class="entry-kind">${t("cards.fileEntry", { extension: escapeHtml(file.extension || "–") })}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : t("common.mainFolder"))}</span></div><div class="badges"><span class="badge">${categoryLabel(category)}</span>${viewable ? `<span class="badge">${t("cards.preview")}</span>` : ""}<span class="badge source-badge">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>${selectionControl}</article>`;
+  return `<article class="card file-card ${checked ? "is-selected" : ""}" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? 'data-viewable="true"' : ""} style="--tone:${CATEGORIES[category].color}"><button class="file-card-open" type="button" aria-label="${escapeHtml(ariaLabel)}"><div class="card-cover file-cover ${previewCoverClass(file)}" ${previewAttributes(file)} aria-hidden="true">${demoPreviewMarkup(file)}<span class="file-mark">${escapeHtml(file.extension.toUpperCase() || t("common.file").toUpperCase())}</span><span class="kind-flag file-flag">${t("common.file")}</span></div><div class="card-body"><div class="entry-kind">${t("cards.fileEntry", { extension: escapeHtml(file.extension || "–") })}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : t("common.mainFolder"))}</span></div><div class="badges"><span class="badge">${categoryLabel(category)}</span>${viewable ? `<span class="badge">${t("cards.preview")}</span>` : ""}<span class="badge source-badge">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>${favoriteButton(file, "library-favorite")}${selectionControl}</article>`;
 }
 
 let libraryRenderSequence = 0;
@@ -244,6 +296,7 @@ function updateSectionLabels() {
     button.classList.toggle("on", active);
     button.setAttribute("aria-pressed", String(active));
   });
+  updateFavoriteControls();
   updateLibrarySelection();
 }
 
@@ -340,12 +393,22 @@ function renderLibrary(sequence = ++libraryRenderSequence) {
       return files.some(file => matchesQuery(file.path));
     });
   } else {
-    entries = allFiles().filter(file => visibleFile(file) && matchesCategory(file) && matchesQuery(`${file.name} ${file.path} ${rootOf(file)?.name || ""}`));
+    entries = allFiles().filter(file => visibleFile(file) && matchesCategory(file) && matchesFavoriteFilter(file) && matchesQuery(`${file.name} ${file.path} ${rootOf(file)?.name || ""}`));
   }
-  entries.sort((a, b) => state.sort === "date" ? b.modified - a.modified : state.sort === "size" ? b.size - a.size : (a.displayName || a.name).localeCompare(b.displayName || b.name, getLocale()));
+  entries.sort((a, b) => {
+    if (state.sort === "favorite") {
+      const leftFavorite = state.tab === "projects" ? filteredProjectFiles(a).some(isFavorite) : isFavorite(a);
+      const rightFavorite = state.tab === "projects" ? filteredProjectFiles(b).some(isFavorite) : isFavorite(b);
+      const favoriteOrder = compareFavoriteState(leftFavorite, rightFavorite);
+      if (favoriteOrder) return favoriteOrder;
+    }
+    if (state.sort === "date") return b.modified - a.modified;
+    if (state.sort === "size") return b.size - a.size;
+    return (a.displayName || a.name).localeCompare(b.displayName || b.name, getLocale());
+  });
   byId("empty").classList.toggle("show", !entries.length);
-  byId("empty").querySelector("b").textContent = entries.length ? "" : t("empty.noMatchesTitle");
-  byId("empty").querySelector("span").textContent = entries.length ? "" : t("empty.noMatchesDetail");
+  byId("empty").querySelector("b").textContent = entries.length ? "" : t(state.favoriteOnly ? "favorites.emptyTitle" : "empty.noMatchesTitle");
+  byId("empty").querySelector("span").textContent = entries.length ? "" : t(state.favoriteOnly ? "favorites.emptyDetail" : "empty.noMatchesDetail");
   const pageResult = paginateEntries(entries, state.page, state.pageSize);
   state.page = pageResult.page;
   renderPagination(pageResult);
@@ -575,6 +638,10 @@ byId("search").addEventListener("input", event => {
   searchTimer = setTimeout(() => scheduleLibraryRender({ resetPage: true }), 90);
 });
 byId("sort").addEventListener("change", event => { state.sort = event.target.value; scheduleLibraryRender({ resetPage: true }); });
+byId("favoriteFilter").addEventListener("click", () => {
+  state.favoriteOnly = !state.favoriteOnly;
+  scheduleLibraryRender({ resetPage: true });
+});
 byId("viewToggle").addEventListener("click", event => { state.view = state.view === "grid" ? "list" : "grid"; event.currentTarget.textContent = t(state.view === "grid" ? "nav.listView" : "nav.gridView"); scheduleLibraryRender(); });
 byId("pageSize").addEventListener("change", event => {
   state.pageSize = normalizePageSize(event.target.value);
@@ -604,7 +671,7 @@ function projectListRow(file, selectedKeys) {
   const name = isViewable(file)
     ? `<button class="file-preview-button" type="button" data-model-root="${file.rootIndex}" data-model-path="${escapeHtml(file.path)}" title="${escapeHtml(file.path)}"><span>${escapeHtml(file.name)}</span><small>${t("project.openViewer")}</small></button>`
     : `<span class="file-name" title="${escapeHtml(file.path)}">${escapeHtml(file.name)}</span>`;
-  return `<div class="file-row" style="--tone:${CATEGORIES[category].color}"><span class="dot"></span>${name}<span>${formatSize(file.size)}</span><span class="file-format">${escapeHtml(file.extension.toUpperCase() || t("common.file"))}</span>${projectCheckbox(file, selectedKeys)}</div>`;
+  return `<div class="file-row project-file-row" style="--tone:${CATEGORIES[category].color}"><span class="dot"></span>${name}<span>${formatSize(file.size)}</span><span class="file-format">${escapeHtml(file.extension.toUpperCase() || t("common.file"))}</span>${favoriteButton(file, "project-row-favorite")}${projectCheckbox(file, selectedKeys)}</div>`;
 }
 
 function projectFolderCategory(folder) {
@@ -628,7 +695,7 @@ function projectGridCard(file, selectedKeys) {
   const cover = viewable
     ? `<button class="project-file-cover ${previewCoverClass(file)}" type="button" data-model-root="${file.rootIndex}" data-model-path="${escapeHtml(file.path)}" ${previewAttributes(file)} aria-label="${escapeHtml(t("cards.openFile", { name: file.name }) + t("cards.openFileViewerSuffix"))}">${coverContents}</button>`
     : `<div class="project-file-cover" aria-hidden="true">${coverContents}</div>`;
-  return `<article class="project-file-card" style="--tone:${CATEGORIES[category].color}"><label class="project-file-select">${projectCheckbox(file, selectedKeys)}</label>${cover}<div class="project-file-body"><div class="entry-kind">${t("cards.fileEntry", { extension: escapeHtml(file.extension || "–") })}</div><h4 title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</h4><p title="${escapeHtml(parentPath)}">${escapeHtml(parentPath)}</p><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span></div></div></article>`;
+  return `<article class="project-file-card" style="--tone:${CATEGORIES[category].color}"><label class="project-file-select">${projectCheckbox(file, selectedKeys)}</label>${favoriteButton(file, "project-grid-favorite")}${cover}<div class="project-file-body"><div class="entry-kind">${t("cards.fileEntry", { extension: escapeHtml(file.extension || "–") })}</div><h4 title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</h4><p title="${escapeHtml(parentPath)}">${escapeHtml(parentPath)}</p><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span></div></div></article>`;
 }
 
 function projectGridFolder(folder) {
@@ -639,6 +706,12 @@ function projectGridFolder(folder) {
 
 function compareProjectEntries(left, right) {
   if (left.kind !== right.kind) return left.kind === "folder" ? -1 : 1;
+  if (state.sort === "favorite") {
+    const leftFavorite = left.kind === "folder" ? left.files.some(isFavorite) : isFavorite(left.file);
+    const rightFavorite = right.kind === "folder" ? right.files.some(isFavorite) : isFavorite(right.file);
+    const favoriteOrder = compareFavoriteState(leftFavorite, rightFavorite);
+    if (favoriteOrder) return favoriteOrder;
+  }
   if (state.sort === "date") return right.modified - left.modified;
   if (state.sort === "size") return right.size - left.size;
   return left.name.localeCompare(right.name, getLocale());
@@ -696,10 +769,24 @@ function updateViewerSlicerAction() {
   button.textContent = t(slicerOpening ? "project.openingInSlicer" : "project.openInSlicer", { count: file ? 1 : 0, slicer });
 }
 
+function updateViewerFavoriteAction() {
+  const file = state.fileIndex.get(state.viewerFileKey);
+  const button = byId("viewerFavorite");
+  const favorite = file ? isFavorite(file) : false;
+  const label = file ? t(favorite ? "favorites.remove" : "favorites.add", { name: file.name }) : t("favorites.showOnly");
+  button.disabled = !file;
+  button.classList.toggle("on", favorite);
+  button.setAttribute("aria-pressed", String(favorite));
+  button.setAttribute("aria-label", label);
+  button.title = label;
+  button.textContent = favorite ? "★" : "☆";
+}
+
 function updateSelectionControls() {
   updateLibrarySelection();
   updateProjectSelection();
   updateViewerSlicerAction();
+  updateViewerFavoriteAction();
 }
 
 function setActiveSlicer(value) {
@@ -768,7 +855,7 @@ function renderProjectContents(projectIndex) {
     ? pageResult.items.map(entry => entry.kind === "folder"
       ? (gridMode ? projectGridFolder(entry) : projectFolderListRow(entry))
       : (gridMode ? projectGridCard(entry.file, state.projectSelection) : projectListRow(entry.file, state.projectSelection))).join("")
-    : `<div class="project-empty"><b>${t("project.emptyFolder")}</b></div>`;
+    : `<div class="project-empty"><b>${t(state.favoriteOnly ? "project.emptyFavorites" : "project.emptyFolder")}</b></div>`;
   byId("projectViewToggle").textContent = t(state.projectView === "grid" ? "nav.listView" : "nav.gridView");
   byId("slicerSelect").value = state.slicer;
   updateProjectSelection();
@@ -798,6 +885,11 @@ function scheduleProjectGridCapacitySync() {
 new ResizeObserver(scheduleProjectGridCapacitySync).observe(byId("modalList"));
 
 byId("library").addEventListener("click", async event => {
+  const favoriteControl = event.target.closest("[data-favorite-path]");
+  if (favoriteControl) {
+    toggleFavorite(favoriteFileFromControl(favoriteControl));
+    return;
+  }
   if (event.target.closest(".library-file-select")) return;
   const card = event.target.closest(".card");
   if (!card) return;
@@ -850,6 +942,11 @@ byId("projectBreadcrumb").addEventListener("click", event => {
   renderProjectContents(Number(projectDialog.dataset.projectIndex));
 });
 byId("modalList").addEventListener("click", async event => {
+  const favoriteControl = event.target.closest("[data-favorite-path]");
+  if (favoriteControl) {
+    toggleFavorite(favoriteFileFromControl(favoriteControl));
+    return;
+  }
   const folder = event.target.closest("[data-project-path]");
   if (folder) {
     state.projectPath = folder.dataset.projectPath;
@@ -1174,6 +1271,7 @@ function openViewer() {
   byId("viewer").classList.add("open");
   byId("viewer").setAttribute("aria-hidden", "false");
   updateViewerSlicerAction();
+  updateViewerFavoriteAction();
   requestAnimationFrame(() => { ensureViewer(); resizeViewer(); startViewerLoop(); });
 }
 function closeViewer() {
@@ -1186,10 +1284,12 @@ function closeViewer() {
   byId("viewerName").textContent = "STL / 3MF / OBJ";
   byId("viewerInfo").textContent = t("viewer.controls");
   updateViewerSlicerAction();
+  updateViewerFavoriteAction();
 }
 byId("closeViewer").addEventListener("click", closeViewer);
 byId("viewer").addEventListener("click", event => { if (event.target === byId("viewer")) closeViewer(); });
 byId("viewerSlicerSelect").addEventListener("change", event => setActiveSlicer(event.target.value));
+byId("viewerFavorite").addEventListener("click", () => toggleFavorite(state.fileIndex.get(state.viewerFileKey)));
 byId("openViewerFileInSlicer").addEventListener("click", () => {
   if (state.viewerFileKey) openSelectionInSlicer(new Set([state.viewerFileKey]), "openViewerFileInSlicer");
 });

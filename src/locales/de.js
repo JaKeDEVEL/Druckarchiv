@@ -16,6 +16,7 @@ export default {
     searchPlaceholder: "Projekte und Dateien durchsuchen …",
     sortLabel: "Sortierung",
     sortName: "Name A–Z",
+    sortFavorite: "Favoriten zuerst",
     sortDate: "Zuletzt geändert",
     sortSize: "Größe",
     refresh: "Neu einlesen",
@@ -158,6 +159,7 @@ export default {
     subfolder: "Unterordner",
     openFolder: "Unterordner {name} öffnen",
     emptyFolder: "Dieser Ordner enthält keine passenden Dateien oder Unterordner.",
+    emptyFavorites: "Dieser Ordner enthält keine als Favorit markierten Dateien.",
     slicerLabel: "Slicer auswählen",
     openInSlicer: { one: "Datei in {slicer} öffnen", other: "{count} Dateien in {slicer} öffnen" },
     openingInSlicer: "Wird in {slicer} geöffnet …",
@@ -172,6 +174,15 @@ export default {
     progress: "Vorschaubilder {completed} von {total} · Einträge sind bereits nutzbar",
     unavailable: "Vorschau nicht verfügbar",
     tooLarge: "Modell ist für eine automatische Vorschau zu groß."
+  },
+  favorites: {
+    filter: "Favoriten · {count}",
+    showOnly: "Nur Favoriten anzeigen",
+    showAll: "Alle Dateien anzeigen",
+    add: "{name} als Favorit markieren",
+    remove: "{name} aus Favoriten entfernen",
+    emptyTitle: "Noch keine Favoriten.",
+    emptyDetail: "Markiere Dateien mit dem Stern, damit du sie hier schnell wiederfindest."
   },
   viewer: {
     eyebrow: "Interaktive Vorschau",
