@@ -104,7 +104,9 @@ jobs:
 
             Enthalten sind mehrere Bibliotheksordner, frei wählbare Dateitypen, dynamische KPI-Filter, Ausschlussregeln, Raster- und Listenansicht sowie lokale Vorschaubilder. STL-, 3MF- und OBJ-Dateien lassen sich direkt im interaktiven 3D-Viewer drehen, zoomen und verschieben. Blender wird nicht benötigt.
 
-            Neu in Version 0.8.7: Dateien, Projektordner und Unterordner lassen sich als lokale Favoriten markieren, filtern und bevorzugt sortieren. Verschachtelte Favoriten bleiben über ihre übergeordneten Ordner erreichbar. Die Ordner-Rasteransicht passt ihre Seitengröße automatisch an den verfügbaren Platz an; Dateilisten behalten die wählbare Pagination. Zusätzlich wurden die Unterscheidung zwischen Ordner- und Dateiansicht, der Modellkontrast sowie Auswahlzustände im hellen Modus verbessert. Beim Hinzufügen eines bereits erfassten Unterordners erklärt die Bibliotheksverwaltung jetzt direkt, weshalb er nicht doppelt aufgenommen wird.
+            Neu in Version 0.8.8: Favoriten für Dateien, Projektordner und Unterordner werden ohne sichtbares Neuladen direkt aktualisiert. Favoritensterne sitzen in Raster und Liste konsistent links und bleiben von der Dateiauswahl getrennt. Die Suchleiste verwendet nun durchgehend gleich hohe und gleich gestaltete Bedienelemente. Sprache sowie Hell-, Dunkel- und Systemdarstellung befinden sich in einem kompakten Menü neben der Bibliotheksverwaltung.
+
+            Weiterhin enthalten sind verschachtelte Favoriten, automatische Raster-Pagination, wählbare Dateilisten-Pagination, klar getrennte Ordner- und Dateiansichten sowie kontrastreiche Modellvorschauen.
 
             Erstmals stehen Linux-Pakete für x64 bereit: ein installierbares Debian-Paket und ein portables AppImage. Unter Linux erkennt Druckarchiv native sowie über Flatpak installierte Versionen der unterstützten Slicer.
 

@@ -11,6 +11,12 @@ export default {
     light: "Light",
     dark: "Dark"
   },
+  menu: {
+    title: "Interface",
+    detail: "Appearance and language",
+    open: "Open appearance and language",
+    close: "Close appearance and language"
+  },
   nav: {
     label: "Search and view",
     searchPlaceholder: "Search projects and files …",

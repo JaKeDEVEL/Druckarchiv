@@ -11,6 +11,12 @@ export default {
     light: "Hell",
     dark: "Dunkel"
   },
+  menu: {
+    title: "Oberfläche",
+    detail: "Darstellung und Sprache",
+    open: "Darstellung und Sprache öffnen",
+    close: "Darstellung und Sprache schließen"
+  },
   nav: {
     label: "Suche und Ansicht",
     searchPlaceholder: "Projekte und Dateien durchsuchen …",

@@ -108,6 +108,24 @@ function syncThemeSwitch() {
   });
 }
 
+function syncLocaleSwitch() {
+  byId("localeSwitch").querySelectorAll("[data-locale]").forEach(button => {
+    const selected = button.dataset.locale === getLocale();
+    button.classList.toggle("on", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+}
+
+function setAppMenuOpen(open) {
+  const trigger = byId("appMenuTrigger");
+  byId("appMenuPanel").hidden = !open;
+  trigger.classList.toggle("on", open);
+  trigger.setAttribute("aria-expanded", String(open));
+  const label = t(open ? "menu.close" : "menu.open");
+  trigger.setAttribute("aria-label", label);
+  trigger.title = label;
+}
+
 function applyTheme(preference, { persist = true } = {}) {
   themePreference = normalizeThemePreference(preference);
   currentTheme = resolveTheme(themePreference, systemThemeQuery.matches);
@@ -1434,7 +1452,8 @@ async function restoreConfiguration() {
 
 function refreshLocalizedInterface() {
   applyTranslations();
-  byId("localeSelect").value = getLocale();
+  syncLocaleSwitch();
+  setAppMenuOpen(!byId("appMenuPanel").hidden);
   render();
   if (libraryDialog.open) renderSettingsDialog();
   if (projectDialog.open && projectDialog.dataset.projectIndex !== undefined) renderProjectContents(Number(projectDialog.dataset.projectIndex));
@@ -1445,17 +1464,30 @@ byId("themeSwitch").addEventListener("click", event => {
   const button = event.target.closest("[data-theme-preference]");
   if (button) applyTheme(button.dataset.themePreference);
 });
+byId("localeSwitch").addEventListener("click", event => {
+  const button = event.target.closest("[data-locale]");
+  if (button) setLocale(button.dataset.locale);
+});
+byId("appMenuTrigger").addEventListener("click", () => setAppMenuOpen(byId("appMenuPanel").hidden));
+document.addEventListener("click", event => {
+  if (!byId("appMenuPanel").hidden && !byId("appMenu").contains(event.target)) setAppMenuOpen(false);
+});
+document.addEventListener("keydown", event => {
+  if (event.key !== "Escape" || byId("appMenuPanel").hidden) return;
+  setAppMenuOpen(false);
+  byId("appMenuTrigger").focus();
+});
 const handleSystemThemeChange = () => {
   if (themePreference === "system") applyTheme("system", { persist: false });
 };
 if (typeof systemThemeQuery.addEventListener === "function") systemThemeQuery.addEventListener("change", handleSystemThemeChange);
 else systemThemeQuery.addListener(handleSystemThemeChange);
 
-byId("localeSelect").addEventListener("change", event => setLocale(event.target.value));
 onLocaleChange(refreshLocalizedInterface);
 applyTheme(themePreference, { persist: false });
 applyTranslations();
-byId("localeSelect").value = getLocale();
+syncLocaleSwitch();
+setAppMenuOpen(false);
 render();
 byId("appVersion").textContent = APP_VERSION.includes("beta") ? `Beta ${APP_VERSION}` : `v${APP_VERSION}`;
 const demoMode = import.meta.env.DEV && new URLSearchParams(location.search).get("demo") === "1";

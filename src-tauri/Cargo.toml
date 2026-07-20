@@ -1,6 +1,6 @@
 [package]
 name = "druckarchiv"
-version = "0.8.7"
+version = "0.8.8"
 description = "Lokale, private Bibliothek für 3D-Druck-Dateien"
 authors = ["JaKeDEVEL"]
 edition = "2021"

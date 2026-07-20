@@ -18,10 +18,26 @@
           <p id="rootLabel" data-i18n="app.noFolder">Noch kein Archivordner ausgewählt</p>
         </div>
         <div class="head-actions">
-          <div class="theme-switch" id="themeSwitch" role="group" aria-label="Darstellung" data-i18n-aria-label="theme.label">
-            <button class="theme-option" type="button" data-theme-preference="system" aria-pressed="false"><i class="theme-swatch system" aria-hidden="true"></i><span data-i18n="theme.system">System</span></button>
-            <button class="theme-option" type="button" data-theme-preference="light" aria-pressed="false"><i class="theme-swatch light" aria-hidden="true"></i><span data-i18n="theme.light">Hell</span></button>
-            <button class="theme-option" type="button" data-theme-preference="dark" aria-pressed="false"><i class="theme-swatch dark" aria-hidden="true"></i><span data-i18n="theme.dark">Dunkel</span></button>
+          <div class="app-menu" id="appMenu">
+            <button class="app-menu-trigger" id="appMenuTrigger" type="button" aria-expanded="false" aria-controls="appMenuPanel" aria-label="Darstellung und Sprache öffnen" data-i18n-aria-label="menu.open" title="Darstellung und Sprache"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h14M3 15h14"/></svg></button>
+            <div class="app-menu-panel" id="appMenuPanel" hidden>
+              <div class="app-menu-heading"><span data-i18n="menu.title">Oberfläche</span><small data-i18n="menu.detail">Darstellung und Sprache</small></div>
+              <div class="app-menu-section">
+                <span class="app-menu-label" data-i18n="theme.label">Darstellung</span>
+                <div class="theme-switch" id="themeSwitch" role="group" aria-label="Darstellung" data-i18n-aria-label="theme.label">
+                  <button class="theme-option" type="button" data-theme-preference="system" aria-pressed="false"><i class="theme-swatch system" aria-hidden="true"></i><span data-i18n="theme.system">System</span></button>
+                  <button class="theme-option" type="button" data-theme-preference="light" aria-pressed="false"><i class="theme-swatch light" aria-hidden="true"></i><span data-i18n="theme.light">Hell</span></button>
+                  <button class="theme-option" type="button" data-theme-preference="dark" aria-pressed="false"><i class="theme-swatch dark" aria-hidden="true"></i><span data-i18n="theme.dark">Dunkel</span></button>
+                </div>
+              </div>
+              <div class="app-menu-section">
+                <span class="app-menu-label" data-i18n="nav.language">Sprache</span>
+                <div class="locale-switch" id="localeSwitch" role="group" aria-label="Sprache" data-i18n-aria-label="nav.language">
+                  <button class="locale-option" type="button" data-locale="de" aria-pressed="false"><span>DE</span><small>Deutsch</small></button>
+                  <button class="locale-option" type="button" data-locale="en" aria-pressed="false"><span>EN</span><small>English</small></button>
+                </div>
+              </div>
+            </div>
           </div>
           <button class="primary" id="chooseFolder" type="button" data-i18n="app.manageLibrary">Bibliothek verwalten</button>
         </div>
@@ -47,10 +63,6 @@
         <button class="view-mode-option" type="button" data-view-mode="list" aria-pressed="false" aria-label="Listenansicht" title="Listenansicht" data-tooltip="Listenansicht"><svg viewBox="0 0 18 18" aria-hidden="true"><path d="M6 4h10M6 9h10M6 14h10"/><circle cx="2.5" cy="4" r=".8"/><circle cx="2.5" cy="9" r=".8"/><circle cx="2.5" cy="14" r=".8"/></svg></button>
       </div>
       <button class="icon-tool" id="refreshLibrary" type="button" aria-label="Neu einlesen" title="Neu einlesen" data-tooltip="Neu einlesen" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.2 6.2A7 7 0 1 0 17 12"/><path d="M16.2 2.8v3.7h-3.7"/></svg></button>
-      <select class="locale-select" id="localeSelect" aria-label="Sprache" data-i18n-aria-label="nav.language">
-        <option value="de">DE</option>
-        <option value="en">EN</option>
-      </select>
     </nav>
 
     <main>
