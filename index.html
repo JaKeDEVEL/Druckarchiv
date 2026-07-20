@@ -50,15 +50,24 @@
           <div class="section-kicker" id="sectionKicker">Projektordner</div>
           <h2 id="sectionTitle">Ordnerübersicht</h2>
         </div>
-        <div class="section-results">
-          <span id="resultCount">0 Treffer</span>
-          <label class="page-size-control" id="pageSizeControl" hidden>
-            <span data-i18n="pagination.perPage">Pro Seite</span>
-            <select id="pageSize" aria-label="Treffer pro Seite" data-i18n-aria-label="pagination.perPageLabel">
-              <option value="25">25</option>
-              <option value="50">50</option>
-            </select>
-          </label>
+        <div class="section-head-actions">
+          <div class="entry-mode-control">
+            <span class="entry-mode-label" data-i18n="sections.viewModeLabel">Ergebnisse anzeigen als</span>
+            <div class="entry-mode-switch" id="libraryModeSwitch" role="group" aria-label="Ergebnisse anzeigen als" data-i18n-aria-label="sections.viewModeLabel">
+              <button class="entry-mode-option" type="button" data-library-tab="projects" aria-pressed="true" aria-label="Passende Projektordner anzeigen" data-i18n-aria-label="sections.folderModeLabel"><svg viewBox="0 0 18 14" aria-hidden="true"><path d="M1.5 3.5h6l2-2h7v11h-15z"/></svg><span data-i18n="sections.folderMode">Ordner</span></button>
+              <button class="entry-mode-option" type="button" data-library-tab="files" aria-pressed="false" aria-label="Einzelne Dateien anzeigen" data-i18n-aria-label="sections.fileModeLabel"><svg viewBox="0 0 15 17" aria-hidden="true"><path d="M2 1.5h7l4 4v10H2z"/><path d="M9 1.5v4h4"/></svg><span data-i18n="sections.fileMode">Dateien</span></button>
+            </div>
+          </div>
+          <div class="section-results">
+            <span id="resultCount">0 Treffer</span>
+            <label class="page-size-control" id="pageSizeControl" hidden>
+              <span data-i18n="pagination.perPage">Pro Seite</span>
+              <select id="pageSize" aria-label="Treffer pro Seite" data-i18n-aria-label="pagination.perPageLabel">
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+            </label>
+          </div>
         </div>
       </div>
       <div class="selection library-selection" id="librarySelection" hidden>

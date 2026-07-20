@@ -51,7 +51,12 @@ export default {
     folderOverview: "Folder overview",
     allFiles: "All files",
     categoryFolders: "{category} folders",
-    categoryFiles: "{category} files"
+    categoryFiles: "{category} files",
+    viewModeLabel: "Show results as",
+    folderMode: "Folders",
+    fileMode: "Files",
+    folderModeLabel: "Show matching project folders",
+    fileModeLabel: "Show individual files"
   },
   pagination: {
     perPage: "Per page",

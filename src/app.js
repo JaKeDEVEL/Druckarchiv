@@ -234,6 +234,11 @@ function updateSectionLabels() {
   byId("sectionTitle").textContent = state.category === "all"
     ? (state.tab === "projects" ? t("sections.folderOverview") : t("sections.allFiles"))
     : t(state.tab === "projects" ? "sections.categoryFolders" : "sections.categoryFiles", { category: categoryLabel });
+  byId("libraryModeSwitch").querySelectorAll("[data-library-tab]").forEach(button => {
+    const active = button.dataset.libraryTab === state.tab;
+    button.classList.toggle("on", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
   updateLibrarySelection();
 }
 
@@ -519,6 +524,13 @@ byId("stats").addEventListener("click", event => {
   if (!tile) return;
   if (tile.dataset.category) state.category = state.category === tile.dataset.category ? "all" : tile.dataset.category;
   if (tile.dataset.tab) { state.tab = tile.dataset.tab; state.category = "all"; }
+  renderStats();
+  scheduleLibraryRender({ resetPage: true });
+});
+byId("libraryModeSwitch").addEventListener("click", event => {
+  const button = event.target.closest("[data-library-tab]");
+  if (!button || button.dataset.libraryTab === state.tab) return;
+  state.tab = button.dataset.libraryTab;
   renderStats();
   scheduleLibraryRender({ resetPage: true });
 });
