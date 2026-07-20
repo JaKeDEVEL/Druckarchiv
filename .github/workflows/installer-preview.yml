@@ -118,7 +118,12 @@ jobs:
             title="$title (Preview)"
             release_flags=(--prerelease)
           fi
-          gh release create "$GITHUB_REF_NAME" release-assets/* \
+          mapfile -d '' release_assets < <(find release-assets -type f -print0)
+          if (( ${#release_assets[@]} == 0 )); then
+            echo "Keine Installer zum Veröffentlichen gefunden."
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" "${release_assets[@]}" \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
             "${release_flags[@]}" \
