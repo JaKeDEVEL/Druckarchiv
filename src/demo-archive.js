@@ -1,3 +1,5 @@
+import { PREVIEW_MODEL_COLOR_CSS } from "./preview-style.js";
+
 const previewSvg = (kind, accent = "#52d7bd") => {
   const shapes = {
     organizer: '<path d="M82 64 210 31l128 34-128 34zM82 64v91l128 39 128-39V65M210 99v95M130 81v88M290 82v87"/><path d="m105 119 105 31 105-31"/>',
@@ -7,7 +9,7 @@ const previewSvg = (kind, accent = "#52d7bd") => {
     clamp: '<path d="M110 68h200v47H170v44h115v97H110z"/><path d="M145 103v118h105v-27h-70v-91z"/><circle cx="276" cy="91" r="12"/><circle cx="145" cy="230" r="12"/>'
   };
   const shape = shapes[kind] || shapes.organizer;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 240"><defs><linearGradient id="b" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#17272c"/><stop offset="1" stop-color="#091114"/></linearGradient><filter id="g"><feGaussianBlur stdDeviation="10"/></filter></defs><rect width="420" height="240" fill="url(#b)"/><path d="M0 40h420M0 100h420M0 160h420M0 220h420M60 0v240M140 0v240M220 0v240M300 0v240M380 0v240" stroke="#294047" stroke-width="1" opacity=".42"/><ellipse cx="210" cy="202" rx="125" ry="17" fill="${accent}" opacity=".16" filter="url(#g)"/><g transform="translate(0 -5)" fill="${accent}" fill-opacity=".13" stroke="${accent}" stroke-width="5" stroke-linejoin="round">${shape}</g><path d="M28 213h84" stroke="#ff9952" stroke-width="3"/><circle cx="28" cy="213" r="4" fill="#ff9952"/></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 240"><defs><linearGradient id="b" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#17272c"/><stop offset="1" stop-color="#091114"/></linearGradient><filter id="g"><feGaussianBlur stdDeviation="10"/></filter></defs><rect width="420" height="240" fill="url(#b)"/><path d="M0 40h420M0 100h420M0 160h420M0 220h420M60 0v240M140 0v240M220 0v240M300 0v240M380 0v240" stroke="#294047" stroke-width="1" opacity=".42"/><ellipse cx="210" cy="202" rx="125" ry="17" fill="${accent}" opacity=".14" filter="url(#g)"/><g transform="translate(0 -5)" fill="${PREVIEW_MODEL_COLOR_CSS}" fill-opacity=".16" stroke="${PREVIEW_MODEL_COLOR_CSS}" stroke-width="5" stroke-linejoin="round">${shape}</g><path d="M28 213h84" stroke="#ff9952" stroke-width="3"/><circle cx="28" cy="213" r="4" fill="#ff9952"/></svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 

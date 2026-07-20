@@ -32,6 +32,7 @@ import { normalizeViewMode, toggleViewMode } from "./view-preferences.js";
 import { normalizeThemePreference, resolveTheme, THEME_STORAGE_KEY } from "./theme-preferences.js";
 import { releaseViewerModel } from "./viewer-lifecycle.js";
 import { compatibleSelection, fileSelectionKey, selectionPayload } from "./file-selection.js";
+import { PREVIEW_MATERIAL_OPTIONS } from "./preview-style.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -820,13 +821,29 @@ byId("openSelectedInSlicer").addEventListener("click", () => openSelectionInSlic
 byId("librarySlicerSelect").addEventListener("change", event => setActiveSlicer(event.target.value));
 byId("openLibrarySelectionInSlicer").addEventListener("click", () => openSelectionInSlicer(state.librarySelection, "openLibrarySelectionInSlicer"));
 
-function createModelObject(buffer, name, neutralMaterial = false) {
+function createPreviewMaterial() {
+  const material = new THREE.MeshStandardMaterial({
+    ...PREVIEW_MATERIAL_OPTIONS,
+    side: THREE.DoubleSide
+  });
+  material.userData.druckarchivPreview = true;
+  return material;
+}
+
+function replaceWithPreviewMaterial(mesh) {
+  if (mesh.material?.userData?.druckarchivPreview) return;
+  const sourceMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  sourceMaterials.filter(Boolean).forEach(material => material.dispose());
+  mesh.material = createPreviewMaterial();
+}
+
+function createModelObject(buffer, name) {
   const extension = name.split(".").pop().toLowerCase();
   let object;
   if (extension === "stl") {
     const geometry = new STLLoader().parse(buffer);
     geometry.computeVertexNormals();
-    object = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0x52d7bd, roughness: .52, metalness: .06, side: THREE.DoubleSide }));
+    object = new THREE.Mesh(geometry, createPreviewMaterial());
   } else if (extension === "obj") {
     object = new OBJLoader().parse(new TextDecoder().decode(buffer));
   } else if (extension === "3mf") {
@@ -837,13 +854,8 @@ function createModelObject(buffer, name, neutralMaterial = false) {
   if (["stl", "3mf"].includes(extension)) object.rotation.x = -Math.PI / 2;
   object.traverse(child => {
     if (!child.isMesh) return;
-    if (neutralMaterial || !child.material) {
-      child.material = new THREE.MeshStandardMaterial({ color: 0x52d7bd, roughness: .52, metalness: .06, side: THREE.DoubleSide });
-    } else if (Array.isArray(child.material)) {
-      child.material.forEach(material => { material.side = THREE.DoubleSide; });
-    } else {
-      child.material.side = THREE.DoubleSide;
-    }
+    if (child.geometry && !child.geometry.getAttribute("normal")) child.geometry.computeVertexNormals();
+    replaceWithPreviewMaterial(child);
   });
   return object;
 }
@@ -898,14 +910,16 @@ function ensureThumbnailRenderer() {
   thumbnailRenderer.setPixelRatio(1);
   thumbnailRenderer.setSize(420, 240, false);
   thumbnailRenderer.outputColorSpace = THREE.SRGBColorSpace;
+  thumbnailRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+  thumbnailRenderer.toneMappingExposure = 1.08;
   thumbnailScene = new THREE.Scene();
   thumbnailScene.background = new THREE.Color(0x101d21);
   thumbnailCamera = new THREE.PerspectiveCamera(38, 420 / 240, .001, 100000);
-  thumbnailScene.add(new THREE.HemisphereLight(0xe8fffa, 0x0c1518, 1.75));
-  const key = new THREE.DirectionalLight(0xffffff, 2.25);
+  thumbnailScene.add(new THREE.HemisphereLight(0xffffff, 0x141b1e, 1.45));
+  const key = new THREE.DirectionalLight(0xffffff, 2.05);
   key.position.set(2, 3, 2);
   thumbnailScene.add(key);
-  const rim = new THREE.DirectionalLight(0x52d7bd, .9);
+  const rim = new THREE.DirectionalLight(0xdce6e8, .8);
   rim.position.set(-2, 1, -2);
   thumbnailScene.add(rim);
 }
@@ -919,7 +933,7 @@ async function thumbnailFor(file) {
     if (file.size > MAX_PREVIEW_BYTES) throw new Error(t("previews.tooLarge"));
     const bytes = await invoke("read_model", { root: root.path, relativePath: file.path });
     ensureThumbnailRenderer();
-    const object = createModelObject(new Uint8Array(bytes).buffer, file.name, true);
+    const object = createModelObject(new Uint8Array(bytes).buffer, file.name);
     thumbnailScene.add(object);
     try {
       frameModel(object, thumbnailCamera, null, 1.32);
@@ -1040,15 +1054,18 @@ function ensureViewer() {
   const stage = byId("viewerStage");
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
   stage.prepend(renderer.domElement);
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x081013);
   camera = new THREE.PerspectiveCamera(42, 1, .01, 100000);
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
-  scene.add(new THREE.HemisphereLight(0xe8fffa, 0x101a1e, 1.4));
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x141b1e, 1.35));
   const key = new THREE.DirectionalLight(0xffffff, 1.8); key.position.set(1.2, 1.6, .9); scene.add(key);
-  const rim = new THREE.DirectionalLight(0x52d7bd, .65); rim.position.set(-1, .5, -1); scene.add(rim);
+  const rim = new THREE.DirectionalLight(0xdce6e8, .7); rim.position.set(-1, .5, -1); scene.add(rim);
   viewerGrid = new THREE.GridHelper(500, 50, 0x37545c, 0x1f343a); scene.add(viewerGrid);
   addEventListener("resize", resizeViewer);
   resizeViewer();
