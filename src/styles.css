@@ -41,3 +41,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
 .viewer{grid-template-rows:1fr;place-items:center;padding:32px;background:rgba(3,8,10,.74);backdrop-filter:blur(8px)}.viewer-window{display:grid;grid-template-rows:auto minmax(0,1fr) auto;width:min(980px,calc(100vw - 64px));height:min(720px,calc(100vh - 64px));overflow:hidden;border:1px solid var(--line);border-radius:16px;background:#081013;box-shadow:0 28px 90px rgba(0,0,0,.42)}.viewer-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px}.viewer-actions .slicer-select{background:#0c171a}.viewer-actions .tool{white-space:nowrap}.viewer-stage{min-height:260px}
 @media(max-width:700px){.viewer{padding:10px}.viewer-window{width:calc(100vw - 20px);height:calc(100vh - 20px);border-radius:12px}.viewer-top{align-items:flex-start}.viewer-actions{flex-wrap:wrap}.viewer-actions .slicer-select{min-width:118px}.viewer-actions .tool{order:3;width:100%}}
+
+.format-chip input:checked+span::before{content:"";display:block;width:14px;height:14px;flex:0 0 auto;align-self:center;background:currentColor;clip-path:polygon(14% 44%,0 58%,40% 100%,100% 18%,84% 4%,39% 73%)}
+:root[data-theme="light"] .format-chip input:checked+span{border-color:#064d43;background:#0b6f60;color:#fff;box-shadow:0 2px 7px rgba(4,61,52,.2)}
+:root[data-theme="light"] .format-chip input:checked+span small{color:#d8f5ef}
+:root[data-theme="light"] .switch-control input:checked+span{border-color:#064d43;background:#0b6f60}
+:root[data-theme="light"] .switch-control input:checked+span::after{background:#fff}
+:root[data-theme="light"] .unknown-toggle input{accent-color:#0b6f60}
+@media(prefers-color-scheme:light){:root:not([data-theme]) .format-chip input:checked+span{border-color:#064d43;background:#0b6f60;color:#fff;box-shadow:0 2px 7px rgba(4,61,52,.2)}:root:not([data-theme]) .format-chip input:checked+span small{color:#d8f5ef}:root:not([data-theme]) .switch-control input:checked+span{border-color:#064d43;background:#0b6f60}:root:not([data-theme]) .switch-control input:checked+span::after{background:#fff}:root:not([data-theme]) .unknown-toggle input{accent-color:#0b6f60}}
