@@ -132,6 +132,9 @@ export default {
     noSourceTitle: "Noch keine Quelle",
     noSourceDetail: "Füge einen oder mehrere Ordner mit deinen Druckdateien hinzu.",
     addDialogTitle: "Bibliotheksordner hinzufügen",
+    nestedFolderSkipped: "„{folder}“ ist ein Unterordner von „{parent}“ und wird bereits angezeigt. Der Ordner wurde deshalb nicht hinzugefügt.",
+    nestedFoldersSkipped: "{count} ausgewählte Unterordner werden bereits über ihre übergeordneten Ordner angezeigt und wurden deshalb nicht hinzugefügt.",
+    parentFolderReplacedChildren: { one: "„{folder}“ wurde hinzugefügt und ersetzt einen bereits ausgewählten Unterordner, der darin enthalten ist.", other: "„{folder}“ wurde hinzugefügt und ersetzt {count} bereits ausgewählte Unterordner, die darin enthalten sind." },
     statusScanning: "Bibliothek wird im Hintergrund eingelesen – Einstellungen können bereits angesehen werden.",
     statusSelected: { one: "{count} Ordner ausgewählt", other: "{count} Ordner ausgewählt" },
     statusEmpty: "Noch keine Ordner ausgewählt"

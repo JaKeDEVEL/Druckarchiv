@@ -132,6 +132,9 @@ export default {
     noSourceTitle: "No source yet",
     noSourceDetail: "Add one or more folders containing your print files.",
     addDialogTitle: "Add library folders",
+    nestedFolderSkipped: "“{folder}” is a subfolder of “{parent}” and is already displayed. The folder was therefore not added.",
+    nestedFoldersSkipped: "{count} selected subfolders are already displayed through their parent folders and were therefore not added.",
+    parentFolderReplacedChildren: { one: "“{folder}” was added and replaces one previously selected subfolder contained within it.", other: "“{folder}” was added and replaces {count} previously selected subfolders contained within it." },
     statusScanning: "Library scan is running in the background — settings are already available.",
     statusSelected: { one: "{count} folder selected", other: "{count} folders selected" },
     statusEmpty: "No folders selected"

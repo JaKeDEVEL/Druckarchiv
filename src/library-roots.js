@@ -1,0 +1,45 @@
+function comparableRoot(path) {
+  let normalized = String(path || "").trim().replaceAll("\\", "/").replace(/\/{2,}/g, "/");
+  if (normalized.length > 1) normalized = normalized.replace(/\/$/, "");
+  if (/^[a-z]:\//i.test(normalized)) normalized = normalized.toLowerCase();
+  return normalized;
+}
+
+export function rootDisplayName(path) {
+  const normalized = String(path || "").replaceAll("\\", "/").replace(/\/$/, "");
+  return normalized.split("/").filter(Boolean).pop() || normalized || String(path || "");
+}
+
+export function isNestedLibraryRoot(candidate, parent) {
+  const childPath = comparableRoot(candidate);
+  const parentPath = comparableRoot(parent);
+  if (!childPath || !parentPath || childPath === parentPath) return false;
+  return parentPath === "/" ? childPath.startsWith("/") : childPath.startsWith(`${parentPath}/`);
+}
+
+export function mergeLibraryRoots(currentRoots = [], additions = []) {
+  let roots = [...new Set(currentRoots.filter(root => typeof root === "string" && root))];
+  const skippedNested = [];
+  const replacedNested = [];
+
+  additions.filter(root => typeof root === "string" && root).forEach(candidate => {
+    const duplicate = roots.find(root => comparableRoot(root) === comparableRoot(candidate));
+    if (duplicate) return;
+
+    const parent = roots.find(root => isNestedLibraryRoot(candidate, root));
+    if (parent) {
+      skippedNested.push({ candidate, parent });
+      return;
+    }
+
+    const children = roots.filter(root => isNestedLibraryRoot(root, candidate));
+    if (children.length) {
+      const childPaths = new Set(children.map(comparableRoot));
+      roots = roots.filter(root => !childPaths.has(comparableRoot(root)));
+      replacedNested.push({ parent: candidate, children });
+    }
+    roots.push(candidate);
+  });
+
+  return { roots, skippedNested, replacedNested };
+}

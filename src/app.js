@@ -34,6 +34,7 @@ import { releaseViewerModel } from "./viewer-lifecycle.js";
 import { compatibleSelection, fileSelectionKey, selectionPayload } from "./file-selection.js";
 import { PREVIEW_MATERIAL_OPTIONS } from "./preview-style.js";
 import { DEFAULT_PROJECT_GRID_PAGE_SIZE, projectGridPageCapacity } from "./project-grid-pagination.js";
+import { mergeLibraryRoots, rootDisplayName } from "./library-roots.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -62,6 +63,7 @@ const state = {
   archive: null,
   roots: [],
   pendingRoots: [],
+  pendingRootFeedback: null,
   pendingSettings: null,
   settings: defaultLibrarySettings(),
   tab: "projects",
@@ -446,6 +448,31 @@ function renderSettingsDialog() {
     return `<div class="root-row"><span class="root-index">${String(index + 1).padStart(2, "0")}</span><span><b>${escapeHtml(name)}</b><small title="${escapeHtml(path)}">${escapeHtml(path)}</small></span><button type="button" data-remove-root="${index}" aria-label="${escapeHtml(t("settings.removeFolder", { name }))}">${t("settings.remove")}</button></div>`;
   }).join("") : `<div class="root-empty"><b>${t("settings.noSourceTitle")}</b><span>${t("settings.noSourceDetail")}</span></div>`;
 
+  const rootNotice = byId("rootNotice");
+  const feedback = state.pendingRootFeedback;
+  const noticeMessages = [];
+  if (feedback?.skippedNested.length === 1) {
+    const skipped = feedback.skippedNested[0];
+    noticeMessages.push(t("settings.nestedFolderSkipped", {
+      folder: rootDisplayName(skipped.candidate),
+      parent: rootDisplayName(skipped.parent)
+    }));
+  } else if (feedback?.skippedNested.length > 1) {
+    noticeMessages.push(t("settings.nestedFoldersSkipped", { count: feedback.skippedNested.length }));
+  }
+  feedback?.replacedNested.forEach(replacement => {
+    noticeMessages.push(t("settings.parentFolderReplacedChildren", {
+      folder: rootDisplayName(replacement.parent),
+      count: replacement.children.length
+    }));
+  });
+  rootNotice.replaceChildren(...noticeMessages.map(message => {
+    const paragraph = document.createElement("p");
+    paragraph.textContent = message;
+    return paragraph;
+  }));
+  rootNotice.hidden = noticeMessages.length === 0;
+
   const draft = state.pendingSettings || state.settings;
   const enabled = new Set(draft.enabledExtensions);
   byId("formatGroups").innerHTML = FORMAT_GROUPS.map(group => `<fieldset><legend>${t(group.labelKey)}</legend><div>${group.formats.map(format => `<label class="format-chip"><input type="checkbox" value="${format.ext}" ${enabled.has(format.ext) ? "checked" : ""}><span><b>${format.label}</b><small>.${format.ext}</small></span></label>`).join("")}</div></fieldset>`).join("");
@@ -458,6 +485,7 @@ function renderSettingsDialog() {
 
 function openLibraryDialog() {
   state.pendingRoots = [...state.roots];
+  state.pendingRootFeedback = null;
   state.pendingSettings = normalizeLibrarySettings(state.settings);
   renderSettingsDialog();
   if (!byId("libraryDialog").open) byId("libraryDialog").showModal();
@@ -468,7 +496,9 @@ async function addFolders() {
   if (!selected) return;
   state.pendingSettings = settingsFromForm();
   const additions = Array.isArray(selected) ? selected : [selected];
-  state.pendingRoots = [...new Set([...state.pendingRoots, ...additions])];
+  const mergeResult = mergeLibraryRoots(state.pendingRoots, additions);
+  state.pendingRoots = mergeResult.roots;
+  state.pendingRootFeedback = mergeResult;
   renderSettingsDialog();
 }
 
@@ -491,6 +521,7 @@ byId("rootList").addEventListener("click", event => {
   const button = event.target.closest("[data-remove-root]");
   if (!button) return;
   state.pendingSettings = settingsFromForm();
+  state.pendingRootFeedback = null;
   state.pendingRoots.splice(Number(button.dataset.removeRoot), 1);
   renderSettingsDialog();
 });
