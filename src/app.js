@@ -24,7 +24,7 @@ import {
 import { libraryControlState } from "./library-controls.js";
 import { canOpenModelCard } from "./model-card.js";
 import { createDemoArchive } from "./demo-archive.js";
-import { PAGE_SIZES, normalizePageSize, paginateEntries, paginationTokens } from "./pagination.js";
+import { PAGE_SIZES, normalizePageSize, paginateEntries, paginateEntriesAtSize, paginationTokens } from "./pagination.js";
 import { projectBreadcrumbs, projectBrowserEntries } from "./project-browser.js";
 import { applyTranslations, formatDateValue, formatNumber, getLocale, onLocaleChange, setLocale, t } from "./i18n.js";
 import { isSlicerCompatible, normalizeSlicer, slicerErrorKey, slicerLabel } from "./slicer-preferences.js";
@@ -33,6 +33,7 @@ import { normalizeThemePreference, resolveTheme, THEME_STORAGE_KEY } from "./the
 import { releaseViewerModel } from "./viewer-lifecycle.js";
 import { compatibleSelection, fileSelectionKey, selectionPayload } from "./file-selection.js";
 import { PREVIEW_MATERIAL_OPTIONS } from "./preview-style.js";
+import { DEFAULT_PROJECT_GRID_PAGE_SIZE, projectGridPageCapacity } from "./project-grid-pagination.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -73,6 +74,7 @@ const state = {
   page: 1,
   pageSize: normalizePageSize(localStorage.getItem(PAGE_SIZE_KEY)),
   projectPage: 1,
+  projectGridPageSize: DEFAULT_PROJECT_GRID_PAGE_SIZE,
   projectPath: "",
   projectSelection: new Set(),
   librarySelection: new Set(),
@@ -621,10 +623,10 @@ function renderProjectBreadcrumbs(project) {
   }).join("");
 }
 
-function renderProjectPagination(result) {
+function renderProjectPagination(result, gridMode) {
   const pagination = byId("projectPagination");
   byId("projectPageSize").value = String(result.pageSize);
-  byId("projectPageSizeControl").hidden = result.total <= PAGE_SIZES[0];
+  byId("projectPageSizeControl").hidden = gridMode || result.total <= PAGE_SIZES[0];
   byId("projectResultCount").textContent = result.total
     ? t("pagination.range", { start: result.start + 1, end: result.end, total: result.total })
     : t("pagination.noResults");
@@ -632,6 +634,10 @@ function renderProjectPagination(result) {
   byId("projectPageStatus").textContent = t("pagination.status", { page: result.page, totalPages: result.totalPages });
   if (pagination.hidden) {
     byId("projectPageButtons").innerHTML = "";
+    return;
+  }
+  if (gridMode) {
+    byId("projectPageButtons").innerHTML = `<button class="page-step" type="button" data-project-page="${result.page - 1}" ${result.page === 1 ? "disabled" : ""} aria-label="${t("pagination.previous")}">←</button><button class="page-step" type="button" data-project-page="${result.page + 1}" ${result.page === result.totalPages ? "disabled" : ""} aria-label="${t("pagination.next")}">→</button>`;
     return;
   }
   const buttons = paginationTokens(result.page, result.totalPages).map(token => token === "ellipsis"
@@ -717,22 +723,48 @@ function renderProjectContents(projectIndex) {
   byId("modalTitle").textContent = project.displayName;
   renderProjectBreadcrumbs(project);
   const entries = projectBrowserEntries(project, files, state.projectPath).sort(compareProjectEntries);
-  const pageResult = paginateEntries(entries, state.projectPage, state.pageSize);
+  const gridMode = state.projectView === "grid";
+  const projectPageSize = gridMode ? state.projectGridPageSize : state.pageSize;
+  const pageResult = gridMode
+    ? paginateEntriesAtSize(entries, state.projectPage, projectPageSize)
+    : paginateEntries(entries, state.projectPage, projectPageSize);
   state.projectPage = pageResult.page;
-  renderProjectPagination(pageResult);
+  renderProjectPagination(pageResult, gridMode);
   const modalList = byId("modalList");
-  modalList.classList.toggle("grid", state.projectView === "grid");
-  modalList.classList.toggle("list", state.projectView === "list");
+  modalList.classList.toggle("grid", gridMode);
+  modalList.classList.toggle("list", !gridMode);
   modalList.innerHTML = pageResult.items.length
     ? pageResult.items.map(entry => entry.kind === "folder"
-      ? (state.projectView === "grid" ? projectGridFolder(entry) : projectFolderListRow(entry))
-      : (state.projectView === "grid" ? projectGridCard(entry.file, state.projectSelection) : projectListRow(entry.file, state.projectSelection))).join("")
+      ? (gridMode ? projectGridFolder(entry) : projectFolderListRow(entry))
+      : (gridMode ? projectGridCard(entry.file, state.projectSelection) : projectListRow(entry.file, state.projectSelection))).join("")
     : `<div class="project-empty"><b>${t("project.emptyFolder")}</b></div>`;
   byId("projectViewToggle").textContent = t(state.projectView === "grid" ? "nav.listView" : "nav.gridView");
   byId("slicerSelect").value = state.slicer;
   updateProjectSelection();
-  if (projectDialog.open && state.projectView === "grid") hydrateProjectPreviews();
+  if (projectDialog.open && gridMode) hydrateProjectPreviews();
 }
+
+let projectGridResizeFrame = null;
+function syncProjectGridCapacity() {
+  if (!projectDialog.open || state.projectView !== "grid" || projectDialog.dataset.projectIndex === undefined) return;
+  const modalList = byId("modalList");
+  const nextPageSize = projectGridPageCapacity(modalList.clientWidth, modalList.clientHeight);
+  if (nextPageSize === state.projectGridPageSize) return;
+  const firstVisibleIndex = (state.projectPage - 1) * state.projectGridPageSize;
+  state.projectGridPageSize = nextPageSize;
+  state.projectPage = Math.floor(firstVisibleIndex / nextPageSize) + 1;
+  renderProjectContents(Number(projectDialog.dataset.projectIndex));
+}
+
+function scheduleProjectGridCapacitySync() {
+  if (projectGridResizeFrame !== null) cancelAnimationFrame(projectGridResizeFrame);
+  projectGridResizeFrame = requestAnimationFrame(() => {
+    projectGridResizeFrame = null;
+    syncProjectGridCapacity();
+  });
+}
+
+new ResizeObserver(scheduleProjectGridCapacitySync).observe(byId("modalList"));
 
 byId("library").addEventListener("click", async event => {
   if (event.target.closest(".library-file-select")) return;
@@ -744,7 +776,10 @@ byId("library").addEventListener("click", async event => {
     state.projectSelection.clear();
     renderProjectContents(Number(card.dataset.projectIndex));
     projectDialog.showModal();
-    if (state.projectView === "grid") hydrateProjectPreviews();
+    if (state.projectView === "grid") {
+      scheduleProjectGridCapacitySync();
+      hydrateProjectPreviews();
+    }
   } else if (canOpenModelCard(card)) {
     await openArchiveModel(Number(card.dataset.rootIndex), card.dataset.file);
   }
@@ -769,7 +804,9 @@ projectDialog.addEventListener("close", () => {
 byId("projectViewToggle").addEventListener("click", () => {
   state.projectView = toggleViewMode(state.projectView);
   localStorage.setItem(PROJECT_VIEW_KEY, state.projectView);
+  state.projectPage = 1;
   renderProjectContents(Number(projectDialog.dataset.projectIndex));
+  scheduleProjectGridCapacitySync();
 });
 byId("slicerSelect").addEventListener("change", event => {
   setActiveSlicer(event.target.value);

@@ -7,6 +7,12 @@ export function normalizePageSize(value, fallback = PAGE_SIZES[0]) {
 
 export function paginateEntries(entries, requestedPage = 1, requestedPageSize = PAGE_SIZES[0]) {
   const pageSize = normalizePageSize(requestedPageSize);
+  return paginateEntriesAtSize(entries, requestedPage, pageSize);
+}
+
+export function paginateEntriesAtSize(entries, requestedPage = 1, requestedPageSize = 1) {
+  const numericPageSize = Number(requestedPageSize);
+  const pageSize = Number.isFinite(numericPageSize) ? Math.max(1, Math.trunc(numericPageSize)) : 1;
   const total = entries.length;
   const totalPages = total ? Math.ceil(total / pageSize) : 0;
   const numericPage = Number.isFinite(Number(requestedPage)) ? Math.trunc(Number(requestedPage)) : 1;
