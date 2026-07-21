@@ -39,3 +39,11 @@ test("quiet material shell uses stateful depth and a unified search control", ()
   assert.match(css, /\.toolbar \.search-control input\s*\{/);
   assert.match(css, /@media \(max-width: 1120px\)[\s\S]*?\.stats\s*\{[\s\S]*?repeat\(3,/);
 });
+
+test("archive cards separate object type from selection and pagination state", () => {
+  assert.match(css, /\.card\s*\{[\s\S]*?0 6px 0 -3px var\(--qm-outline\)/);
+  assert.match(css, /\.library\.list \.card\s*\{[\s\S]*?box-shadow:\s*none/);
+  assert.match(css, /\.file-card\.is-selected\s*\{[\s\S]*?var\(--qm-primary\)/);
+  assert.match(css, /\.favorite-button:hover,[\s\S]*?var\(--qm-folder\)/);
+  assert.match(css, /\.page-buttons button\.current\s*\{[\s\S]*?var\(--qm-primary\)/);
+});

@@ -615,3 +615,326 @@ main {
     padding: 9px 16px;
   }
 }
+
+/* Phase 3: archive cards, list rows, selection, and pagination. */
+.library {
+  gap: 14px 12px;
+}
+
+.card {
+  border-color: var(--qm-outline);
+  border-radius: var(--qm-radius-card);
+  background: var(--qm-surface);
+  box-shadow:
+    0 4px 0 -2px var(--qm-surface-raised),
+    0 6px 0 -3px var(--qm-outline);
+  transition: transform .14s ease, border-color .14s ease, box-shadow .14s ease;
+}
+
+.card:hover {
+  border-color: color-mix(in srgb, var(--tone) 45%, var(--qm-outline));
+  transform: translateY(-1px);
+  box-shadow:
+    var(--qm-shadow-1),
+    0 5px 0 -2px var(--qm-surface-raised),
+    0 7px 0 -3px color-mix(in srgb, var(--tone) 58%, var(--qm-outline));
+}
+
+.folder-card {
+  border-top-color: var(--qm-outline);
+}
+
+.file-card-open,
+.folder-card-open {
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.card-cover {
+  height: 136px;
+  border-bottom-color: var(--qm-outline);
+  background: var(--qm-surface-container);
+}
+
+.folder-cover {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--qm-folder) 7%, var(--qm-surface-container)),
+    var(--qm-surface-container)
+  );
+}
+
+.file-cover {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--qm-primary) 6%, var(--qm-surface-container)),
+    var(--qm-surface-container)
+  );
+}
+
+.card-body {
+  padding: 11px 12px 12px;
+}
+
+.entry-kind {
+  margin-bottom: 3px;
+  color: var(--tone);
+  font-size: 8px;
+  letter-spacing: .1em;
+}
+
+.card h3 {
+  margin-bottom: 7px;
+  font-size: 14px;
+  letter-spacing: -.01em;
+}
+
+.meta {
+  color: var(--qm-text-dim);
+  font-size: 9px;
+}
+
+.badges {
+  margin-top: 10px;
+}
+
+.badge {
+  border-color: var(--qm-outline);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--qm-surface-container) 72%, transparent);
+  color: var(--qm-text-secondary);
+}
+
+.kind-flag,
+.cover-label {
+  border-color: color-mix(in srgb, var(--qm-outline) 78%, transparent);
+  background: color-mix(in srgb, var(--qm-surface) 92%, transparent);
+  box-shadow: 0 2px 7px rgba(0, 0, 0, .1);
+}
+
+.folder-flag {
+  border-color: color-mix(in srgb, var(--qm-folder) 48%, var(--qm-outline));
+  color: var(--qm-folder);
+}
+
+.file-flag {
+  border-color: color-mix(in srgb, var(--qm-primary) 45%, var(--qm-outline));
+  color: var(--qm-primary);
+}
+
+.favorite-button {
+  border-color: var(--qm-outline);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--qm-surface) 92%, transparent);
+  color: var(--qm-text-dim);
+  backdrop-filter: blur(8px);
+}
+
+.favorite-button:hover,
+.favorite-button.on {
+  border-color: color-mix(in srgb, var(--qm-folder) 62%, var(--qm-outline));
+  background: color-mix(in srgb, var(--qm-folder) 12%, var(--qm-surface));
+  color: var(--qm-folder);
+}
+
+.library-file-select,
+.project-file-select {
+  border-color: var(--qm-outline);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--qm-surface) 92%, transparent);
+}
+
+.library-file-select input,
+.project-file-select input {
+  accent-color: var(--qm-primary);
+}
+
+.file-card.is-selected {
+  border-color: var(--qm-primary);
+  background: color-mix(in srgb, var(--qm-primary) 5%, var(--qm-surface));
+  box-shadow:
+    var(--qm-shadow-2),
+    inset 0 0 0 1px color-mix(in srgb, var(--qm-primary) 55%, transparent),
+    0 5px 0 -2px var(--qm-surface-raised),
+    0 7px 0 -3px var(--qm-primary);
+}
+
+.file-card.is-selected .library-file-select {
+  border-color: var(--qm-primary);
+  background: var(--qm-surface-raised);
+}
+
+.library.list {
+  gap: 6px;
+}
+
+.library.list .card {
+  border-color: var(--qm-outline);
+  background: var(--qm-surface);
+  box-shadow: none;
+}
+
+.library.list .card:hover {
+  background: var(--qm-surface-container);
+  transform: none;
+  box-shadow: inset 3px 0 color-mix(in srgb, var(--tone) 72%, var(--qm-outline));
+}
+
+.library.list .card-cover {
+  height: 76px;
+  background: var(--qm-surface-container);
+}
+
+.library.list .card-body {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 3px 18px;
+  padding: 10px 12px;
+}
+
+.library.list .entry-kind {
+  grid-column: 1;
+  grid-row: 1;
+  margin: 0;
+}
+
+.library.list .card h3 {
+  grid-column: 1;
+  grid-row: 2;
+  margin: 0;
+}
+
+.library.list .meta {
+  grid-column: 2;
+  grid-row: 1;
+  justify-content: flex-end;
+}
+
+.library.list .badges {
+  grid-column: 2;
+  grid-row: 2;
+  justify-content: flex-end;
+  margin: 0;
+}
+
+.library.list .file-card.is-selected {
+  background: color-mix(in srgb, var(--qm-primary) 8%, var(--qm-surface));
+  box-shadow: inset 3px 0 var(--qm-primary);
+}
+
+.library-selection,
+.selection {
+  border-color: color-mix(in srgb, var(--qm-primary) 46%, var(--qm-outline));
+  border-radius: var(--qm-radius-control);
+  background: color-mix(in srgb, var(--qm-primary) 9%, var(--qm-surface));
+  color: var(--qm-text-secondary);
+}
+
+.library-selection {
+  box-shadow: var(--qm-shadow-1);
+}
+
+.selection b {
+  color: var(--qm-primary);
+}
+
+.pagination {
+  margin-top: 22px;
+  border-color: var(--qm-outline);
+}
+
+.pagination > span,
+.section-results {
+  color: var(--qm-text-dim);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.page-buttons {
+  gap: 3px;
+}
+
+.page-buttons button {
+  min-width: 32px;
+  height: 32px;
+  border-color: transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--qm-text-secondary);
+}
+
+.page-buttons button:hover:not(:disabled) {
+  border-color: var(--qm-outline);
+  background: var(--qm-surface-container);
+  color: var(--qm-text);
+}
+
+.page-buttons button.current {
+  border-color: var(--qm-primary);
+  background: color-mix(in srgb, var(--qm-primary) 12%, var(--qm-surface));
+  color: var(--qm-primary);
+  font-weight: 800;
+}
+
+.project-file-card,
+.project-folder-card {
+  border-color: var(--qm-outline);
+  border-top-color: var(--qm-outline);
+  border-radius: var(--qm-radius-card);
+  background: var(--qm-surface);
+  box-shadow:
+    0 4px 0 -2px var(--qm-surface-raised),
+    0 6px 0 -3px var(--qm-outline);
+}
+
+.project-file-cover {
+  border-bottom-color: var(--qm-outline);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--qm-primary) 6%, var(--qm-surface-container)),
+    var(--qm-surface-container)
+  );
+}
+
+.project-folder-card .project-file-cover {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--qm-folder) 7%, var(--qm-surface-container)),
+    var(--qm-surface-container)
+  );
+}
+
+.project-folder-list-item {
+  border-bottom-color: var(--qm-outline);
+}
+
+.project-folder-list-item:hover {
+  background: color-mix(in srgb, var(--qm-folder) 8%, var(--qm-surface));
+}
+
+.project-browser-bar,
+.project-pagination {
+  border-color: var(--qm-outline);
+  background: var(--qm-surface-container);
+}
+
+@media (max-width: 640px) {
+  .library {
+    gap: 12px;
+  }
+
+  .library.list .card-body {
+    display: block;
+  }
+
+  .library.list .meta {
+    justify-content: flex-start;
+  }
+
+  .library.list .badges {
+    justify-content: flex-start;
+    margin-top: 8px;
+  }
+}
