@@ -27,3 +27,12 @@ test("files at the end of navigation keep using the model viewer popup", () => {
   assert.match(app, /else if \(canOpenModelCard\(card\)\)\s*\{[\s\S]*?openArchiveModel/);
   assert.match(app, /byId\("viewer"\)\.classList\.add\("open"\)/);
 });
+
+test("unavailable library folders stay visible without hiding available results", () => {
+  assert.match(index, /id="librarySourceWarning"/);
+  assert.match(index, /id="retryUnavailableRoots"/);
+  assert.match(app, /unavailableLibraryRoots\(state\.archive\)/);
+  assert.match(app, /source-offline-status/);
+  assert.match(css, /\.library-source-warning\s*\{/);
+  assert.match(css, /\.side-root-item\.is-unavailable/);
+});

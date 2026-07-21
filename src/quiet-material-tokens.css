@@ -1398,6 +1398,28 @@ dialog::backdrop {
   box-shadow: inset 3px 0 var(--qm-folder);
 }
 
+.side-root-item.is-unavailable {
+  color: var(--qm-text-dim);
+}
+
+.side-root-item.is-unavailable svg {
+  fill: color-mix(in srgb, var(--orange) 10%, transparent);
+  stroke: var(--orange);
+  stroke-dasharray: 2 1.5;
+}
+
+.side-root-item .source-offline-status {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--orange) 12%, transparent);
+  padding: 3px 6px;
+  color: var(--orange);
+  font-family: inherit;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
 .side-local-note {
   display: flex;
   align-items: center;
@@ -1461,6 +1483,56 @@ dialog::backdrop {
   max-width: none;
   margin: 0;
   padding: 20px 24px 80px;
+}
+
+.library-source-warning {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin: -2px 0 16px;
+  border: 1px solid color-mix(in srgb, var(--orange) 42%, var(--qm-outline));
+  border-radius: var(--qm-radius-card);
+  background: color-mix(in srgb, var(--orange) 8%, var(--qm-surface-raised));
+  padding: 11px 12px;
+  box-shadow: var(--qm-shadow-1);
+}
+
+.library-source-warning[hidden] {
+  display: none;
+}
+
+.library-source-warning-icon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--orange) 16%, transparent);
+  color: var(--orange);
+  font: 800 14px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.library-source-warning b,
+.library-source-warning span {
+  display: block;
+}
+
+.library-source-warning b {
+  color: var(--qm-text);
+  font-size: 11px;
+}
+
+.library-source-warning div > span {
+  margin-top: 3px;
+  color: var(--qm-text-secondary);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.library-source-warning .tool {
+  min-height: 34px;
+  white-space: nowrap;
 }
 
 .library-breadcrumb {
@@ -1588,5 +1660,14 @@ dialog::backdrop {
   .workspace > .toolbar {
     padding-right: 14px;
     padding-left: 14px;
+  }
+
+  .library-source-warning {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .library-source-warning .tool {
+    grid-column: 1 / -1;
+    width: 100%;
   }
 }

@@ -60,7 +60,14 @@ export default {
     local: "Everything stays local",
     localDetail: "No cloud · no telemetry",
     allSources: "All library folders",
-    sourceFiles: { one: "{count} file", other: "{count} files" }
+    sourceFiles: { one: "{count} file", other: "{count} files" },
+    offline: "Offline",
+    sourceUnavailable: "{name} is currently unavailable"
+  },
+  availability: {
+    title: { one: "“{names}” is currently unavailable", other: "{count} library folders are currently unavailable: {names}" },
+    detail: "The remaining libraries stay available. Reconnect the drive and then check again.",
+    retry: "Check again"
   },
   stats: {
     label: "Archive metrics",
@@ -192,6 +199,7 @@ export default {
   roots: {
     savedNeedsRefresh: "{count} saved folders · rescan required",
     multiple: "{count} folders · {names}",
+    partiallyUnavailable: "{available} of {count} folders available",
     scanning: "{count} folders · scanning in the background …"
   },
   project: {

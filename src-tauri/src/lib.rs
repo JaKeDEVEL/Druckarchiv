@@ -76,6 +76,7 @@ struct ArchiveData {
 struct ArchiveRoot {
     name: String,
     path: String,
+    available: bool,
 }
 
 fn name_of(path: &Path) -> String {
@@ -157,6 +158,7 @@ fn collect_files(
     Ok(())
 }
 
+#[cfg(test)]
 fn canonical_roots(roots: Vec<String>) -> Result<Vec<PathBuf>, String> {
     if roots.is_empty() {
         return Err("Wähle mindestens einen Bibliotheksordner aus.".into());
@@ -240,12 +242,14 @@ fn scan_root(
     Ok(())
 }
 
+#[cfg(test)]
 fn scan_root_paths(root_paths: &[PathBuf]) -> Result<ArchiveData, String> {
     let archive_roots = root_paths
         .iter()
         .map(|path| ArchiveRoot {
             name: name_of(path),
             path: path.to_string_lossy().into_owned(),
+            available: true,
         })
         .collect::<Vec<_>>();
     let mut projects = Vec::new();
@@ -268,13 +272,79 @@ fn scan_root_paths(root_paths: &[PathBuf]) -> Result<ArchiveData, String> {
     })
 }
 
+fn scan_configured_roots(roots: Vec<String>) -> Result<(ArchiveData, Vec<PathBuf>), String> {
+    if roots.is_empty() {
+        return Err("Wähle mindestens einen Bibliotheksordner aus.".into());
+    }
+    if roots.len() > MAX_ROOTS {
+        return Err(format!(
+            "Es können höchstens {MAX_ROOTS} Ordner gleichzeitig verwendet werden."
+        ));
+    }
+
+    let mut archive = ArchiveData {
+        roots: Vec::with_capacity(roots.len()),
+        projects: Vec::new(),
+        loose: Vec::new(),
+    };
+    let mut root_paths = Vec::with_capacity(roots.len());
+    let mut total_files = 0usize;
+
+    for configured_root in roots {
+        let configured_path = PathBuf::from(&configured_root);
+        let resolved_path = configured_path
+            .canonicalize()
+            .ok()
+            .filter(|path| path.is_dir());
+        let root_path = resolved_path.as_ref().unwrap_or(&configured_path);
+        let name = {
+            let folder_name = name_of(root_path);
+            if folder_name.is_empty() {
+                configured_root.clone()
+            } else {
+                folder_name
+            }
+        };
+        let root_index = archive.roots.len();
+        archive.roots.push(ArchiveRoot {
+            name,
+            path: root_path.to_string_lossy().into_owned(),
+            available: resolved_path.is_some(),
+        });
+        root_paths.push(root_path.to_path_buf());
+
+        let Some(resolved_path) = resolved_path else {
+            continue;
+        };
+
+        let projects_before = archive.projects.len();
+        let loose_before = archive.loose.len();
+        let total_before = total_files;
+        if scan_root(
+            &resolved_path,
+            root_index,
+            &mut archive.projects,
+            &mut archive.loose,
+            &mut total_files,
+        )
+        .is_err()
+        {
+            archive.projects.truncate(projects_before);
+            archive.loose.truncate(loose_before);
+            total_files = total_before;
+            archive.roots[root_index].available = false;
+        }
+    }
+
+    Ok((archive, root_paths))
+}
+
 #[tauri::command]
 fn scan_archives(
     roots: Vec<String>,
     state: tauri::State<'_, AppState>,
 ) -> Result<ArchiveData, String> {
-    let root_paths = canonical_roots(roots)?;
-    let archive = scan_root_paths(&root_paths)?;
+    let (archive, root_paths) = scan_configured_roots(roots)?;
     *state.roots.lock().map_err(|_| "library_unavailable")? = root_paths;
     Ok(archive)
 }
@@ -592,6 +662,29 @@ mod tests {
 
         assert_eq!(roots, vec![canonical_parent]);
         fs::remove_dir_all(parent).expect("Testordner entfernen");
+    }
+
+    #[test]
+    fn keeps_unavailable_roots_while_scanning_available_ones() {
+        let missing = test_directory("missing-usb");
+        let available = test_directory("available");
+        fs::create_dir_all(&available).expect("verfügbarer Bibliotheksordner");
+        fs::write(available.join("plate.stl"), b"solid test\nendsolid test").expect("Testmodell");
+
+        let (archive, native_roots) = scan_configured_roots(vec![
+            missing.to_string_lossy().into_owned(),
+            available.to_string_lossy().into_owned(),
+        ])
+        .expect("teilweiser Bibliotheksscan");
+
+        assert_eq!(archive.roots.len(), 2);
+        assert!(!archive.roots[0].available);
+        assert!(archive.roots[1].available);
+        assert_eq!(archive.loose.len(), 1);
+        assert_eq!(archive.loose[0].root_index, 1);
+        assert_eq!(native_roots.len(), 2);
+
+        fs::remove_dir_all(available).expect("Testordner entfernen");
     }
 
     #[test]

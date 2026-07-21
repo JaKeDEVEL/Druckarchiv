@@ -60,7 +60,14 @@ export default {
     local: "Alles lokal",
     localDetail: "Keine Cloud · keine Telemetrie",
     allSources: "Alle Bibliotheksordner",
-    sourceFiles: { one: "{count} Datei", other: "{count} Dateien" }
+    sourceFiles: { one: "{count} Datei", other: "{count} Dateien" },
+    offline: "Offline",
+    sourceUnavailable: "{name} ist momentan nicht verfügbar"
+  },
+  availability: {
+    title: { one: "„{names}“ ist momentan nicht verfügbar", other: "{count} Bibliotheksordner sind momentan nicht verfügbar: {names}" },
+    detail: "Die übrigen Bibliotheken bleiben nutzbar. Verbinde das Laufwerk wieder und prüfe anschließend erneut.",
+    retry: "Erneut prüfen"
   },
   stats: {
     label: "Archiv-Kennzahlen",
@@ -192,6 +199,7 @@ export default {
   roots: {
     savedNeedsRefresh: "{count} gespeicherte Ordner · Neu einlesen erforderlich",
     multiple: "{count} Ordner · {names}",
+    partiallyUnavailable: "{available} von {count} Ordnern verfügbar",
     scanning: "{count} Ordner · wird im Hintergrund eingelesen …"
   },
   project: {

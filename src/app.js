@@ -41,6 +41,7 @@ import { mergeLibraryRoots, rootDisplayName } from "./library-roots.js";
 import { compareFavoriteState, favoriteFileKey, favoriteFolderKey, favoriteOverviewItems, favoriteToggleNeedsRender, FAVORITES_STORAGE_KEY, folderPathsForFiles, normalizeFavoriteKeys, normalizeFolderPath } from "./favorites.js";
 import { createUpdateProgress, reduceUpdateProgress, updateProgressPercent } from "./update-progress.js";
 import { folderLocation, isProjectLocation, libraryLocation, locationBreadcrumbs, projectLocation, sourceLocation } from "./library-navigation.js";
+import { isLibraryRootAvailable, unavailableLibraryRoots } from "./library-availability.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -377,7 +378,11 @@ function renderSidebar() {
   byId("sideRootList").innerHTML = roots.map((root, rootIndex) => {
     const count = files.filter(file => file.rootIndex === rootIndex).length;
     const active = !state.favoriteOnly && !isProjectLocation(state.libraryLocation) && state.libraryLocation.rootIndex === rootIndex;
-    return `<button class="side-root-item ${active ? "on" : ""}" type="button" data-side-root="${rootIndex}" aria-pressed="${active}" title="${escapeHtml(root.path || root.name)}"><span aria-hidden="true"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg></span><span>${escapeHtml(root.name || rootDisplayName(root.path))}</span><small>${nf.format(count)}</small></button>`;
+    const available = isLibraryRootAvailable(root);
+    const name = root.name || rootDisplayName(root.path);
+    const title = available ? (root.path || name) : t("sidebar.sourceUnavailable", { name });
+    const status = available ? nf.format(count) : t("sidebar.offline");
+    return `<button class="side-root-item ${active ? "on" : ""} ${available ? "" : "is-unavailable"}" type="button" data-side-root="${rootIndex}" aria-pressed="${active}" title="${escapeHtml(title)}"><span aria-hidden="true"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg></span><span>${escapeHtml(name)}</span><small class="${available ? "" : "source-offline-status"}">${escapeHtml(status)}</small></button>`;
   }).join("");
 
   const root = state.libraryLocation.rootIndex === null ? null : state.archive?.roots[state.libraryLocation.rootIndex];
@@ -385,6 +390,19 @@ function renderSidebar() {
     ? t("sidebar.favorites")
     : (root?.name || t("sidebar.library"));
   renderLibraryBreadcrumb();
+}
+
+function renderSourceAvailability() {
+  const warning = byId("librarySourceWarning");
+  const unavailable = unavailableLibraryRoots(state.archive);
+  warning.hidden = unavailable.length === 0;
+  if (!unavailable.length) return;
+  const names = unavailable.map(root => root.name || rootDisplayName(root.path)).join(" · ");
+  byId("librarySourceWarningTitle").textContent = t("availability.title", {
+    count: unavailable.length,
+    names
+  });
+  byId("librarySourceWarningDetail").textContent = t("availability.detail");
 }
 
 function favoriteFolderEntry(project, projectIndex, fullPath, files) {
@@ -859,10 +877,16 @@ function renderLibrary(sequence = ++libraryRenderSequence) {
 
 function updateRootLabel() {
   const roots = state.archive?.roots || [];
+  const unavailable = unavailableLibraryRoots(state.archive);
   if (!roots.length) {
     byId("rootLabel").textContent = state.roots.length
       ? t("roots.savedNeedsRefresh", { count: state.roots.length })
       : t("app.noFolder");
+  } else if (unavailable.length) {
+    byId("rootLabel").textContent = t("roots.partiallyUnavailable", {
+      available: roots.length - unavailable.length,
+      count: roots.length
+    });
   } else if (roots.length === 1) {
     byId("rootLabel").textContent = roots[0].path;
   } else {
@@ -871,7 +895,7 @@ function updateRootLabel() {
   updateLibraryControls();
 }
 
-function render() { rebuildFavoriteInventory(); updateRootLabel(); renderStats(); renderLibrary(); }
+function render() { rebuildFavoriteInventory(); updateRootLabel(); renderSourceAvailability(); renderStats(); renderLibrary(); }
 
 function saveConfiguration() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ settingsVersion: SETTINGS_VERSION, roots: state.roots, settings: state.settings }));
@@ -889,6 +913,7 @@ function updateLibraryControls() {
   manageButton.textContent = t("app.manageLibrary");
   manageButton.classList.toggle("is-scanning", state.scanning);
   byId("refreshLibrary").disabled = controls.refreshDisabled;
+  byId("retryUnavailableRoots").disabled = controls.refreshDisabled;
   byId("applyLibrarySettings").disabled = controls.applyDisabled;
   const settingsStatus = byId("settingsStatus");
   settingsStatus.textContent = t(controls.statusKey, controls.statusParams);
@@ -927,7 +952,7 @@ async function scanLibrary(roots, settings = state.settings, silent = false) {
     state.fileIndex = new Map(allFiles().map(file => [`${file.rootIndex}\n${file.path}`, file]));
     state.librarySelection.clear();
     state.projectSelection.clear();
-    state.roots = archive.roots.map(root => root.path);
+    state.roots = roots.filter(root => typeof root === "string" && root);
     state.settings = normalizeLibrarySettings(settings);
     state.libraryLocation = libraryLocation();
     state.page = 1;
@@ -1026,6 +1051,7 @@ const libraryDialog = byId("libraryDialog");
 byId("chooseFolder").addEventListener("click", openLibraryDialog);
 byId("addFolders").addEventListener("click", addFolders);
 byId("refreshLibrary").addEventListener("click", () => scanLibrary(state.roots));
+byId("retryUnavailableRoots").addEventListener("click", () => scanLibrary(state.roots));
 byId("rootList").addEventListener("click", event => {
   const button = event.target.closest("[data-remove-root]");
   if (!button) return;
@@ -1895,8 +1921,14 @@ render();
 byId("appVersion").textContent = APP_VERSION.includes("beta") ? `Beta ${APP_VERSION}` : `v${APP_VERSION}`;
 const demoMode = import.meta.env.DEV && new URLSearchParams(location.search).get("demo") === "1";
 if (demoMode) {
-  const requestedDemoFiles = Number(new URLSearchParams(location.search).get("demoFiles")) || 0;
+  const demoParams = new URLSearchParams(location.search);
+  const requestedDemoFiles = Number(demoParams.get("demoFiles")) || 0;
   state.archive = createDemoArchive(requestedDemoFiles);
+  if (demoParams.get("demoOffline") === "1") {
+    state.archive.roots[0].available = false;
+    state.archive.projects = state.archive.projects.filter(project => project.rootIndex !== 0);
+    state.archive.loose = state.archive.loose.filter(file => file.rootIndex !== 0);
+  }
   state.roots = state.archive.roots.map(root => root.path);
   state.fileIndex = new Map(allFiles().map(file => [`${file.rootIndex}\n${file.path}`, file]));
   render();

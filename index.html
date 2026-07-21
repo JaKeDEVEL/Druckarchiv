@@ -102,6 +102,11 @@
     </nav>
 
     <main>
+      <div class="library-source-warning" id="librarySourceWarning" role="status" aria-live="polite" hidden>
+        <span class="library-source-warning-icon" aria-hidden="true">!</span>
+        <div><b id="librarySourceWarningTitle"></b><span id="librarySourceWarningDetail"></span></div>
+        <button class="tool" id="retryUnavailableRoots" type="button" data-i18n="availability.retry">Erneut prüfen</button>
+      </div>
       <nav class="library-breadcrumb" id="libraryBreadcrumb" aria-label="Ordnerpfad" data-i18n-aria-label="project.folderNavigation" hidden></nav>
       <div class="section-head">
         <div>
