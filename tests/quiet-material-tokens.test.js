@@ -47,3 +47,11 @@ test("archive cards separate object type from selection and pagination state", (
   assert.match(css, /\.favorite-button:hover,[\s\S]*?var\(--qm-folder\)/);
   assert.match(css, /\.page-buttons button\.current\s*\{[\s\S]*?var\(--qm-primary\)/);
 });
+
+test("dialogs keep model content legible while sharing quiet material surfaces", () => {
+  assert.match(css, /\.source-panel\s*\{[\s\S]*?var\(--qm-surface-container\)/);
+  assert.match(css, /\.format-chip input:checked \+ span\s*\{[\s\S]*?var\(--qm-primary\)/);
+  assert.match(css, /\.project-modal\s*\{[\s\S]*?min-height:\s*min\(480px, 88vh\)/);
+  assert.match(css, /\.viewer-stage\s*\{[\s\S]*?background:\s*#101718/);
+  assert.match(css, /\.update-orbit\s*\{[\s\S]*?display:\s*none/);
+});
