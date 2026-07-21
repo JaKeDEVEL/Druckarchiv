@@ -62,11 +62,17 @@ export default {
     allSources: "Alle Bibliotheksordner",
     sourceFiles: { one: "{count} Datei", other: "{count} Dateien" },
     offline: "Offline",
-    sourceUnavailable: "{name} ist momentan nicht verfügbar"
+    sourceUnavailable: "{name} ist momentan nicht verfügbar",
+    externalSourceUnavailable: "Externes Laufwerk für {name} erneut verbinden",
+    networkSourceUnavailable: "Netzlaufwerk für {name} erneut verbinden"
   },
   availability: {
     title: { one: "„{names}“ ist momentan nicht verfügbar", other: "{count} Bibliotheksordner sind momentan nicht verfügbar: {names}" },
     detail: "Die übrigen Bibliotheken bleiben nutzbar. Verbinde das Laufwerk wieder und prüfe anschließend erneut.",
+    externalTitle: { one: "„{names}“ liegt auf einem nicht verbundenen externen Laufwerk", other: "{count} Bibliotheksordner liegen auf nicht verbundenen externen Laufwerken: {names}" },
+    externalDetail: "Verbinde das externe Laufwerk erneut und wähle danach „Erneut prüfen“. Die übrigen Bibliotheken bleiben nutzbar.",
+    networkTitle: { one: "„{names}“ liegt auf einem nicht verbundenen Netzlaufwerk", other: "{count} Bibliotheksordner liegen auf nicht verbundenen Netzlaufwerken: {names}" },
+    networkDetail: "Verbinde das Netzlaufwerk erneut und wähle danach „Erneut prüfen“. Die übrigen Bibliotheken bleiben nutzbar.",
     retry: "Erneut prüfen"
   },
   stats: {

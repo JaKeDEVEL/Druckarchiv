@@ -41,7 +41,7 @@ import { mergeLibraryRoots, rootDisplayName } from "./library-roots.js";
 import { compareFavoriteState, favoriteFileKey, favoriteFolderKey, favoriteOverviewItems, favoriteToggleNeedsRender, FAVORITES_STORAGE_KEY, folderPathsForFiles, normalizeFavoriteKeys, normalizeFolderPath } from "./favorites.js";
 import { createUpdateProgress, reduceUpdateProgress, updateProgressPercent } from "./update-progress.js";
 import { folderLocation, isProjectLocation, libraryLocation, locationBreadcrumbs, projectLocation, sourceLocation } from "./library-navigation.js";
-import { isLibraryRootAvailable, unavailableLibraryRoots } from "./library-availability.js";
+import { isLibraryRootAvailable, libraryRootConnectionType, unavailableLibraryConnectionType, unavailableLibraryRoots } from "./library-availability.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -380,7 +380,11 @@ function renderSidebar() {
     const active = !state.favoriteOnly && !isProjectLocation(state.libraryLocation) && state.libraryLocation.rootIndex === rootIndex;
     const available = isLibraryRootAvailable(root);
     const name = root.name || rootDisplayName(root.path);
-    const title = available ? (root.path || name) : t("sidebar.sourceUnavailable", { name });
+    const connectionType = libraryRootConnectionType(root);
+    const unavailableTitleKey = connectionType === "external"
+      ? "sidebar.externalSourceUnavailable"
+      : (connectionType === "network" ? "sidebar.networkSourceUnavailable" : "sidebar.sourceUnavailable");
+    const title = available ? (root.path || name) : t(unavailableTitleKey, { name });
     const status = available ? nf.format(count) : t("sidebar.offline");
     return `<button class="side-root-item ${active ? "on" : ""} ${available ? "" : "is-unavailable"}" type="button" data-side-root="${rootIndex}" aria-pressed="${active}" title="${escapeHtml(title)}"><span aria-hidden="true"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg></span><span>${escapeHtml(name)}</span><small class="${available ? "" : "source-offline-status"}">${escapeHtml(status)}</small></button>`;
   }).join("");
@@ -398,11 +402,18 @@ function renderSourceAvailability() {
   warning.hidden = unavailable.length === 0;
   if (!unavailable.length) return;
   const names = unavailable.map(root => root.name || rootDisplayName(root.path)).join(" · ");
-  byId("librarySourceWarningTitle").textContent = t("availability.title", {
+  const connectionType = unavailableLibraryConnectionType(unavailable);
+  const titleKey = connectionType === "external"
+    ? "availability.externalTitle"
+    : (connectionType === "network" ? "availability.networkTitle" : "availability.title");
+  const detailKey = connectionType === "external"
+    ? "availability.externalDetail"
+    : (connectionType === "network" ? "availability.networkDetail" : "availability.detail");
+  byId("librarySourceWarningTitle").textContent = t(titleKey, {
     count: unavailable.length,
     names
   });
-  byId("librarySourceWarningDetail").textContent = t("availability.detail");
+  byId("librarySourceWarningDetail").textContent = t(detailKey);
 }
 
 function favoriteFolderEntry(project, projectIndex, fullPath, files) {
@@ -1926,6 +1937,7 @@ if (demoMode) {
   state.archive = createDemoArchive(requestedDemoFiles);
   if (demoParams.get("demoOffline") === "1") {
     state.archive.roots[0].available = false;
+    state.archive.roots[0].path = "/Volumes/Druckarchiv-Demo-USB/Modelle";
     state.archive.projects = state.archive.projects.filter(project => project.rootIndex !== 0);
     state.archive.loose = state.archive.loose.filter(file => file.rootIndex !== 0);
   }

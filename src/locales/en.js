@@ -62,11 +62,17 @@ export default {
     allSources: "All library folders",
     sourceFiles: { one: "{count} file", other: "{count} files" },
     offline: "Offline",
-    sourceUnavailable: "{name} is currently unavailable"
+    sourceUnavailable: "{name} is currently unavailable",
+    externalSourceUnavailable: "Reconnect the external drive for {name}",
+    networkSourceUnavailable: "Reconnect the network drive for {name}"
   },
   availability: {
     title: { one: "“{names}” is currently unavailable", other: "{count} library folders are currently unavailable: {names}" },
     detail: "The remaining libraries stay available. Reconnect the drive and then check again.",
+    externalTitle: { one: "“{names}” is located on a disconnected external drive", other: "{count} library folders are located on disconnected external drives: {names}" },
+    externalDetail: "Reconnect the external drive, then choose “Check again”. The remaining libraries stay available.",
+    networkTitle: { one: "“{names}” is located on a disconnected network drive", other: "{count} library folders are located on disconnected network drives: {names}" },
+    networkDetail: "Reconnect the network drive, then choose “Check again”. The remaining libraries stay available.",
     retry: "Check again"
   },
   stats: {
