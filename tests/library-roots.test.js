@@ -35,3 +35,30 @@ test("Pfadgrenzen und Windows-Schreibweisen werden korrekt unterschieden", () =>
   assert.equal(isNestedLibraryRoot("C:\\Modelle\\Figuren", "c:/modelle"), true);
   assert.equal(rootDisplayName("C:\\Modelle\\Figuren\\"), "Figuren");
 });
+
+test("kanonische Windows-Pfade werden als derselbe Ordner erkannt", () => {
+  const result = mergeLibraryRoots(
+    ["\\\\?\\C:\\Users\\Jana\\3D-Druck"],
+    ["c:\\users\\jana\\3d-druck\\"]
+  );
+
+  assert.deepEqual(result.roots, ["\\\\?\\C:\\Users\\Jana\\3D-Druck"]);
+  assert.deepEqual(result.skippedDuplicates, [{
+    candidate: "c:\\users\\jana\\3d-druck\\",
+    existing: "\\\\?\\C:\\Users\\Jana\\3D-Druck"
+  }]);
+});
+
+test("Unterordner werden auch zwischen kanonischen und normalen Windows-Pfaden erkannt", () => {
+  const driveResult = mergeLibraryRoots(
+    ["\\\\?\\D:\\Druckarchiv"],
+    ["D:\\Druckarchiv\\Modelle\\Figuren"]
+  );
+  const networkResult = mergeLibraryRoots(
+    ["\\\\?\\UNC\\NAS\\Druckarchiv"],
+    ["\\\\nas\\druckarchiv\\Modelle"]
+  );
+
+  assert.equal(driveResult.skippedNested.length, 1);
+  assert.equal(networkResult.skippedNested.length, 1);
+});
