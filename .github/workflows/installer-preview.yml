@@ -19,7 +19,7 @@ jobs:
         include:
           - os: macos-latest
             label: macOS Universal
-            bundle: dmg
+            bundle: dmg,app
             target: universal-apple-darwin
             rust_targets: aarch64-apple-darwin x86_64-apple-darwin
             artifact: Druckarchiv-macOS
