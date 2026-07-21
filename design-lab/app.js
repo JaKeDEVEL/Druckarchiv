@@ -67,6 +67,7 @@ const state = {
   selected: new Set(),
   page: 1,
   scenario: "normal",
+  workflow: "browse",
   transientLoading: false,
   loadingTimer: null
 };
@@ -177,6 +178,10 @@ function updateSelectionBar() {
   const count = selectedFiles.length;
   $("#selectionBar").hidden = count === 0;
   $("#selectionCount").textContent = `${count} ${count === 1 ? "Datei ausgewählt" : "Dateien ausgewählt"}`;
+  $("#selectionPath").textContent = count === 1
+    ? `/Modelle/${selectedFiles[0].detail}/${selectedFiles[0].name}`
+    : "Gemeinsam verschieben, löschen oder im Slicer öffnen";
+  $("#renameFile").hidden = count !== 1;
 }
 
 function pageSize() {
@@ -253,6 +258,7 @@ function renderAssets() {
     ? `${fileCount} ${fileCount === 1 ? "Datei" : "Dateien"} · ${folderCount} ${folderCount === 1 ? "Ordner" : "Ordner"}`
     : `${shownTotal} ${shownTotal === 1 ? "Eintrag" : "Einträge"}`;
   $("#resultCount").textContent = isLoading ? "Vorschauen werden geladen" : state.scenario === "error" ? "Lesefehler" : state.scenario === "empty" ? "0 Einträge" : filteredSummary;
+  $("#addFiles").hidden = state.favoritesOnly || state.scenario === "error";
   $$('[data-format]').forEach(button => button.classList.toggle("active", button.dataset.format === state.format));
   $$('[data-view]').forEach(button => button.classList.toggle("on", button.dataset.view === state.view));
   updateNavigation();
@@ -427,6 +433,48 @@ $("#scenarioSelect").addEventListener("change", event => {
   renderAssets();
 });
 
+function showOperation(operation) {
+  const dialog = $(`#${operation}Dialog`);
+  if (!dialog) return;
+  state.workflow = operation;
+  $("#workflowSelect").value = operation;
+  dialog.showModal();
+  if (operation === "rename") requestAnimationFrame(() => $("#renameInput").select());
+}
+
+function prepareManagementSelection() {
+  state.folderId = 2;
+  state.favoritesOnly = false;
+  state.view = "list";
+  state.format = "all";
+  state.page = 1;
+  state.scenario = "normal";
+  state.selected.clear();
+  state.selected.add(13);
+  $("#scenarioSelect").value = "normal";
+  renderAssets();
+}
+
+$("#workflowSelect").addEventListener("change", event => {
+  const workflow = event.target.value;
+  state.workflow = workflow;
+  $$(".manage-dialog[open]").forEach(dialog => dialog.close());
+  if (workflow === "browse") {
+    state.selected.clear();
+    state.folderId = null;
+    state.view = "grid";
+    renderAssets();
+    return;
+  }
+  prepareManagementSelection();
+  if (workflow !== "manage") showOperation(workflow);
+});
+
+$("#addFiles").addEventListener("click", () => showOperation("add"));
+$("#renameFile").addEventListener("click", () => showOperation("rename"));
+$("#moveFile").addEventListener("click", () => showOperation("move"));
+$("#deleteFile").addEventListener("click", () => showOperation("delete"));
+
 $("#reloadLibrary").addEventListener("click", () => {
   state.scenario = "normal";
   $("#scenarioSelect").value = "normal";
@@ -444,6 +492,16 @@ document.addEventListener("keydown", event => {
 
 $$('.prototype-dialog').forEach(dialog => dialog.addEventListener("click", event => {
   if (event.target === dialog) dialog.close();
+}));
+
+$$('.manage-dialog').forEach(dialog => dialog.addEventListener("close", () => {
+  if (state.selected.size) {
+    state.workflow = "manage";
+    $("#workflowSelect").value = "manage";
+  } else {
+    state.workflow = "browse";
+    $("#workflowSelect").value = "browse";
+  }
 }));
 
 if (!concepts[state.direction]) state.direction = "hybrid";

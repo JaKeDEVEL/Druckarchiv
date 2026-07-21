@@ -74,6 +74,24 @@ No other component receives a shadow. Dark mode uses tonal separation before sha
 - **Empty:** explains which user-controlled filter can be changed and offers one reset action.
 - **Unavailable folder:** states the cause class and offers the library management action.
 
+## Local file management proposal
+
+The library mirrors the filesystem, so every management action must describe its physical effect. No additional hover controls are added to cards. Users select files through the existing selection control and receive one contextual action bar inside the file view.
+
+- **Create:** `Dateien hinzufügen` sits beside the result count. It opens a native file selection followed by an explicit destination inside a registered library root. Files are copied to that real folder.
+- **Read:** browsing, search, preview, metadata, and slicer actions remain unchanged.
+- **Update:** one selected file can be renamed; one or several files can be moved. The extension is preserved by default and destinations use the existing folder hierarchy.
+- **Delete:** the primary proposal is `In den Papierkorb`, not an immediate permanent delete. The confirmation names the affected file, shows its path, and explains that it is removed from the real folder. External volumes warn that recovery may not be available.
+
+### Filesystem safety requirements
+
+1. Canonicalize the source and destination and verify both remain inside a currently registered library root.
+2. Reject symlink escapes, stale paths, read-only sources, and unavailable volumes before enabling an action.
+3. Check collisions before copy, rename, or move; never overwrite silently.
+4. Use atomic filesystem operations where the platform supports them and report partial failures per file for multi-selection.
+5. Use the operating system trash API by default. A future permanent-delete option belongs in advanced settings and requires a stronger confirmation.
+6. Refresh only the affected folder and cached metadata after a successful mutation, keeping selection and navigation stable.
+
 ## Component constraints
 
 - Controls use 10 px radii; cards use 11 px; large application and dialog surfaces use 15 px.

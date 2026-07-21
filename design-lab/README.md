@@ -58,6 +58,8 @@ The prototype includes direction and theme switching, KPI format filters, combin
 
 The Quiet Material high-fidelity round also includes direct folder navigation with breadcrumbs and nested folders, pagination, cross-page file selection, a shared slicer action bar, and explicit loading, empty, and unavailable-folder states. The review bar can switch between these states without affecting the demo library.
 
+The `Dateiverwaltung` switch previews the proposed local-file CRUD workflow: adding files to a chosen library folder, renaming while preserving the extension, moving to another physical folder, and moving a file to the operating system trash. These are intentionally non-functional review states; they never read, write, move, or delete local files.
+
 The selected direction's rules and staged migration proposal are documented in [`QUIET_MATERIAL_SPEC.md`](./QUIET_MATERIAL_SPEC.md).
 
 No production implementation or migration has started. The chosen direction can be refined in a second round before individual components are moved into the application.

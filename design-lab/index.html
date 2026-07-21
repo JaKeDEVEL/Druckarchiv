@@ -35,6 +35,16 @@
           <option value="error">Fehler</option>
         </select>
       </label>
+      <label class="review-state">Dateiverwaltung
+        <select id="workflowSelect" aria-label="CRUD-Ablauf">
+          <option value="browse">Übersicht</option>
+          <option value="manage">Datei ausgewählt</option>
+          <option value="add">Dateien hinzufügen</option>
+          <option value="rename">Umbenennen</option>
+          <option value="move">Verschieben</option>
+          <option value="delete">Löschen</option>
+        </select>
+      </label>
     </div>
   </header>
 
@@ -113,8 +123,13 @@
           </div>
 
           <aside class="selection-bar" id="selectionBar" aria-live="polite" hidden>
-            <div><span aria-hidden="true">✓</span><strong id="selectionCount">1 Datei ausgewählt</strong></div>
-            <div>
+            <div class="selection-summary"><span aria-hidden="true">✓</span><p><strong id="selectionCount">1 Datei ausgewählt</strong><small id="selectionPath">/Modelle/Drucker-Upgrades/Druckerfuß.3mf</small></p></div>
+            <div class="selection-actions">
+              <div class="manage-actions" aria-label="Datei verwalten">
+                <button class="quiet-action" id="renameFile" type="button"><span aria-hidden="true">✎</span> Umbenennen</button>
+                <button class="quiet-action" id="moveFile" type="button"><span aria-hidden="true">⇢</span> Verschieben</button>
+                <button class="quiet-action danger-text" id="deleteFile" type="button"><span aria-hidden="true">⌫</span> Löschen</button>
+              </div>
               <label>Slicer<select id="selectionSlicer"><option>OrcaSlicer</option><option>Bambu Studio</option><option>PrusaSlicer</option></select></label>
               <button class="primary-button" type="button">Im Slicer öffnen</button>
               <button class="icon-button" id="clearSelection" type="button" aria-label="Auswahl aufheben">×</button>
@@ -123,7 +138,7 @@
 
           <div class="section-heading">
             <div><p id="sectionLabel">Bibliothek</p><h3 id="sectionTitle">Projekte und Dateien</h3></div>
-            <span id="resultCount">8 Einträge</span>
+            <div class="section-actions"><span id="resultCount">8 Einträge</span><button class="tonal-button add-files-button" id="addFiles" type="button"><span aria-hidden="true">＋</span> Dateien hinzufügen</button></div>
           </div>
 
           <section class="asset-grid" id="assetGrid" aria-live="polite"></section>
@@ -170,6 +185,64 @@
         <aside><span class="status-pill">Bereit zum Slicen</span><dl><div><dt>Format</dt><dd id="previewFormat">3MF</dd></div><div><dt>Größe</dt><dd id="previewSize">4,2 MB</dd></div><div><dt>Geändert</dt><dd id="previewDate">Heute</dd></div><div><dt>Ordner</dt><dd id="previewSource">Modelle</dd></div></dl><label>Slicer<select><option>OrcaSlicer</option><option>Bambu Studio</option><option>PrusaSlicer</option></select></label><button class="primary-button" type="button">Im Slicer öffnen</button></aside>
       </div>
       <footer><span>Ziehen: drehen · Mausrad: zoomen</span><button value="close" class="text-button">Schließen</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="addDialog" class="prototype-dialog manage-dialog">
+    <form method="dialog" class="dialog-surface file-operation-surface">
+      <header><div><p>Dateiverwaltung · Hinzufügen</p><h2>Dateien zur Bibliothek hinzufügen</h2></div><button value="close" aria-label="Dialog schließen">×</button></header>
+      <div class="operation-body">
+        <div class="operation-step"><span>1</span><div><b>Dateien auswählen</b><small>STL, 3MF, OBJ und G-Code von deinem Rechner</small></div></div>
+        <button class="file-drop" type="button"><span aria-hidden="true">＋</span><b>Dateien auswählen</b><small>oder hierher ziehen</small></button>
+        <div class="operation-step"><span>2</span><div><b>Zielordner festlegen</b><small>Die Dateien werden physisch in diesen Ordner kopiert.</small></div></div>
+        <label class="destination-field"><span>Ziel in der Bibliothek</span><select><option>Modelle / Drucker-Upgrades</option><option>Modelle / Organizer-System</option><option>Modelle / Varianten</option></select></label>
+        <p class="operation-note"><span aria-hidden="true">i</span> Druckarchiv erstellt keine zweite Schattenbibliothek. Hinzugefügte Dateien liegen anschließend wirklich im gewählten Ordner.</p>
+      </div>
+      <footer><span>Prototyp · es werden keine Dateien kopiert.</span><div><button value="close" class="text-button">Abbrechen</button><button type="button" class="primary-button" disabled>2 Dateien hinzufügen</button></div></footer>
+    </form>
+  </dialog>
+
+  <dialog id="renameDialog" class="prototype-dialog manage-dialog">
+    <form method="dialog" class="dialog-surface file-operation-surface">
+      <header><div><p>Dateiverwaltung · Umbenennen</p><h2>Datei umbenennen</h2></div><button value="close" aria-label="Dialog schließen">×</button></header>
+      <div class="operation-body">
+        <div class="selected-file-summary"><span>3MF</span><div><b>Druckerfuß.3mf</b><small>/Modelle/Drucker-Upgrades</small></div></div>
+        <label class="rename-field"><span>Neuer Dateiname</span><div><input id="renameInput" value="Druckerfuß" autocomplete="off"><code>.3mf</code></div><small>Die Dateiendung bleibt erhalten, damit die Datei weiterhin erkannt wird.</small></label>
+        <p class="operation-note"><span aria-hidden="true">i</span> Der Name wird direkt im ursprünglichen Ordner auf deinem Laufwerk geändert.</p>
+      </div>
+      <footer><span>Prototyp · der Dateiname bleibt unverändert.</span><div><button value="close" class="text-button">Abbrechen</button><button type="button" class="primary-button">Umbenennen</button></div></footer>
+    </form>
+  </dialog>
+
+  <dialog id="moveDialog" class="prototype-dialog manage-dialog">
+    <form method="dialog" class="dialog-surface file-operation-surface move-surface">
+      <header><div><p>Dateiverwaltung · Verschieben</p><h2>Datei in einen anderen Ordner verschieben</h2></div><button value="close" aria-label="Dialog schließen">×</button></header>
+      <div class="operation-body">
+        <div class="selected-file-summary"><span>3MF</span><div><b>Druckerfuß.3mf</b><small>Aktuell: /Modelle/Drucker-Upgrades</small></div></div>
+        <div class="folder-picker" role="tree" aria-label="Zielordner">
+          <button type="button" aria-expanded="true"><span>▾</span><b>Modelle</b></button>
+          <button type="button" class="folder-child"><span>▰</span> Organizer-System</button>
+          <button type="button" class="folder-child selected"><span>▰</span> Drucker-Upgrades <small>Aktueller Ordner</small></button>
+          <button type="button" class="folder-child"><span>▰</span> Varianten</button>
+          <button type="button"><span>▸</span><b>Druckaufträge</b></button>
+        </div>
+        <button class="text-button new-folder-action" type="button">＋ Neuen Ordner anlegen</button>
+        <p class="operation-note"><span aria-hidden="true">i</span> Verschieben ändert den echten Speicherort. Verknüpfungen anderer Programme können dadurch ungültig werden.</p>
+      </div>
+      <footer><span>Ziel: Bitte einen anderen Ordner auswählen.</span><div><button value="close" class="text-button">Abbrechen</button><button type="button" class="primary-button" disabled>Hierher verschieben</button></div></footer>
+    </form>
+  </dialog>
+
+  <dialog id="deleteDialog" class="prototype-dialog manage-dialog danger-dialog">
+    <form method="dialog" class="dialog-surface file-operation-surface">
+      <header><div><p>Dateiverwaltung · Löschen</p><h2>Datei in den Papierkorb verschieben?</h2></div><button value="close" aria-label="Dialog schließen">×</button></header>
+      <div class="operation-body">
+        <div class="danger-symbol" aria-hidden="true">!</div>
+        <p class="danger-lead"><b>Druckerfuß.3mf</b> wird aus dem Ordner auf deinem Laufwerk entfernt.</p>
+        <code class="danger-path">/Modelle/Drucker-Upgrades/Druckerfuß.3mf</code>
+        <p class="operation-note danger-note"><span aria-hidden="true">!</span> Die Datei wird wirklich aus diesem Ordner gelöscht und in den Papierkorb des Betriebssystems verschoben. Bei externen Laufwerken ist eine Wiederherstellung möglicherweise nicht verfügbar.</p>
+      </div>
+      <footer><span>Prototyp · es wird keine Datei gelöscht.</span><div><button value="close" class="text-button">Abbrechen</button><button type="button" class="danger-button">In den Papierkorb</button></div></footer>
     </form>
   </dialog>
 
