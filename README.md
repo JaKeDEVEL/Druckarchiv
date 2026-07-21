@@ -4,7 +4,7 @@
 
 Druckarchiv is a local desktop app for organizing, filtering, and viewing 3D printing files. Select one or more library folders and the app will scan their structure locally, presenting projects, individual files, and file types through interactive statistics.
 
-**Current release: v0.9.0 — [download installers for macOS, Windows, and Linux](https://github.com/JaKeDEVEL/Druckarchiv/releases/latest).**
+**Current release: v0.9.1 — [download installers for macOS, Windows, and Linux](https://github.com/JaKeDEVEL/Druckarchiv/releases/latest).**
 
 <p align="center">
   <img src="assets/brand/druckarchiv-promo-square.png" width="720" alt="Druckarchiv, a local 3D printing library for macOS, Windows, and Linux" />
@@ -78,7 +78,7 @@ The complete terms are available in [LICENSE](LICENSE). Bundled libraries such a
 
 Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3D-Druck-Dateien. Man wählt einen oder mehrere Archivordner aus; die App liest deren Struktur lokal ein und zeigt Projekte, Einzeldateien und Dateitypen als direkt anklickbare Kennzahlen.
 
-**Aktuelle Version: v0.9.0 — [Installer für macOS, Windows und Linux herunterladen](https://github.com/JaKeDEVEL/Druckarchiv/releases/latest).**
+**Aktuelle Version: v0.9.1 — [Installer für macOS, Windows und Linux herunterladen](https://github.com/JaKeDEVEL/Druckarchiv/releases/latest).**
 
 <p align="center">
   <img src="assets/brand/druckarchiv-promo-square.png" width="720" alt="Druckarchiv – lokale 3D-Druck-Bibliothek für macOS, Windows und Linux" />
