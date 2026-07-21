@@ -29,6 +29,12 @@ test("Update-Manifest verknüpft signierte Pakete für alle Desktop-Plattformen"
     pubDate: "2026-07-20T00:00:00.000Z"
   });
 
+  assert.deepEqual(Object.keys(manifests).sort(), [
+    "latest-app.json",
+    "latest-appimage.json",
+    "latest-deb.json",
+    "latest-nsis.json"
+  ]);
   assert.equal(manifests["latest-app.json"].version, "0.8.9");
   assert.equal(manifests["latest-app.json"].platforms["darwin-aarch64"].url, manifests["latest-app.json"].platforms["darwin-x86_64"].url);
   assert.match(manifests["latest-nsis.json"].platforms["windows-x86_64"].signature, /x64-setup\.exe/);

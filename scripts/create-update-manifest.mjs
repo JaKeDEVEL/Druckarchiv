@@ -55,13 +55,7 @@ export async function createUpdateManifests({ assetsDirectory, repository, tag, 
     }),
     "latest-nsis.json": manifest({ "windows-x86_64": windowsPlatform }),
     "latest-appimage.json": manifest({ "linux-x86_64": appImagePlatform }),
-    "latest-deb.json": manifest({ "linux-x86_64": debPlatform }),
-    "latest.json": manifest({
-      "darwin-aarch64": macPlatform,
-      "darwin-x86_64": macPlatform,
-      "windows-x86_64": windowsPlatform,
-      "linux-x86_64": appImagePlatform
-    })
+    "latest-deb.json": manifest({ "linux-x86_64": debPlatform })
   };
 }
 

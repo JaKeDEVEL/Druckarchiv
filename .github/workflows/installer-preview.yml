@@ -150,7 +150,10 @@ jobs:
             title="$title (Preview)"
             release_flags=(--prerelease)
           fi
-          mapfile -d '' release_assets < <(find release-assets -type f -print0)
+          # Signatures stay in the build artifacts and are embedded in the
+          # updater manifests. Publishing them separately only clutters the
+          # user-facing GitHub release.
+          mapfile -d '' release_assets < <(find release-assets -type f ! -name '*.sig' -print0)
           if (( ${#release_assets[@]} == 0 )); then
             echo "Keine Installer zum Veröffentlichen gefunden."
             exit 1
