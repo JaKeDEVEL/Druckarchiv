@@ -7,7 +7,7 @@
   <title>Druckarchiv Design Lab</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
-<body data-direction="workshop" data-theme="light">
+<body data-direction="hybrid" data-theme="light">
   <header class="review-bar">
     <div class="review-brand">
       <span class="review-mark" aria-hidden="true">DA</span>
@@ -19,8 +19,9 @@
     <div class="review-controls">
       <div class="review-switch" id="directionSwitch" role="group" aria-label="Designrichtung">
         <button type="button" data-direction="material">A · Strict M3</button>
-        <button class="on" type="button" data-direction="workshop">B · Druckarchiv × M3</button>
+        <button type="button" data-direction="workshop">B · Druckarchiv × M3</button>
         <button type="button" data-direction="utility">C · Quiet Utility</button>
+        <button class="on" type="button" data-direction="hybrid">D · Quiet Material</button>
       </div>
       <div class="review-switch compact" id="themeSwitch" role="group" aria-label="Farbschema">
         <button class="on" type="button" data-theme="light" aria-label="Heller Modus">☀</button>
@@ -32,13 +33,13 @@
   <main class="lab-stage">
     <section class="concept-note" aria-live="polite">
       <div>
-        <span class="concept-index" id="conceptIndex">B</span>
+        <span class="concept-index" id="conceptIndex">D</span>
         <div>
-          <p id="conceptEyebrow">Empfohlene Richtung</p>
-          <h1 id="conceptTitle">Druckarchiv × Material 3</h1>
+          <p id="conceptEyebrow">Synthese aus deinem Feedback</p>
+          <h1 id="conceptTitle">Quiet Material</h1>
         </div>
       </div>
-      <p id="conceptDescription">Material-Logik mit kompakter Desktop-Dichte und einer eigenständigen Werkstattidentität.</p>
+      <p id="conceptDescription">Die Klarheit eines Desktop-Dateiwerkzeugs, ergänzt um weichere Material-Zustände und sparsame räumliche Tiefe.</p>
       <dl class="concept-properties" id="conceptProperties"></dl>
     </section>
 

@@ -19,6 +19,13 @@ const concepts = {
     title: "Quiet Desktop Utility",
     description: "Ein ruhiges professionelles Werkzeug: hierarchisch, informationsdicht und näher an vertrauten Desktop-Dateiverwaltern.",
     properties: [["Dichte", "hoch"], ["Form", "zurückhaltend"], ["Signatur", "Asset-Inspektor"]]
+  },
+  hybrid: {
+    index: "D",
+    eyebrow: "Synthese aus deinem Feedback",
+    title: "Quiet Material",
+    description: "Die Klarheit eines Desktop-Dateiwerkzeugs, ergänzt um weichere Material-Zustände, Mineralblau und sparsame räumliche Tiefe.",
+    properties: [["Dichte", "hoch"], ["Form", "sanft"], ["Signatur", "Archivstufen"]]
   }
 };
 
@@ -34,7 +41,7 @@ const assets = [
 ];
 
 const state = {
-  direction: new URLSearchParams(location.search).get("direction") || "workshop",
+  direction: new URLSearchParams(location.search).get("direction") || "hybrid",
   theme: new URLSearchParams(location.search).get("theme") || "light",
   view: "grid",
   format: "all",

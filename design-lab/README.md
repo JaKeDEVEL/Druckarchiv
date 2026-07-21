@@ -30,6 +30,17 @@ Open `/design-lab/` through the local Vite development server. The review bar sw
 - **Layout:** Dense sidebar, direct information hierarchy, reduced KPI prominence.
 - **Question:** Does this feel more durable and professional, or too reserved for a visual 3D library?
 
+## Round 2: feedback synthesis
+
+### D · Quiet Material
+
+- **Idea:** Keep Quiet Utility's familiar file-tool hierarchy and density, then add only the useful parts of Material 3: semantic tonal surfaces, softer states, and restrained elevation.
+- **Color:** Mineral blue and petrol for actions and files, warm ochre for folders; deliberately no default Material purple.
+- **Shape:** Medium radii that clarify grouping without turning every control into a pill.
+- **Layout:** Full desktop sidebar, compact KPI row, tool-like content area, and slightly raised active states.
+- **Signature:** Asset cards end in a subtle stacked “archive step,” referencing physical drawers and print plates.
+- **Question:** Does the added depth make the clean utility interface more approachable without weakening its clarity?
+
 ## What to compare
 
 The same synthetic library, states, wording, and interactions are used in every direction. Compare:
