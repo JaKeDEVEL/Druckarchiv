@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>Druckarchiv Design Lab</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body data-direction="workshop" data-theme="light">
+  <header class="review-bar">
+    <div class="review-brand">
+      <span class="review-mark" aria-hidden="true">DA</span>
+      <div>
+        <strong>Druckarchiv Design Lab</strong>
+        <small>Entwurfsraum · keine Produktivversion</small>
+      </div>
+    </div>
+    <div class="review-controls">
+      <div class="review-switch" id="directionSwitch" role="group" aria-label="Designrichtung">
+        <button type="button" data-direction="material">A · Strict M3</button>
+        <button class="on" type="button" data-direction="workshop">B · Druckarchiv × M3</button>
+        <button type="button" data-direction="utility">C · Quiet Utility</button>
+      </div>
+      <div class="review-switch compact" id="themeSwitch" role="group" aria-label="Farbschema">
+        <button class="on" type="button" data-theme="light" aria-label="Heller Modus">☀</button>
+        <button type="button" data-theme="dark" aria-label="Dunkler Modus">☾</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="lab-stage">
+    <section class="concept-note" aria-live="polite">
+      <div>
+        <span class="concept-index" id="conceptIndex">B</span>
+        <div>
+          <p id="conceptEyebrow">Empfohlene Richtung</p>
+          <h1 id="conceptTitle">Druckarchiv × Material 3</h1>
+        </div>
+      </div>
+      <p id="conceptDescription">Material-Logik mit kompakter Desktop-Dichte und einer eigenständigen Werkstattidentität.</p>
+      <dl class="concept-properties" id="conceptProperties"></dl>
+    </section>
+
+    <section class="app-frame" aria-label="Interaktiver Druckarchiv-Entwurf">
+      <aside class="side-nav">
+        <div class="product-lockup">
+          <span class="product-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span><b>Druckarchiv</b><small>Lokale Bibliothek</small></span>
+        </div>
+        <nav aria-label="Hauptnavigation">
+          <button class="nav-item active" type="button" data-nav="library"><span class="nav-icon" aria-hidden="true">⌂</span><span>Bibliothek</span><small>23</small></button>
+          <button class="nav-item" type="button" data-nav="favorites"><span class="nav-icon" aria-hidden="true">★</span><span>Favoriten</span><small id="sideFavoriteCount">4</small></button>
+          <button class="nav-item" type="button" data-nav="recent"><span class="nav-icon" aria-hidden="true">◷</span><span>Zuletzt verwendet</span></button>
+        </nav>
+        <div class="library-tree">
+          <p>Bibliotheksordner</p>
+          <button type="button"><span aria-hidden="true">▾</span><span>Modelle</span><small>14</small></button>
+          <button type="button"><span aria-hidden="true">▾</span><span>Druckaufträge</span><small>9</small></button>
+        </div>
+        <div class="local-note"><span aria-hidden="true">✓</span><p><b>Alles lokal</b><small>Keine Cloud · keine Telemetrie</small></p></div>
+      </aside>
+
+      <section class="workspace">
+        <header class="app-header">
+          <div>
+            <p class="app-eyebrow">3D-Druck-Bibliothek <span>v1.0 Konzept</span></p>
+            <h2>Guten Morgen, Janos.</h2>
+            <p class="path-summary">2 Ordner · zuletzt heute um 08:42 eingelesen</p>
+          </div>
+          <div class="header-actions">
+            <button class="icon-button" type="button" aria-label="Neu einlesen" title="Neu einlesen">↻</button>
+            <button class="primary-button" id="manageLibrary" type="button"><span aria-hidden="true">＋</span> Bibliothek verwalten</button>
+            <button class="avatar-button" type="button" aria-label="Menü öffnen">DA</button>
+          </div>
+        </header>
+
+        <section class="metrics" aria-label="Bibliothekskennzahlen">
+          <button class="metric active" type="button" data-format="all"><span>Alle Einträge</span><b>23</b><small>6 Ordner · 17 Dateien</small></button>
+          <button class="metric" type="button" data-format="stl"><span>STL</span><b>7</b><small>Modelle</small></button>
+          <button class="metric" type="button" data-format="3mf"><span>3MF</span><b>6</b><small>Druckpakete</small></button>
+          <button class="metric" type="button" data-format="obj"><span>OBJ</span><b>3</b><small>Mesh-Dateien</small></button>
+          <button class="metric" type="button" data-format="gcode"><span>G-Code</span><b>7</b><small>Druckaufträge</small></button>
+        </section>
+
+        <div class="content-shell">
+          <div class="toolbar">
+            <label class="search-field">
+              <span aria-hidden="true">⌕</span>
+              <input id="searchInput" type="search" placeholder="Projekte und Dateien durchsuchen …" autocomplete="off">
+              <kbd>⌘ K</kbd>
+            </label>
+            <select id="sortSelect" aria-label="Sortierung">
+              <option value="name">Name A–Z</option>
+              <option value="date">Zuletzt geändert</option>
+              <option value="size">Größe</option>
+            </select>
+            <button class="filter-button" id="favoriteFilter" type="button" aria-pressed="false"><span aria-hidden="true">☆</span> Favoriten <small>4</small></button>
+            <div class="view-switch" role="group" aria-label="Ansicht">
+              <button class="on" type="button" data-view="grid" aria-label="Rasteransicht">▦</button>
+              <button type="button" data-view="list" aria-label="Listenansicht">☷</button>
+            </div>
+          </div>
+
+          <div class="section-heading">
+            <div><p id="sectionLabel">Bibliothek</p><h3 id="sectionTitle">Projekte und Dateien</h3></div>
+            <span id="resultCount">8 Einträge</span>
+          </div>
+
+          <section class="asset-grid" id="assetGrid" aria-live="polite"></section>
+
+          <footer class="result-footer">
+            <span>1–8 von 23 Einträgen</span>
+            <nav aria-label="Ergebnisseiten"><button type="button" disabled>←</button><button class="current" type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">→</button></nav>
+          </footer>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="settingsDialog" class="prototype-dialog">
+    <form method="dialog" class="dialog-surface settings-surface">
+      <header><div><p>Bibliothek</p><h2>Bibliothek verwalten</h2></div><button value="close" aria-label="Dialog schließen">×</button></header>
+      <div class="dialog-body settings-body">
+        <section>
+          <div class="dialog-section-heading"><div><b>Ordner</b><span>Diese Orte werden rekursiv eingelesen.</span></div><button class="tonal-button" type="button">＋ Ordner hinzufügen</button></div>
+          <div class="folder-row"><span class="folder-glyph">▰</span><div><b>Modelle</b><small>/Druckarchiv-Demo/Modelle</small></div><button type="button">Entfernen</button></div>
+          <div class="folder-row"><span class="folder-glyph">▰</span><div><b>Druckaufträge</b><small>/Druckarchiv-Demo/Druckauftraege</small></div><button type="button">Entfernen</button></div>
+        </section>
+        <section>
+          <div class="dialog-section-heading"><div><b>Angezeigte Dateitypen</b><span>Modelle und Druckaufträge sind vorausgewählt.</span></div></div>
+          <div class="format-options">
+            <label><input type="checkbox" checked><span><i>STL</i>Modelldatei</span></label>
+            <label><input type="checkbox" checked><span><i>3MF</i>Druckpaket</span></label>
+            <label><input type="checkbox" checked><span><i>OBJ</i>Mesh-Datei</span></label>
+            <label><input type="checkbox" checked><span><i>GCODE</i>Druckauftrag</span></label>
+            <label><input type="checkbox"><span><i>STEP</i>CAD-Quelle</span></label>
+            <label><input type="checkbox"><span><i>SVG</i>Referenz</span></label>
+          </div>
+        </section>
+      </div>
+      <footer><span>Änderungen werden nur lokal gespeichert.</span><div><button value="close" class="text-button">Abbrechen</button><button value="save" class="primary-button">Änderungen übernehmen</button></div></footer>
+    </form>
+  </dialog>
+
+  <dialog id="previewDialog" class="prototype-dialog">
+    <form method="dialog" class="dialog-surface preview-surface">
+      <header><div><p id="previewKind">3MF · Modell</p><h2 id="previewName">Kabelclip.3mf</h2></div><button value="close" aria-label="Vorschau schließen">×</button></header>
+      <div class="preview-body">
+        <div class="large-model" id="largeModel" aria-label="Synthetische Modellvorschau"></div>
+        <aside><span class="status-pill">Bereit zum Slicen</span><dl><div><dt>Format</dt><dd id="previewFormat">3MF</dd></div><div><dt>Größe</dt><dd id="previewSize">4,2 MB</dd></div><div><dt>Geändert</dt><dd id="previewDate">Heute</dd></div><div><dt>Ordner</dt><dd id="previewSource">Modelle</dd></div></dl><label>Slicer<select><option>OrcaSlicer</option><option>Bambu Studio</option><option>PrusaSlicer</option></select></label><button class="primary-button" type="button">Im Slicer öffnen</button></aside>
+      </div>
+      <footer><span>Ziehen: drehen · Mausrad: zoomen</span><button value="close" class="text-button">Schließen</button></footer>
+    </form>
+  </dialog>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
