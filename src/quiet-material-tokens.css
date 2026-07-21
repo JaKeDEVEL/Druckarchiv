@@ -1,0 +1,266 @@
+/*
+ * Quiet Material foundation.
+ *
+ * Semantic roles are defined first. Legacy aliases keep the current interface
+ * functional while components are migrated in independently testable phases.
+ */
+:root {
+  --qm-canvas: #171d1e;
+  --qm-surface: #202829;
+  --qm-surface-container: #283233;
+  --qm-surface-raised: #344547;
+  --qm-text: #eef4f3;
+  --qm-text-secondary: #bdcaca;
+  --qm-text-dim: #89999a;
+  --qm-outline: #405052;
+  --qm-primary: #9acbd0;
+  --qm-on-primary: #0c3438;
+  --qm-folder: #e1b477;
+  --qm-on-folder: #35230c;
+  --qm-focus: #9acbd0;
+  --qm-error: #f1a98f;
+  --qm-radius-control: 10px;
+  --qm-radius-card: 11px;
+  --qm-radius-large: 15px;
+  --qm-shadow-1: 0 3px 12px rgba(0, 0, 0, .18);
+  --qm-shadow-2: 0 8px 24px rgba(0, 0, 0, .24);
+  --qm-shadow-3: 0 26px 70px rgba(0, 0, 0, .36);
+
+  /* Compatibility aliases for the existing component layer. */
+  --bg: var(--qm-canvas);
+  --panel: var(--qm-surface);
+  --panel2: var(--qm-surface-container);
+  --line: var(--qm-outline);
+  --text: var(--qm-text);
+  --muted: var(--qm-text-secondary);
+  --dim: var(--qm-text-dim);
+  --mint: var(--qm-primary);
+  --orange: var(--qm-folder);
+  --violet: #aab8c3;
+  --lime: #b8c98a;
+  --blue: #8fb9d2;
+  --body-glow: rgba(154, 203, 208, .045);
+  --grid-line: rgba(154, 203, 208, .035);
+  --primary-ink: var(--qm-on-primary);
+  --primary-shadow: rgba(154, 203, 208, .16);
+  --stat-bg: color-mix(in srgb, var(--qm-surface) 92%, transparent);
+  --toolbar-bg: color-mix(in srgb, var(--qm-canvas) 92%, transparent);
+  --dialog-backdrop: rgba(8, 13, 14, .76);
+  --line-soft: color-mix(in srgb, var(--qm-outline) 58%, transparent);
+  --surface-soft: color-mix(in srgb, var(--qm-canvas) 58%, transparent);
+  --surface-float: color-mix(in srgb, var(--qm-surface) 94%, transparent);
+  --surface-bar: color-mix(in srgb, var(--qm-surface-container) 72%, transparent);
+  --preview-bg: color-mix(in srgb, var(--qm-surface) 78%, transparent);
+  --stripe: rgba(255, 255, 255, .014);
+  --mint-soft: color-mix(in srgb, var(--qm-primary) 11%, transparent);
+  --orange-soft: color-mix(in srgb, var(--qm-folder) 12%, transparent);
+  --blue-soft: color-mix(in srgb, var(--blue) 6%, transparent);
+  --hover-line: color-mix(in srgb, var(--qm-primary) 48%, var(--qm-outline));
+  --accent-border: color-mix(in srgb, var(--qm-primary) 62%, var(--qm-outline));
+  --r: var(--qm-radius-card);
+  color-scheme: dark;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", ui-sans-serif, sans-serif;
+}
+
+:root[data-theme="light"] {
+  --qm-canvas: #edf1f1;
+  --qm-surface: #fbfcfb;
+  --qm-surface-container: #f1f5f4;
+  --qm-surface-raised: #dbe7e5;
+  --qm-text: #1c2425;
+  --qm-text-secondary: #465657;
+  --qm-text-dim: #718081;
+  --qm-outline: #c6d0cf;
+  --qm-primary: #315f66;
+  --qm-on-primary: #f4ffff;
+  --qm-folder: #94652b;
+  --qm-on-folder: #fff8ee;
+  --qm-focus: #315f66;
+  --qm-error: #9c432f;
+  --qm-shadow-1: 0 3px 12px rgba(30, 49, 51, .1);
+  --qm-shadow-2: 0 8px 24px rgba(30, 49, 51, .14);
+  --qm-shadow-3: 0 26px 70px rgba(20, 36, 38, .24);
+  --bg: var(--qm-canvas);
+  --panel: var(--qm-surface);
+  --panel2: var(--qm-surface-container);
+  --line: var(--qm-outline);
+  --text: var(--qm-text);
+  --muted: var(--qm-text-secondary);
+  --dim: var(--qm-text-dim);
+  --mint: var(--qm-primary);
+  --orange: var(--qm-folder);
+  --violet: #536b78;
+  --lime: #536b32;
+  --blue: #3f6f88;
+  --body-glow: rgba(49, 95, 102, .04);
+  --grid-line: rgba(49, 95, 102, .04);
+  --primary-ink: var(--qm-on-primary);
+  --primary-shadow: rgba(49, 95, 102, .14);
+  --stat-bg: color-mix(in srgb, var(--qm-surface) 94%, transparent);
+  --toolbar-bg: color-mix(in srgb, var(--qm-canvas) 92%, transparent);
+  --dialog-backdrop: rgba(20, 37, 39, .38);
+  --line-soft: color-mix(in srgb, var(--qm-outline) 58%, transparent);
+  --surface-soft: color-mix(in srgb, var(--qm-surface) 64%, transparent);
+  --surface-float: color-mix(in srgb, var(--qm-surface) 94%, transparent);
+  --surface-bar: color-mix(in srgb, var(--qm-surface-container) 76%, transparent);
+  --preview-bg: color-mix(in srgb, var(--qm-surface) 84%, transparent);
+  --stripe: rgba(28, 36, 37, .025);
+  --mint-soft: color-mix(in srgb, var(--qm-primary) 9%, transparent);
+  --orange-soft: color-mix(in srgb, var(--qm-folder) 10%, transparent);
+  --blue-soft: color-mix(in srgb, var(--blue) 6%, transparent);
+  --hover-line: color-mix(in srgb, var(--qm-primary) 48%, var(--qm-outline));
+  --accent-border: color-mix(in srgb, var(--qm-primary) 62%, var(--qm-outline));
+  --r: var(--qm-radius-card);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --qm-canvas: #edf1f1;
+    --qm-surface: #fbfcfb;
+    --qm-surface-container: #f1f5f4;
+    --qm-surface-raised: #dbe7e5;
+    --qm-text: #1c2425;
+    --qm-text-secondary: #465657;
+    --qm-text-dim: #718081;
+    --qm-outline: #c6d0cf;
+    --qm-primary: #315f66;
+    --qm-on-primary: #f4ffff;
+    --qm-folder: #94652b;
+    --qm-on-folder: #fff8ee;
+    --qm-focus: #315f66;
+    --qm-error: #9c432f;
+    --qm-shadow-1: 0 3px 12px rgba(30, 49, 51, .1);
+    --qm-shadow-2: 0 8px 24px rgba(30, 49, 51, .14);
+    --qm-shadow-3: 0 26px 70px rgba(20, 36, 38, .24);
+    --bg: var(--qm-canvas);
+    --panel: var(--qm-surface);
+    --panel2: var(--qm-surface-container);
+    --line: var(--qm-outline);
+    --text: var(--qm-text);
+    --muted: var(--qm-text-secondary);
+    --dim: var(--qm-text-dim);
+    --mint: var(--qm-primary);
+    --orange: var(--qm-folder);
+    --violet: #536b78;
+    --lime: #536b32;
+    --blue: #3f6f88;
+    --body-glow: rgba(49, 95, 102, .04);
+    --grid-line: rgba(49, 95, 102, .04);
+    --primary-ink: var(--qm-on-primary);
+    --primary-shadow: rgba(49, 95, 102, .14);
+    --stat-bg: color-mix(in srgb, var(--qm-surface) 94%, transparent);
+    --toolbar-bg: color-mix(in srgb, var(--qm-canvas) 92%, transparent);
+    --dialog-backdrop: rgba(20, 37, 39, .38);
+    --line-soft: color-mix(in srgb, var(--qm-outline) 58%, transparent);
+    --surface-soft: color-mix(in srgb, var(--qm-surface) 64%, transparent);
+    --surface-float: color-mix(in srgb, var(--qm-surface) 94%, transparent);
+    --surface-bar: color-mix(in srgb, var(--qm-surface-container) 76%, transparent);
+    --preview-bg: color-mix(in srgb, var(--qm-surface) 84%, transparent);
+    --stripe: rgba(28, 36, 37, .025);
+    --mint-soft: color-mix(in srgb, var(--qm-primary) 9%, transparent);
+    --orange-soft: color-mix(in srgb, var(--qm-folder) 10%, transparent);
+    --blue-soft: color-mix(in srgb, var(--blue) 6%, transparent);
+    --hover-line: color-mix(in srgb, var(--qm-primary) 48%, var(--qm-outline));
+    --accent-border: color-mix(in srgb, var(--qm-primary) 62%, var(--qm-outline));
+    --r: var(--qm-radius-card);
+    color-scheme: light;
+  }
+}
+
+body {
+  background: var(--qm-canvas);
+}
+
+header {
+  background: var(--qm-surface);
+}
+
+.grid-glow {
+  opacity: .32;
+}
+
+.primary {
+  border-radius: var(--qm-radius-control);
+  background: var(--qm-primary);
+  color: var(--qm-on-primary);
+  box-shadow: var(--qm-shadow-1);
+}
+
+input,
+select,
+textarea,
+.tool,
+.icon,
+.icon-tool,
+.app-menu-trigger,
+.update-check-button {
+  border-radius: var(--qm-radius-control);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--qm-focus);
+  outline-offset: 2px;
+}
+
+.toolbar {
+  box-shadow: var(--qm-shadow-1);
+}
+
+.modal,
+.app-menu-panel {
+  border-radius: var(--qm-radius-large);
+  box-shadow: var(--qm-shadow-3);
+}
+
+.theme-option.on,
+.locale-option.on,
+.entry-mode-option.on,
+.view-mode-option.on {
+  background: var(--qm-surface-raised);
+  color: var(--qm-primary);
+}
+
+:root[data-theme="light"] .format-chip input:checked + span,
+:root[data-theme="light"] .entry-mode-option.on,
+:root[data-theme="light"] .view-mode-option.on {
+  border-color: var(--qm-primary);
+  background: var(--qm-surface-raised);
+  color: var(--qm-primary);
+  box-shadow: var(--qm-shadow-1);
+}
+
+:root[data-theme="light"] .switch-control input:checked + span {
+  border-color: var(--qm-primary);
+  background: var(--qm-primary);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .format-chip input:checked + span,
+  :root:not([data-theme]) .entry-mode-option.on,
+  :root:not([data-theme]) .view-mode-option.on {
+    border-color: var(--qm-primary);
+    background: var(--qm-surface-raised);
+    color: var(--qm-primary);
+    box-shadow: var(--qm-shadow-1);
+  }
+
+  :root:not([data-theme]) .switch-control input:checked + span {
+    border-color: var(--qm-primary);
+    background: var(--qm-primary);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

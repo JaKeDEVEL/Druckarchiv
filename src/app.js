@@ -1,4 +1,5 @@
 import "./styles.css";
+import "./quiet-material-tokens.css";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { relaunch } from "@tauri-apps/plugin-process";
