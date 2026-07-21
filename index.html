@@ -37,6 +37,13 @@
                   <button class="locale-option" type="button" data-locale="en" aria-pressed="false"><span>EN</span><small>English</small></button>
                 </div>
               </div>
+              <div class="app-menu-section update-menu-section">
+                <span class="app-menu-label" data-i18n="updater.menuLabel">Updates</span>
+                <button class="update-check-button" id="checkForUpdates" type="button">
+                  <span class="update-check-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 3v9m0 0 3.5-3.5M10 12 6.5 8.5M4 15.5h12"/></svg></span>
+                  <span><b data-i18n="updater.checkNow">Nach Updates suchen</b><small id="updateMenuStatus" data-i18n="updater.automaticHint">Automatische Prüfung beim Start</small></span>
+                </button>
+              </div>
             </div>
           </div>
           <button class="primary" id="chooseFolder" type="button" data-i18n="app.manageLibrary">Bibliothek verwalten</button>
@@ -110,6 +117,31 @@
         <div class="page-buttons" id="pageButtons"></div>
       </nav>
     </main>
+
+    <dialog id="updateDialog" class="update-dialog" aria-labelledby="updateTitle">
+      <div class="modal update-modal">
+        <div class="update-visual" aria-hidden="true">
+          <span class="update-orbit"></span>
+          <svg viewBox="0 0 48 48"><path d="M24 8v22m0 0 9-9m-9 9-9-9M10 38h28"/></svg>
+        </div>
+        <div class="update-content">
+          <small data-i18n="updater.eyebrow">Druckarchiv Update</small>
+          <h3 id="updateTitle" data-i18n="updater.availableTitle">Eine neue Version ist bereit</h3>
+          <p class="update-version"><span id="updateCurrentVersion"></span><i aria-hidden="true">→</i><b id="updateTargetVersion"></b></p>
+          <p class="update-description" id="updateDescription" data-i18n="updater.availableDetail">Das Update wurde geprüft und kann direkt installiert werden.</p>
+          <div class="update-notes" id="updateNotes" hidden><small data-i18n="updater.releaseNotes">Neu in dieser Version</small><p id="updateNotesBody"></p></div>
+          <div class="update-progress-wrap" id="updateProgressWrap" hidden>
+            <div class="update-progress-label"><span id="updateProgressText" data-i18n="updater.downloading">Update wird heruntergeladen …</span><b id="updateProgressPercent"></b></div>
+            <div class="update-progress-track" role="progressbar" aria-label="Update-Fortschritt" data-i18n-aria-label="updater.progressLabel" aria-valuemin="0" aria-valuemax="100"><i id="updateProgressBar"></i></div>
+          </div>
+          <p class="update-error" id="updateError" role="alert" hidden></p>
+          <div class="update-actions">
+            <button class="tool" id="postponeUpdate" type="button" data-i18n="updater.later">Später</button>
+            <button class="primary small" id="installUpdate" type="button" data-i18n="updater.install">Update installieren</button>
+          </div>
+        </div>
+      </div>
+    </dialog>
 
     <dialog id="libraryDialog" class="settings-dialog">
       <div class="modal settings-modal">

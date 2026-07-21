@@ -33,9 +33,11 @@ Ein späterer persistenter App-Cache kann Pfad, Größe und Änderungszeit als S
 
 ## Paketierung
 
-- macOS: nativer Build auf `macos-latest`, Ausgabe als DMG; Release später signiert und notarisert
-- Windows: nativer Build auf `windows-latest`, Ausgabe als NSIS-Setup für den aktuellen Benutzer
-- Quellcode: identisch, plattformspezifisch sind nur Build und Signatur
+- macOS: universeller nativer Build auf `macos-latest`, Ausgabe als DMG sowie signiertes `.app.tar.gz` für den Updater; Release später zusätzlich mit Apple Developer ID signiert und notarisiert
+- Windows: nativer Build auf `windows-latest`, Ausgabe als NSIS-Setup für den aktuellen Benutzer; dasselbe Setup erhält eine separate Tauri-Updatersignatur
+- Linux: nativer x64-Build auf Ubuntu als Debian-Paket und AppImage; beide Paketvarianten erhalten eine eigene Updatersignatur
+- Der Release-Workflow erzeugt paketabhängige statische Manifeste (`latest-app`, `latest-nsis`, `latest-appimage` und `latest-deb`). So erhält jede Installation ausschließlich das zu ihrem Pakettyp passende Update. Die App fragt nur diesen offiziellen GitHub-Release-Endpunkt ab, zeigt ein Update vor der Installation an und startet nach erfolgreichem Austausch neu.
+- Der öffentliche Prüfschlüssel ist Teil der App. Private Schlüsselmaterialien bleiben außerhalb des Repositorys in GitHub-Secrets und einer sicheren lokalen Sicherung.
 
 ## Datenschutzgrenze
 

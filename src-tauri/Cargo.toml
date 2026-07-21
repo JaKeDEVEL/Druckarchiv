@@ -1,6 +1,6 @@
 [package]
 name = "druckarchiv"
-version = "0.8.8"
+version = "0.8.9"
 description = "Lokale, private Bibliothek für 3D-Druck-Dateien"
 authors = ["JaKeDEVEL"]
 edition = "2021"
@@ -15,5 +15,10 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
+tauri-plugin-process = "2.3.1"
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-updater = "2.10.1"

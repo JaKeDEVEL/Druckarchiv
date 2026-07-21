@@ -13,9 +13,30 @@ export default {
   },
   menu: {
     title: "Interface",
-    detail: "Appearance and language",
-    open: "Open appearance and language",
-    close: "Close appearance and language"
+    detail: "Appearance, language and updates",
+    open: "Open app menu",
+    close: "Close app menu"
+  },
+  updater: {
+    menuLabel: "Updates",
+    checkNow: "Check for updates",
+    automaticHint: "Automatic check at startup",
+    checking: "Checking for a new version …",
+    available: "Version {version} is available",
+    current: "Druckarchiv is up to date",
+    unavailableInBrowser: "Available in the installed app only",
+    checkFailed: "Unable to check right now",
+    eyebrow: "Druckarchiv update",
+    availableTitle: "A new version is ready",
+    availableDetail: "The update has been verified and can be installed directly.",
+    releaseNotes: "What's new",
+    later: "Later",
+    install: "Install update",
+    downloading: "Downloading update …",
+    installing: "Installing update …",
+    progressLabel: "Update progress",
+    failed: "The update could not be installed. Check your internet connection and try again.",
+    retry: "Try again"
   },
   nav: {
     label: "Search and view",

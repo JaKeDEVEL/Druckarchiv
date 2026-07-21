@@ -1,7 +1,7 @@
 {
   "name": "druckarchiv",
   "private": true,
-  "version": "0.8.8",
+  "version": "0.8.9",
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "scripts": {
@@ -16,6 +16,8 @@
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-dialog": "^2.0.0",
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.10.1",
     "three": "^0.180.0"
   },
   "devDependencies": {

@@ -4,7 +4,7 @@
 
 Druckarchiv is a local desktop app for organizing, filtering, and viewing 3D printing files. Select one or more library folders and the app will scan their structure locally, presenting projects, individual files, and file types through interactive statistics.
 
-**Current release: v0.8.8 — [download installers for macOS, Windows, and Linux](https://github.com/JaKeDEVEL/Druckarchiv/releases/latest).**
+**Current release: v0.8.9 — [download installers for macOS, Windows, and Linux](https://github.com/JaKeDEVEL/Druckarchiv/releases/latest).**
 
 <p align="center">
   <img src="assets/brand/druckarchiv-promo-square.png" width="720" alt="Druckarchiv, a local 3D printing library for macOS, Windows, and Linux" />
@@ -26,6 +26,7 @@ Druckarchiv is a local desktop app for organizing, filtering, and viewing 3D pri
 - select print files in the main grid or list as well as inside project folders, then open them directly in OrcaSlicer, Bambu Studio, or PrusaSlicer; the most recently used slicer is stored locally
 - German and English interfaces based on the system language, with manual selection and a locally stored preference
 - light, dark, and system-based appearance modes with a locally stored preference
+- signed in-app updates: Druckarchiv checks quietly at startup, shows release notes and download progress when a new version is available, and can also check manually from the app menu
 - no telemetry, no user account, and no uploads
 - Blender is **not required**
 
@@ -53,6 +54,8 @@ The interactive viewer and card thumbnails render STL, 3MF, and OBJ files direct
 
 Further information: [Privacy](PRIVACY.md), [Security](SECURITY.md).
 
+> **One-time note for v0.8.8 users:** the updater is included for the first time in v0.8.9. Version 0.8.8 therefore still needs to be replaced manually once; subsequent updates can be installed directly inside Druckarchiv.
+
 ## Support the project
 
 Druckarchiv is free to use. If the app helps you and you would like to support its continued development, you can buy me a coffee through PayPal:
@@ -75,7 +78,7 @@ The complete terms are available in [LICENSE](LICENSE). Bundled libraries such a
 
 Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3D-Druck-Dateien. Man wählt einen oder mehrere Archivordner aus; die App liest deren Struktur lokal ein und zeigt Projekte, Einzeldateien und Dateitypen als direkt anklickbare Kennzahlen.
 
-**Aktuelle Version: v0.8.8 — [Installer für macOS, Windows und Linux herunterladen](https://github.com/JaKeDEVEL/Druckarchiv/releases/latest).**
+**Aktuelle Version: v0.8.9 — [Installer für macOS, Windows und Linux herunterladen](https://github.com/JaKeDEVEL/Druckarchiv/releases/latest).**
 
 <p align="center">
   <img src="assets/brand/druckarchiv-promo-square.png" width="720" alt="Druckarchiv – lokale 3D-Druck-Bibliothek für macOS, Windows und Linux" />
@@ -97,6 +100,7 @@ Druckarchiv ist eine lokale Desktop-App zum Ordnen, Filtern und Betrachten von 3
 - Druckdateien in der normalen Raster- oder Listenansicht sowie in Projektordnern auswählen und direkt in OrcaSlicer, Bambu Studio oder PrusaSlicer öffnen; der zuletzt verwendete Slicer bleibt lokal gespeichert
 - deutsche und englische Oberfläche mit Systemsprache, manuellem Wechsel und lokal gespeichertem Sprachwunsch
 - helle, dunkle oder am System ausgerichtete Darstellung mit lokal gespeicherter Auswahl
+- signierte In-App-Updates: Druckarchiv prüft beim Start unaufdringlich auf neue Versionen, zeigt Neuerungen und Downloadfortschritt an und kann zusätzlich manuell im App-Menü prüfen
 - keine Telemetrie, kein Benutzerkonto und kein Upload
 - Blender ist **keine Voraussetzung**
 
@@ -123,6 +127,8 @@ Alle Aufnahmen verwenden ausschließlich synthetische Demodaten und enthalten ke
 Der drehbare Viewer und die Karten-Thumbnails rendern STL, 3MF und OBJ direkt mit Three.js/WebGL. Das ist offlinefähig und benötigt Blender nicht. Einträge erscheinen gestaffelt, damit KPI- und Ansichtswechsel sofort reagieren. Thumbnails werden erst erzeugt, wenn eine Karte in die Nähe des sichtbaren Bereichs kommt; identische Anfragen werden zusammengeführt, höchstens zwei Modelle parallel verarbeitet und sehr große Modelle übersprungen. In „Bibliothek verwalten“ können automatische Vorschaubilder vollständig abgeschaltet werden. Eine vorhandene Blender-Installation kann später optional als „Studio-Render“-Provider verwendet werden, ohne den Standardbetrieb zu beeinflussen.
 
 Weitere Informationen: [Datenschutz](PRIVACY.md), [Sicherheit](SECURITY.md).
+
+> **Einmaliger Hinweis für Nutzer von v0.8.8:** Der Updater ist erstmals in v0.8.9 enthalten. Version 0.8.8 muss deshalb noch einmal manuell ersetzt werden; alle folgenden Updates können direkt in Druckarchiv installiert werden.
 
 ### Projekt unterstützen
 

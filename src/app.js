@@ -1,6 +1,8 @@
 import "./styles.css";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { check } from "@tauri-apps/plugin-updater";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { STLLoader } from "three/addons/loaders/STLLoader.js";
@@ -36,6 +38,7 @@ import { PREVIEW_MATERIAL_OPTIONS } from "./preview-style.js";
 import { DEFAULT_PROJECT_GRID_PAGE_SIZE, projectGridPageCapacity } from "./project-grid-pagination.js";
 import { mergeLibraryRoots, rootDisplayName } from "./library-roots.js";
 import { compareFavoriteState, favoriteFileKey, favoriteFolderKey, favoriteToggleNeedsRender, FAVORITES_STORAGE_KEY, folderPathsForFiles, normalizeFavoriteKeys } from "./favorites.js";
+import { createUpdateProgress, reduceUpdateProgress, updateProgressPercent } from "./update-progress.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -97,6 +100,10 @@ const state = {
   favoriteInventory: { files: new Set(), projects: new Set() }
 };
 let slicerOpening = false;
+let availableUpdate = null;
+let updateChecking = false;
+let updateProgress = createUpdateProgress();
+let updateMenuStatus = { key: "updater.automaticHint", params: {} };
 
 const byId = id => document.getElementById(id);
 
@@ -135,6 +142,143 @@ function applyTheme(preference, { persist = true } = {}) {
     try { localStorage.setItem(THEME_STORAGE_KEY, themePreference); } catch (_) { /* storage can be unavailable */ }
   }
   syncThemeSwitch();
+}
+
+function setUpdateMenuStatus(key, params = {}) {
+  updateMenuStatus = { key, params };
+  byId("updateMenuStatus").textContent = t(key, params);
+}
+
+function renderAvailableUpdate(update) {
+  byId("updateCurrentVersion").textContent = `v${update.currentVersion || APP_VERSION}`;
+  byId("updateTargetVersion").textContent = `v${update.version}`;
+  byId("updateDescription").textContent = t("updater.availableDetail");
+  const notes = byId("updateNotes");
+  const body = String(update.body || "").trim().slice(0, 2400);
+  byId("updateNotesBody").textContent = body;
+  notes.hidden = !body;
+  byId("updateProgressWrap").hidden = true;
+  byId("updateError").hidden = true;
+  byId("installUpdate").disabled = false;
+  byId("installUpdate").textContent = t("updater.install");
+  byId("postponeUpdate").disabled = false;
+}
+
+function showAvailableUpdate(update) {
+  availableUpdate = update;
+  setUpdateMenuStatus("updater.available", { version: update.version });
+  renderAvailableUpdate(update);
+  setAppMenuOpen(false);
+  if (!byId("updateDialog").open) byId("updateDialog").showModal();
+}
+
+function updateDownloadProgress(event) {
+  updateProgress = reduceUpdateProgress(updateProgress, event);
+  const percent = updateProgressPercent(updateProgress);
+  const progressBar = byId("updateProgressBar");
+  const progressTrack = progressBar.parentElement;
+  progressBar.style.width = percent === null ? "38%" : `${percent}%`;
+  progressTrack.classList.toggle("indeterminate", percent === null && !updateProgress.finished);
+  if (percent === null) {
+    byId("updateProgressPercent").textContent = "";
+    progressTrack.removeAttribute("aria-valuenow");
+  } else {
+    byId("updateProgressPercent").textContent = `${percent}%`;
+    progressTrack.setAttribute("aria-valuenow", String(percent));
+  }
+}
+
+async function installAvailableUpdate() {
+  if (!availableUpdate) return;
+  const installButton = byId("installUpdate");
+  const postponeButton = byId("postponeUpdate");
+  installButton.disabled = true;
+  postponeButton.disabled = true;
+  byId("updateError").hidden = true;
+  byId("updateProgressWrap").hidden = false;
+  byId("updateProgressText").textContent = t("updater.downloading");
+  updateProgress = createUpdateProgress();
+  updateDownloadProgress({ event: "Started", data: {} });
+
+  try {
+    await availableUpdate.downloadAndInstall(updateDownloadProgress);
+    byId("updateProgressText").textContent = t("updater.installing");
+    updateDownloadProgress({ event: "Finished" });
+    if (availableUpdate.demo) {
+      postponeButton.disabled = false;
+      postponeButton.textContent = t("common.close");
+      return;
+    }
+    await relaunch();
+  } catch (_) {
+    const error = byId("updateError");
+    error.textContent = t("updater.failed");
+    error.hidden = false;
+    installButton.disabled = false;
+    installButton.textContent = t("updater.retry");
+    postponeButton.disabled = false;
+  }
+}
+
+async function dismissAvailableUpdate() {
+  const update = availableUpdate;
+  availableUpdate = null;
+  if (byId("updateDialog").open) byId("updateDialog").close();
+  byId("postponeUpdate").textContent = t("updater.later");
+  if (update && !update.demo) {
+    try { await update.close(); } catch (_) { /* already released by the plugin */ }
+  }
+}
+
+function demoUpdate() {
+  return {
+    demo: true,
+    currentVersion: APP_VERSION,
+    version: "0.8.9",
+    body: getLocale() === "de"
+      ? "Automatische Update-Prüfung beim Start · signierte Downloads · sichtbarer Installationsfortschritt"
+      : "Automatic startup checks · signed downloads · visible installation progress",
+    async downloadAndInstall(onEvent) {
+      onEvent({ event: "Started", data: { contentLength: 100 } });
+      for (const chunkLength of [18, 24, 28, 30]) {
+        await new Promise(resolve => setTimeout(resolve, 140));
+        onEvent({ event: "Progress", data: { chunkLength } });
+      }
+      onEvent({ event: "Finished" });
+    }
+  };
+}
+
+async function checkForAppUpdate({ manual = false } = {}) {
+  if (updateChecking) return;
+  updateChecking = true;
+  const button = byId("checkForUpdates");
+  button.disabled = true;
+  button.classList.add("is-checking");
+  setUpdateMenuStatus("updater.checking");
+
+  try {
+    const updateDemo = import.meta.env.DEV && new URLSearchParams(location.search).get("updateDemo") === "1";
+    if (updateDemo) {
+      showAvailableUpdate(demoUpdate());
+      return;
+    }
+    if (!isTauri()) {
+      if (manual) setUpdateMenuStatus("updater.unavailableInBrowser");
+      else setUpdateMenuStatus("updater.automaticHint");
+      return;
+    }
+    const update = await check({ timeout: 15000 });
+    if (update) showAvailableUpdate(update);
+    else setUpdateMenuStatus("updater.current");
+  } catch (_) {
+    if (manual) setUpdateMenuStatus("updater.checkFailed");
+    else setUpdateMenuStatus("updater.automaticHint");
+  } finally {
+    updateChecking = false;
+    button.disabled = false;
+    button.classList.remove("is-checking");
+  }
 }
 const categoryLabel = category => CATEGORIES[category]?.label || t(CATEGORIES[category]?.labelKey || "categories.other");
 const categoryOf = file => extCategory.get(file.extension.toLowerCase()) || "other";
@@ -1453,6 +1597,7 @@ async function restoreConfiguration() {
 function refreshLocalizedInterface() {
   applyTranslations();
   syncLocaleSwitch();
+  setUpdateMenuStatus(updateMenuStatus.key, updateMenuStatus.params);
   setAppMenuOpen(!byId("appMenuPanel").hidden);
   render();
   if (libraryDialog.open) renderSettingsDialog();
@@ -1467,6 +1612,13 @@ byId("themeSwitch").addEventListener("click", event => {
 byId("localeSwitch").addEventListener("click", event => {
   const button = event.target.closest("[data-locale]");
   if (button) setLocale(button.dataset.locale);
+});
+byId("checkForUpdates").addEventListener("click", () => checkForAppUpdate({ manual: true }));
+byId("installUpdate").addEventListener("click", installAvailableUpdate);
+byId("postponeUpdate").addEventListener("click", dismissAvailableUpdate);
+byId("updateDialog").addEventListener("cancel", event => {
+  if (byId("postponeUpdate").disabled) event.preventDefault();
+  else dismissAvailableUpdate();
 });
 byId("appMenuTrigger").addEventListener("click", () => setAppMenuOpen(byId("appMenuPanel").hidden));
 document.addEventListener("click", event => {
@@ -1500,3 +1652,4 @@ if (demoMode) {
 } else {
   restoreConfiguration();
 }
+setTimeout(() => { void checkForAppUpdate(); }, demoMode ? 250 : 1800);

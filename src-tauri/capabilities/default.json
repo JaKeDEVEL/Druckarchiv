@@ -3,5 +3,10 @@
   "identifier": "main-capability",
   "description": "Minimale Rechte für das Hauptfenster",
   "windows": ["main"],
-  "permissions": ["core:default", "dialog:allow-open"]
+  "permissions": [
+    "core:default",
+    "dialog:allow-open",
+    "updater:default",
+    "process:allow-restart"
+  ]
 }

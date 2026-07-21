@@ -13,9 +13,30 @@ export default {
   },
   menu: {
     title: "Oberfläche",
-    detail: "Darstellung und Sprache",
-    open: "Darstellung und Sprache öffnen",
-    close: "Darstellung und Sprache schließen"
+    detail: "Darstellung, Sprache und Updates",
+    open: "App-Menü öffnen",
+    close: "App-Menü schließen"
+  },
+  updater: {
+    menuLabel: "Updates",
+    checkNow: "Nach Updates suchen",
+    automaticHint: "Automatische Prüfung beim Start",
+    checking: "Prüfe auf neue Version …",
+    available: "Version {version} ist verfügbar",
+    current: "Druckarchiv ist aktuell",
+    unavailableInBrowser: "Nur in der installierten App verfügbar",
+    checkFailed: "Prüfung derzeit nicht möglich",
+    eyebrow: "Druckarchiv Update",
+    availableTitle: "Eine neue Version ist bereit",
+    availableDetail: "Das Update wurde geprüft und kann direkt installiert werden.",
+    releaseNotes: "Neu in dieser Version",
+    later: "Später",
+    install: "Update installieren",
+    downloading: "Update wird heruntergeladen …",
+    installing: "Update wird installiert …",
+    progressLabel: "Update-Fortschritt",
+    failed: "Das Update konnte nicht installiert werden. Prüfe deine Internetverbindung und versuche es erneut.",
+    retry: "Erneut versuchen"
   },
   nav: {
     label: "Suche und Ansicht",

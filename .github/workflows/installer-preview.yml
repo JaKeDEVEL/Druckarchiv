@@ -23,14 +23,19 @@ jobs:
             target: universal-apple-darwin
             rust_targets: aarch64-apple-darwin x86_64-apple-darwin
             artifact: Druckarchiv-macOS
-            path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            path: |
+              src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+              src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz
+              src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
           - os: windows-latest
             label: Windows x64
             bundle: nsis
             target: ""
             rust_targets: ""
             artifact: Druckarchiv-Windows
-            path: src-tauri/target/release/bundle/nsis/*-setup.exe
+            path: |
+              src-tauri/target/release/bundle/nsis/*-setup.exe
+              src-tauri/target/release/bundle/nsis/*-setup.exe.sig
           - os: ubuntu-22.04
             label: Linux x64
             bundle: deb,appimage
@@ -39,7 +44,9 @@ jobs:
             artifact: Druckarchiv-Linux-x64
             path: |
               src-tauri/target/release/bundle/deb/*.deb
+              src-tauri/target/release/bundle/deb/*.deb.sig
               src-tauri/target/release/bundle/appimage/*.AppImage
+              src-tauri/target/release/bundle/appimage/*.AppImage.sig
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -57,6 +64,11 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y build-essential curl wget file libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
       - run: npm ci
       - run: npm run check:privacy
+      - name: Verify updater signing configuration
+        shell: bash
+        run: |
+          node -e "const c=require('./src-tauri/tauri.conf.json');const key=c.plugins?.updater?.pubkey||'';if(!key||key.includes('REPLACE_WITH')){console.error('Der öffentliche Updater-Schlüssel ist noch nicht konfiguriert.');process.exit(1)}"
+          test -n "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
       - name: Verify tagged version
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
@@ -65,12 +77,24 @@ jobs:
         shell: bash
         env:
           CI: "true"
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           if [ -n "${{ matrix.target }}" ]; then
             npm run tauri build -- --bundles "${{ matrix.bundle }}" --target "${{ matrix.target }}"
           else
             npm run tauri build -- --bundles "${{ matrix.bundle }}"
           fi
+      - name: Sign Debian updater package
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          while IFS= read -r -d '' package; do
+            npm run tauri signer sign -- "$package"
+          done < <(find src-tauri/target/release/bundle/deb -type f -name '*.deb' -print0)
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: ${{ matrix.artifact }}
@@ -91,28 +115,34 @@ jobs:
     permissions:
       contents: write
       actions: read
+    env:
+      RELEASE_NOTES: |
+        Druckarchiv is a local desktop app for organizing 3D-printing files.
+
+        New in version 0.8.9: Druckarchiv checks for new versions quietly at startup. Available updates are shown inside the app, downloaded as signed packages, installed with visible progress, and completed by restarting the app. A manual update check is also available in the app menu.
+
+        The updater supports macOS, Windows, Linux AppImage, and Linux Debian packages. Every update package is cryptographically verified before installation. Private signing keys are never stored in the repository.
+
+        --- Deutsche Übersetzung ---
+
+        Neu in Version 0.8.9: Druckarchiv prüft beim Start unaufdringlich auf neue Versionen. Verfügbare Updates werden in der App angezeigt, signiert heruntergeladen, mit sichtbarem Fortschritt installiert und durch einen Neustart abgeschlossen. Eine manuelle Prüfung befindet sich zusätzlich im App-Menü.
+
+        Der Updater unterstützt macOS, Windows sowie Linux als AppImage und Debian-Paket. Jedes Update-Paket wird vor der Installation kryptografisch geprüft. Private Signierschlüssel liegen niemals im Repository.
+
+        Note / Hinweis: v0.8.8 must be replaced manually once because it does not contain the updater yet. / v0.8.8 muss einmalig manuell ersetzt werden, da diese Version den Updater noch nicht enthält.
+
+        The installers are not yet code-signed with paid Apple or Windows developer certificates, so the operating system may show a warning on first launch. / Die Installer sind noch nicht mit kostenpflichtigen Apple- oder Windows-Entwicklerzertifikaten signiert; beim ersten Start kann deshalb eine Sicherheitswarnung erscheinen.
     steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           path: release-assets
           merge-multiple: true
+      - name: Create signed updater manifest
+        run: node scripts/create-update-manifest.mjs --assets release-assets --repository "$GITHUB_REPOSITORY" --tag "$GITHUB_REF_NAME" --version "$GITHUB_REF_NAME"
       - name: Create release and attach installers
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_NOTES: |
-            Druckarchiv ist eine lokal arbeitende Desktop-App zur Organisation von 3D-Druck-Dateien.
-
-            Enthalten sind mehrere Bibliotheksordner, frei wählbare Dateitypen, dynamische KPI-Filter, Ausschlussregeln, Raster- und Listenansicht sowie lokale Vorschaubilder. STL-, 3MF- und OBJ-Dateien lassen sich direkt im interaktiven 3D-Viewer drehen, zoomen und verschieben. Blender wird nicht benötigt.
-
-            Neu in Version 0.8.8: Favoriten für Dateien, Projektordner und Unterordner werden ohne sichtbares Neuladen direkt aktualisiert. Favoritensterne sitzen in Raster und Liste konsistent links und bleiben von der Dateiauswahl getrennt. Die Suchleiste verwendet nun durchgehend gleich hohe und gleich gestaltete Bedienelemente. Sprache sowie Hell-, Dunkel- und Systemdarstellung befinden sich in einem kompakten Menü neben der Bibliotheksverwaltung.
-
-            Weiterhin enthalten sind verschachtelte Favoriten, automatische Raster-Pagination, wählbare Dateilisten-Pagination, klar getrennte Ordner- und Dateiansichten sowie kontrastreiche Modellvorschauen.
-
-            Erstmals stehen Linux-Pakete für x64 bereit: ein installierbares Debian-Paket und ein portables AppImage. Unter Linux erkennt Druckarchiv native sowie über Flatpak installierte Versionen der unterstützten Slicer.
-
-            Hinweis: Die Installer sind noch nicht mit einem kostenpflichtigen Apple- beziehungsweise Windows-Entwicklerzertifikat signiert. Das Betriebssystem kann deshalb beim ersten Start eine Sicherheitswarnung anzeigen.
-
-            Lizenz: kostenlose unveränderte, nichtkommerzielle Nutzung. Änderungen, Weiterveröffentlichung und kommerzielle Nutzung sind nicht gestattet.
         run: |
           title="Druckarchiv $GITHUB_REF_NAME"
           release_flags=(--latest)

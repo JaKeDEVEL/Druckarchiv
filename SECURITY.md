@@ -12,7 +12,9 @@ Vor dem Lesen eines Modells wird der kanonische Pfad geprüft. Pfadtraversierung
 
 Der Slicer-Start akzeptiert keine frei wählbaren Programme oder Shell-Befehle. Zulässig sind ausschließlich die fest hinterlegten Ziele OrcaSlicer, Bambu Studio und PrusaSlicer sowie höchstens 100 Dateien pro Aufruf. Jede Datei wird erneut kanonisch gegen die im Rust-Kern gespeicherten Bibliotheksordner geprüft; fremde Pfade und für den gewählten Slicer nicht unterstützte Formate werden blockiert.
 
-Die Content Security Policy sperrt fremde Skripte, Frames, Plugins und externe Verbindungen. Abhängigkeiten werden lokal gebündelt.
+Die Content Security Policy sperrt fremde Skripte, Frames und Plugins. Abhängigkeiten werden lokal gebündelt. Nur der native Updater stellt beim Start eine ausgehende Verbindung zum offiziellen GitHub-Release-Endpunkt her; Bibliotheksdaten, Pfade und Modelle sind daran nicht beteiligt.
+
+Update-Pakete werden auf den nativen GitHub-Runnern erzeugt und mit dem Tauri-Updaterschlüssel signiert. Der öffentliche Prüfschlüssel ist in der App eingebettet. Der passwortgeschützte private Schlüssel und sein Passwort dürfen ausschließlich als getrennte GitHub-Actions-Secrets sowie in einer sicheren lokalen Sicherung liegen und werden niemals ins Repository, in Logs oder in Release-Artefakte geschrieben. `latest.json` enthält nur Versionsangaben, öffentliche Download-Adressen und die jeweilige Paketsignatur. Eine gültige Signatur ist vor jeder Installation zwingend erforderlich.
 
 ## Schwachstellen melden
 
@@ -23,6 +25,7 @@ Bitte keine Sicherheitslücke mit realen privaten Archivdaten in ein öffentlich
 - Abhängigkeiten regelmäßig prüfen und Lockfiles einchecken
 - Produktionsartefakte auf nativen, aktuellen GitHub-Runnern bauen
 - öffentliche Artefakte mit GitHub-Herkunftsnachweisen versehen
+- Updater-Pakete signieren und den privaten Schlüssel getrennt vom Repository sichern
 - macOS-Builds mit Developer ID signieren und notarisieren
 - Windows-Installer mit einem vertrauenswürdigen Zertifikat signieren
 - Repository-Secrets niemals in Dateien, Logs oder Artefakte schreiben

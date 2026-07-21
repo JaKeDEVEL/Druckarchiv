@@ -10,6 +10,7 @@ const forbiddenContent = [
   { label: "macOS-Benutzerpfad", pattern: /\/Users\/[A-Za-z0-9._-]+\// },
   { label: "Windows-Benutzerpfad", pattern: /[A-Z]:\\Users\\[^\\\r\n]+\\/i },
   { label: "privater Schlüssel", pattern: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/ },
+  { label: "Tauri-Updater-Privatschlüssel", pattern: /untrusted comment:\s*minisign encrypted secret key/i },
   { label: "GitHub-Token", pattern: /\b(?:ghp|github_pat)_[A-Za-z0-9_]{20,}\b/ }
 ];
 
@@ -42,4 +43,3 @@ if (problems.length) {
   process.exit(1);
 }
 console.log(`Datenschutzprüfung bestanden (${files.length} Quelldateien).`);
-
