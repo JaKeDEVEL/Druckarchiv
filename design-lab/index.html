@@ -27,6 +27,14 @@
         <button class="on" type="button" data-theme="light" aria-label="Heller Modus">☀</button>
         <button type="button" data-theme="dark" aria-label="Dunkler Modus">☾</button>
       </div>
+      <label class="review-state">Zustand
+        <select id="scenarioSelect" aria-label="Prüfzustand">
+          <option value="normal">Normal</option>
+          <option value="loading">Laden</option>
+          <option value="empty">Leer</option>
+          <option value="error">Fehler</option>
+        </select>
+      </label>
     </div>
   </header>
 
@@ -56,8 +64,8 @@
         </nav>
         <div class="library-tree">
           <p>Bibliotheksordner</p>
-          <button type="button"><span aria-hidden="true">▾</span><span>Modelle</span><small>14</small></button>
-          <button type="button"><span aria-hidden="true">▾</span><span>Druckaufträge</span><small>9</small></button>
+          <button type="button"><span aria-hidden="true">▾</span><span>Modelle</span><small>16</small></button>
+          <button type="button"><span aria-hidden="true">▾</span><span>Druckaufträge</span><small>1</small></button>
         </div>
         <div class="local-note"><span aria-hidden="true">✓</span><p><b>Alles lokal</b><small>Keine Cloud · keine Telemetrie</small></p></div>
       </aside>
@@ -70,7 +78,7 @@
             <p class="path-summary">2 Ordner · zuletzt heute um 08:42 eingelesen</p>
           </div>
           <div class="header-actions">
-            <button class="icon-button" type="button" aria-label="Neu einlesen" title="Neu einlesen">↻</button>
+            <button class="icon-button" id="reloadLibrary" type="button" aria-label="Neu einlesen" title="Neu einlesen">↻</button>
             <button class="primary-button" id="manageLibrary" type="button"><span aria-hidden="true">＋</span> Bibliothek verwalten</button>
             <button class="avatar-button" type="button" aria-label="Menü öffnen">DA</button>
           </div>
@@ -78,13 +86,14 @@
 
         <section class="metrics" aria-label="Bibliothekskennzahlen">
           <button class="metric active" type="button" data-format="all"><span>Alle Einträge</span><b>23</b><small>6 Ordner · 17 Dateien</small></button>
-          <button class="metric" type="button" data-format="stl"><span>STL</span><b>7</b><small>Modelle</small></button>
-          <button class="metric" type="button" data-format="3mf"><span>3MF</span><b>6</b><small>Druckpakete</small></button>
-          <button class="metric" type="button" data-format="obj"><span>OBJ</span><b>3</b><small>Mesh-Dateien</small></button>
-          <button class="metric" type="button" data-format="gcode"><span>G-Code</span><b>7</b><small>Druckaufträge</small></button>
+          <button class="metric" type="button" data-format="stl"><span>STL</span><b>13</b><small>Modelle</small></button>
+          <button class="metric" type="button" data-format="3mf"><span>3MF</span><b>2</b><small>Druckpakete</small></button>
+          <button class="metric" type="button" data-format="obj"><span>OBJ</span><b>1</b><small>Mesh-Datei</small></button>
+          <button class="metric" type="button" data-format="gcode"><span>G-Code</span><b>1</b><small>Druckauftrag</small></button>
         </section>
 
         <div class="content-shell">
+          <nav class="breadcrumbs" id="breadcrumbs" aria-label="Ordnerpfad" hidden></nav>
           <div class="toolbar">
             <label class="search-field">
               <span aria-hidden="true">⌕</span>
@@ -103,6 +112,15 @@
             </div>
           </div>
 
+          <aside class="selection-bar" id="selectionBar" aria-live="polite" hidden>
+            <div><span aria-hidden="true">✓</span><strong id="selectionCount">1 Datei ausgewählt</strong></div>
+            <div>
+              <label>Slicer<select id="selectionSlicer"><option>OrcaSlicer</option><option>Bambu Studio</option><option>PrusaSlicer</option></select></label>
+              <button class="primary-button" type="button">Im Slicer öffnen</button>
+              <button class="icon-button" id="clearSelection" type="button" aria-label="Auswahl aufheben">×</button>
+            </div>
+          </aside>
+
           <div class="section-heading">
             <div><p id="sectionLabel">Bibliothek</p><h3 id="sectionTitle">Projekte und Dateien</h3></div>
             <span id="resultCount">8 Einträge</span>
@@ -110,9 +128,9 @@
 
           <section class="asset-grid" id="assetGrid" aria-live="polite"></section>
 
-          <footer class="result-footer">
-            <span>1–8 von 23 Einträgen</span>
-            <nav aria-label="Ergebnisseiten"><button type="button" disabled>←</button><button class="current" type="button">1</button><button type="button">2</button><button type="button">3</button><button type="button">→</button></nav>
+          <footer class="result-footer" id="resultFooter">
+            <span id="resultRange">1–8 von 23 Einträgen</span>
+            <nav id="paginationNav" aria-label="Ergebnisseiten"></nav>
           </footer>
         </div>
       </section>

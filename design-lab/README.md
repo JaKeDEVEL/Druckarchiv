@@ -54,6 +54,10 @@ The same synthetic library, states, wording, and interactions are used in every 
 
 ## Interactive prototype scope
 
-This first round includes direction and theme switching, KPI format filters, combined favorites, search, sorting, grid/list views, a library settings dialog, and a model preview dialog. Interactions are for design review only and do not access the filesystem, launch slicers, or persist settings.
+The prototype includes direction and theme switching, KPI format filters, combined favorites, search, sorting, grid/list views, a library settings dialog, and a model preview dialog. Interactions are for design review only and do not access the filesystem, launch slicers, or persist settings.
+
+The Quiet Material high-fidelity round also includes direct folder navigation with breadcrumbs and nested folders, pagination, cross-page file selection, a shared slicer action bar, and explicit loading, empty, and unavailable-folder states. The review bar can switch between these states without affecting the demo library.
+
+The selected direction's rules and staged migration proposal are documented in [`QUIET_MATERIAL_SPEC.md`](./QUIET_MATERIAL_SPEC.md).
 
 No production implementation or migration has started. The chosen direction can be refined in a second round before individual components are moved into the application.
