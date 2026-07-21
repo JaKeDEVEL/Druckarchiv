@@ -11,9 +11,9 @@ test("Update-Manifest verknüpft signierte Pakete für alle Desktop-Plattformen"
   await mkdir(nested);
   const assets = [
     "Druckarchiv.app.tar.gz",
-    "Druckarchiv_0.8.9_x64-setup.exe",
-    "Druckarchiv_0.8.9_amd64.AppImage",
-    "Druckarchiv_0.8.9_amd64.deb"
+    "Druckarchiv_0.9.0_x64-setup.exe",
+    "Druckarchiv_0.9.0_amd64.AppImage",
+    "Druckarchiv_0.9.0_amd64.deb"
   ];
   for (const asset of assets) {
     await writeFile(join(nested, asset), "bundle");
@@ -23,8 +23,8 @@ test("Update-Manifest verknüpft signierte Pakete für alle Desktop-Plattformen"
   const manifests = await createUpdateManifests({
     assetsDirectory: directory,
     repository: "JaKeDEVEL/Druckarchiv",
-    tag: "v0.8.9",
-    version: "0.8.9",
+    tag: "v0.9.0",
+    version: "0.9.0",
     notes: "Signed updater",
     pubDate: "2026-07-20T00:00:00.000Z"
   });
@@ -35,7 +35,7 @@ test("Update-Manifest verknüpft signierte Pakete für alle Desktop-Plattformen"
     "latest-deb.json",
     "latest-nsis.json"
   ]);
-  assert.equal(manifests["latest-app.json"].version, "0.8.9");
+  assert.equal(manifests["latest-app.json"].version, "0.9.0");
   assert.equal(manifests["latest-app.json"].platforms["darwin-aarch64"].url, manifests["latest-app.json"].platforms["darwin-x86_64"].url);
   assert.match(manifests["latest-nsis.json"].platforms["windows-x86_64"].signature, /x64-setup\.exe/);
   assert.match(manifests["latest-appimage.json"].platforms["linux-x86_64"].url, /\.AppImage$/);

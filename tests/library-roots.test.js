@@ -2,10 +2,20 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { isNestedLibraryRoot, mergeLibraryRoots, rootDisplayName } from "../src/library-roots.js";
 
+test("ein bereits ausgewählter Ordner wird als Duplikat gemeldet", () => {
+  const result = mergeLibraryRoots(["/Modelle"], ["/Modelle/"]);
+
+  assert.deepEqual(result.roots, ["/Modelle"]);
+  assert.deepEqual(result.skippedDuplicates, [{ candidate: "/Modelle/", existing: "/Modelle" }]);
+  assert.deepEqual(result.skippedNested, []);
+  assert.deepEqual(result.replacedNested, []);
+});
+
 test("ein bereits abgedeckter Unterordner wird mit seinem Hauptordner gemeldet", () => {
   const result = mergeLibraryRoots(["/Modelle"], ["/Modelle/Figuren"]);
 
   assert.deepEqual(result.roots, ["/Modelle"]);
+  assert.deepEqual(result.skippedDuplicates, []);
   assert.deepEqual(result.skippedNested, [{ candidate: "/Modelle/Figuren", parent: "/Modelle" }]);
   assert.deepEqual(result.replacedNested, []);
 });

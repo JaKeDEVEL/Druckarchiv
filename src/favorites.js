@@ -35,6 +35,16 @@ export function normalizeFavoriteKeys(value) {
   return [...new Set(value.filter(key => typeof key === "string" && key))];
 }
 
+export function favoriteOverviewItems(items, favoriteKeys) {
+  const favorites = favoriteKeys instanceof Set ? favoriteKeys : new Set(normalizeFavoriteKeys(favoriteKeys));
+  const unique = new Map();
+  for (const item of Array.isArray(items) ? items : []) {
+    if (!item || typeof item.favoriteKey !== "string" || !item.favoriteKey || !favorites.has(item.favoriteKey)) continue;
+    if (!unique.has(item.favoriteKey)) unique.set(item.favoriteKey, item);
+  }
+  return [...unique.values()];
+}
+
 export function compareFavoriteState(leftFavorite, rightFavorite) {
   return Number(Boolean(rightFavorite)) - Number(Boolean(leftFavorite));
 }

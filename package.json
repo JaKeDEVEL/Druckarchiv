@@ -1,7 +1,7 @@
 {
   "name": "druckarchiv",
   "private": true,
-  "version": "0.8.9",
+  "version": "0.9.0",
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "scripts": {

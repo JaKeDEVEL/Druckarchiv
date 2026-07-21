@@ -19,12 +19,16 @@ export function isNestedLibraryRoot(candidate, parent) {
 
 export function mergeLibraryRoots(currentRoots = [], additions = []) {
   let roots = [...new Set(currentRoots.filter(root => typeof root === "string" && root))];
+  const skippedDuplicates = [];
   const skippedNested = [];
   const replacedNested = [];
 
   additions.filter(root => typeof root === "string" && root).forEach(candidate => {
     const duplicate = roots.find(root => comparableRoot(root) === comparableRoot(candidate));
-    if (duplicate) return;
+    if (duplicate) {
+      skippedDuplicates.push({ candidate, existing: duplicate });
+      return;
+    }
 
     const parent = roots.find(root => isNestedLibraryRoot(candidate, root));
     if (parent) {
@@ -41,5 +45,5 @@ export function mergeLibraryRoots(currentRoots = [], additions = []) {
     roots.push(candidate);
   });
 
-  return { roots, skippedNested, replacedNested };
+  return { roots, skippedDuplicates, skippedNested, replacedNested };
 }

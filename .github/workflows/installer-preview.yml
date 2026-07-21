@@ -119,13 +119,13 @@ jobs:
       RELEASE_NOTES: |
         Druckarchiv is a local desktop app for organizing 3D-printing files.
 
-        New in version 0.8.9: Druckarchiv checks for new versions quietly at startup. Available updates are shown inside the app, downloaded as signed packages, installed with visible progress, and completed by restarting the app. A manual update check is also available in the app menu.
+        New in version 0.9.0: File and folder favorites now share one accurate count and appear together in a single overview. Favorited folders count once; files contained inside them are not counted automatically. Adding a library folder that is already selected now produces a clear message. Release downloads have also been simplified to the necessary installers and updater files.
 
         The updater supports macOS, Windows, Linux AppImage, and Linux Debian packages. Every update package is cryptographically verified before installation. Private signing keys are never stored in the repository.
 
         --- Deutsche Übersetzung ---
 
-        Neu in Version 0.8.9: Druckarchiv prüft beim Start unaufdringlich auf neue Versionen. Verfügbare Updates werden in der App angezeigt, signiert heruntergeladen, mit sichtbarem Fortschritt installiert und durch einen Neustart abgeschlossen. Eine manuelle Prüfung befindet sich zusätzlich im App-Menü.
+        Neu in Version 0.9.0: Datei- und Ordnerfavoriten verwenden jetzt eine gemeinsame, korrekte Gesamtzahl und erscheinen zusammen in einer Übersicht. Favorisierte Ordner zählen einmal; enthaltene Dateien werden nicht automatisch mitgezählt. Beim erneuten Hinzufügen eines bereits ausgewählten Bibliotheksordners erscheint nun eine klare Meldung. Außerdem wurden die Release-Downloads auf die notwendigen Installer- und Updater-Dateien reduziert.
 
         Der Updater unterstützt macOS, Windows sowie Linux als AppImage und Debian-Paket. Jedes Update-Paket wird vor der Installation kryptografisch geprüft. Private Signierschlüssel liegen niemals im Repository.
 

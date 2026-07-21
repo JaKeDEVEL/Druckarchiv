@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { compareFavoriteState, favoriteFileKey, favoriteFolderKey, favoriteToggleNeedsRender, folderPathsForFiles, normalizeFavoriteKeys } from "../src/favorites.js";
+import { compareFavoriteState, favoriteFileKey, favoriteFolderKey, favoriteOverviewItems, favoriteToggleNeedsRender, folderPathsForFiles, normalizeFavoriteKeys } from "../src/favorites.js";
 
 test("Favoritenschlüssel unterscheiden gleiche Dateipfade aus mehreren Bibliotheken", () => {
   const file = { path: "Figuren/Drache.3mf" };
@@ -30,6 +30,17 @@ test("vorhandene Projekt- und Unterordner werden aus den Dateipfaden abgeleitet"
 test("gespeicherte Favoriten werden sicher und eindeutig wiederhergestellt", () => {
   assert.deepEqual(normalizeFavoriteKeys(["a", "a", null, "b", 2]), ["a", "b"]);
   assert.deepEqual(normalizeFavoriteKeys(null), []);
+});
+
+test("Dateien und Ordner bilden eine gemeinsame eindeutige Favoritenübersicht", () => {
+  const folder = { kind: "folder", favoriteKey: "folder:models" };
+  const file = { kind: "file", favoriteKey: "file:dragon" };
+  const items = favoriteOverviewItems(
+    [folder, file, { ...file }, { kind: "file", favoriteKey: "file:normal" }],
+    new Set(["folder:models", "file:dragon"])
+  );
+
+  assert.deepEqual(items, [folder, file]);
 });
 
 test("Favoriten werden vor normalen Dateien einsortiert", () => {
