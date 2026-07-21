@@ -40,6 +40,7 @@ import { DEFAULT_PROJECT_GRID_PAGE_SIZE, projectGridPageCapacity } from "./proje
 import { mergeLibraryRoots, rootDisplayName } from "./library-roots.js";
 import { compareFavoriteState, favoriteFileKey, favoriteFolderKey, favoriteOverviewItems, favoriteToggleNeedsRender, FAVORITES_STORAGE_KEY, folderPathsForFiles, normalizeFavoriteKeys, normalizeFolderPath } from "./favorites.js";
 import { createUpdateProgress, reduceUpdateProgress, updateProgressPercent } from "./update-progress.js";
+import { folderLocation, isProjectLocation, libraryLocation, locationBreadcrumbs, projectLocation, sourceLocation } from "./library-navigation.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -98,7 +99,8 @@ const state = {
   viewerFileKey: null,
   scanning: false,
   fileIndex: new Map(),
-  favoriteEntries: []
+  favoriteEntries: [],
+  libraryLocation: libraryLocation()
 };
 let slicerOpening = false;
 let availableUpdate = null;
@@ -320,6 +322,71 @@ function visibleFiles() {
   return allFiles().filter(visibleFile);
 }
 
+function activeLibraryProject() {
+  if (!isProjectLocation(state.libraryLocation)) return null;
+  return state.archive?.projects[state.libraryLocation.projectIndex] || null;
+}
+
+function currentLibraryView() {
+  return activeLibraryProject() ? state.projectView : state.view;
+}
+
+function setLibraryLocation(location, { resetCategory = false } = {}) {
+  state.libraryLocation = location;
+  state.tab = "projects";
+  state.favoriteOnly = false;
+  state.page = 1;
+  if (resetCategory) state.category = "all";
+}
+
+function renderLibraryBreadcrumb() {
+  const breadcrumb = byId("libraryBreadcrumb");
+  const project = activeLibraryProject();
+  const rootIndex = state.libraryLocation.rootIndex;
+  let crumbs = [];
+  if (project) {
+    crumbs = locationBreadcrumbs(project, state.libraryLocation.path, t("sidebar.library"));
+  } else if (rootIndex !== null) {
+    crumbs = [
+      { name: t("sidebar.library"), kind: "library", path: null },
+      { name: state.archive?.roots[rootIndex]?.name || t("common.folder"), kind: "source", path: "" }
+    ];
+  }
+  breadcrumb.hidden = crumbs.length === 0;
+  breadcrumb.innerHTML = crumbs.map((crumb, index) => {
+    const current = index === crumbs.length - 1;
+    const name = escapeHtml(crumb.name);
+    if (current) return `<span aria-current="page">${name}</span>`;
+    if (crumb.kind === "library") return `<button type="button" data-library-home>${name}</button><i aria-hidden="true">/</i>`;
+    return `<button type="button" data-library-folder-path="${escapeHtml(crumb.path)}">${name}</button><i aria-hidden="true">/</i>`;
+  }).join("");
+}
+
+function renderSidebar() {
+  const files = visibleFiles();
+  const favorites = favoriteOverviewItems(state.favoriteEntries, state.favorites).length;
+  byId("sideLibraryCount").textContent = nf.format(files.length);
+  byId("sideFavoriteCount").textContent = nf.format(favorites);
+  const libraryActive = !state.favoriteOnly;
+  byId("sideLibrary").classList.toggle("on", libraryActive);
+  byId("sideLibrary").setAttribute("aria-pressed", String(libraryActive));
+  byId("sideFavorites").classList.toggle("on", state.favoriteOnly);
+  byId("sideFavorites").setAttribute("aria-pressed", String(state.favoriteOnly));
+
+  const roots = state.archive?.roots || state.roots.map(path => ({ path, name: rootDisplayName(path) }));
+  byId("sideRootList").innerHTML = roots.map((root, rootIndex) => {
+    const count = files.filter(file => file.rootIndex === rootIndex).length;
+    const active = !state.favoriteOnly && !isProjectLocation(state.libraryLocation) && state.libraryLocation.rootIndex === rootIndex;
+    return `<button class="side-root-item ${active ? "on" : ""}" type="button" data-side-root="${rootIndex}" aria-pressed="${active}" title="${escapeHtml(root.path || root.name)}"><span aria-hidden="true"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg></span><span>${escapeHtml(root.name || rootDisplayName(root.path))}</span><small>${nf.format(count)}</small></button>`;
+  }).join("");
+
+  const root = state.libraryLocation.rootIndex === null ? null : state.archive?.roots[state.libraryLocation.rootIndex];
+  byId("workspaceTitle").textContent = state.favoriteOnly
+    ? t("sidebar.favorites")
+    : (root?.name || t("sidebar.library"));
+  renderLibraryBreadcrumb();
+}
+
 function favoriteFolderEntry(project, projectIndex, fullPath, files) {
   const normalizedProjectPath = normalizeFolderPath(project.name);
   const normalizedFullPath = normalizeFolderPath(fullPath);
@@ -421,6 +488,7 @@ function finishFavoriteToggle() {
   saveFavorites();
   refreshVisibleFavoriteButtons();
   updateFavoriteControls();
+  renderSidebar();
   updateViewerFavoriteAction();
   const needsRender = favoriteToggleNeedsRender(state.favoriteOnly, state.sort);
   if (needsRender) scheduleLibraryRender({ resetPage: true, showLoading: false });
@@ -533,6 +601,15 @@ function favoriteFolderCard(entry) {
   return `<article class="card folder-card" data-project-index="${entry.projectIndex}" data-project-path="${escapeHtml(entry.path)}" style="--tone:${CATEGORIES[dominant].color}"><button class="folder-card-open" type="button" aria-label="${escapeHtml(t("project.openFolder", { name: entry.name }))}"><div class="card-cover folder-cover ${previewCoverClass(representative)}" ${previewAttributes(representative)} aria-hidden="true">${demoPreviewMarkup(representative)}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> ${t("common.folder")}</span><span class="cover-label">${categoryLabel(dominant)}</span></div><div class="card-body"><div class="entry-kind">${kind}</div><h3 title="${escapeHtml(entry.fullPath)}">${escapeHtml(entry.name)}</h3><div class="meta"><span>${t("common.filesCount", { count: shownFiles.length })}</span><span>${formatSize(size)}</span><span>${formatDate(modified)}</span></div><div class="badges">${badges}<span class="badge source-badge" title="${escapeHtml(root?.path || "")}">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>${folderFavoriteButton(entry.project.rootIndex, entry.fullPath, entry.name, "library-folder-favorite")}</article>`;
 }
 
+function libraryProjectFolderCard(project, entry) {
+  return favoriteFolderCard({
+    ...entry,
+    project,
+    projectIndex: state.libraryLocation.projectIndex,
+    fullPath: projectFolderPath(project, entry.path)
+  });
+}
+
 function fileCard(file) {
   const category = categoryOf(file);
   const viewable = isViewable(file);
@@ -579,7 +656,7 @@ function updateViewModeSwitch(containerId, dataKey, activeMode) {
 }
 
 function updateToolbarControls() {
-  updateViewModeSwitch("viewModeSwitch", "view-mode", state.view);
+  updateViewModeSwitch("viewModeSwitch", "view-mode", currentLibraryView());
   const refresh = byId("refreshLibrary");
   const refreshLabel = t("nav.refresh");
   refresh.setAttribute("aria-label", refreshLabel);
@@ -590,16 +667,22 @@ function updateToolbarControls() {
 function updateSectionLabels() {
   const selected = selectedKpiExtensions(state.settings);
   const categoryLabel = state.category === "all" ? "" : kpiDescriptor(state.category, selected[state.category] || []).label;
-  byId("sectionKicker").textContent = state.favoriteOnly
-    ? t("sections.favoriteEntries")
-    : (state.tab === "projects" ? t("sections.projectFolders") : t("sections.filesFromAllFolders"));
-  byId("sectionTitle").textContent = state.favoriteOnly
-    ? (state.category === "all" ? t("sections.favoritesOverview") : t("sections.categoryFavorites", { category: categoryLabel }))
-    : (state.category === "all"
-      ? (state.tab === "projects" ? t("sections.folderOverview") : t("sections.allFiles"))
-      : t(state.tab === "projects" ? "sections.categoryFolders" : "sections.categoryFiles", { category: categoryLabel }));
+  const project = activeLibraryProject();
+  const folderName = state.libraryLocation.path.split("/").filter(Boolean).pop();
+  byId("sectionKicker").textContent = project
+    ? (folderName ? t("project.subfolder") : t("project.eyebrow"))
+    : (state.favoriteOnly
+      ? t("sections.favoriteEntries")
+      : (state.tab === "projects" ? t("sections.projectFolders") : t("sections.filesFromAllFolders")));
+  byId("sectionTitle").textContent = project
+    ? (folderName || project.displayName)
+    : (state.favoriteOnly
+      ? (state.category === "all" ? t("sections.favoritesOverview") : t("sections.categoryFavorites", { category: categoryLabel }))
+      : (state.category === "all"
+        ? (state.tab === "projects" ? t("sections.folderOverview") : t("sections.allFiles"))
+        : t(state.tab === "projects" ? "sections.categoryFolders" : "sections.categoryFiles", { category: categoryLabel })));
   const libraryModeSwitch = byId("libraryModeSwitch");
-  libraryModeSwitch.hidden = state.favoriteOnly;
+  libraryModeSwitch.hidden = state.favoriteOnly || Boolean(project);
   libraryModeSwitch.querySelectorAll("[data-library-tab]").forEach(button => {
     const active = button.dataset.libraryTab === state.tab;
     button.classList.toggle("on", active);
@@ -608,12 +691,14 @@ function updateSectionLabels() {
   updateToolbarControls();
   updateFavoriteControls();
   updateLibrarySelection();
+  renderSidebar();
 }
 
 function updateLibrarySelection() {
   const selection = byId("librarySelection");
-  selection.hidden = (!state.favoriteOnly && state.tab !== "files") || !state.archive;
   const count = state.librarySelection.size;
+  const selectionContext = state.favoriteOnly || state.tab === "files" || Boolean(activeLibraryProject());
+  selection.hidden = !state.archive || !selectionContext || count === 0;
   const slicer = slicerLabel(state.slicer);
   byId("librarySelectedCount").textContent = nf.format(count);
   byId("librarySlicerSelect").value = state.slicer;
@@ -643,10 +728,12 @@ function scheduleLibraryRender({ resetPage = false, scrollToResults = false, sho
 function renderEntryBatch(entries, sequence, offset = 0) {
   if (sequence !== libraryRenderSequence) return;
   const library = byId("library");
-  const batchSize = state.view === "grid" ? 72 : 140;
+  const batchSize = currentLibraryView() === "grid" ? 72 : 140;
   const end = Math.min(offset + batchSize, entries.length);
+  const project = activeLibraryProject();
   library.insertAdjacentHTML("beforeend", entries.slice(offset, end).map(entry => {
     if (state.favoriteOnly) return entry.kind === "folder" ? favoriteFolderCard(entry) : fileCard(entry.file);
+    if (project) return entry.kind === "folder" ? libraryProjectFolderCard(project, entry) : fileCard(entry.file);
     return state.tab === "projects" ? projectCard(entry) : fileCard(entry);
   }).join(""));
   hydrateModelPreviews(sequence);
@@ -658,11 +745,11 @@ function renderEntryBatch(entries, sequence, offset = 0) {
   }
 }
 
-function renderPagination(result) {
+function renderPagination(result, { hidePageSize = false, stepOnly = false } = {}) {
   const pagination = byId("pagination");
   const pageSizeControl = byId("pageSizeControl");
   byId("pageSize").value = String(result.pageSize);
-  pageSizeControl.hidden = result.total <= PAGE_SIZES[0];
+  pageSizeControl.hidden = hidePageSize || result.total <= PAGE_SIZES[0];
 
   if (!result.total) {
     byId("resultCount").textContent = t("pagination.noResults");
@@ -679,6 +766,11 @@ function renderPagination(result) {
     return;
   }
 
+  if (stepOnly) {
+    byId("pageButtons").innerHTML = `<button class="page-step" type="button" data-page="${result.page - 1}" ${result.page === 1 ? "disabled" : ""} aria-label="${t("pagination.previous")}">←</button><button class="page-step" type="button" data-page="${result.page + 1}" ${result.page === result.totalPages ? "disabled" : ""} aria-label="${t("pagination.next")}">→</button>`;
+    return;
+  }
+
   const pageButtons = paginationTokens(result.page, result.totalPages).map(token => token === "ellipsis"
     ? '<span class="page-ellipsis" aria-hidden="true">…</span>'
     : `<button class="page-number ${token === result.page ? "current" : ""}" type="button" data-page="${token}" ${token === result.page ? 'aria-current="page"' : ""} aria-label="${t("pagination.pageLabel", { page: token })}">${nf.format(token)}</button>`).join("");
@@ -690,7 +782,7 @@ function renderLibrary(sequence = ++libraryRenderSequence) {
   previewObserver?.disconnect();
   previewQueue.length = 0;
   resetPreviewProgress(sequence);
-  library.classList.toggle("list", state.view === "list");
+  library.classList.toggle("list", currentLibraryView() === "list");
   library.innerHTML = "";
   if (!state.archive) {
     setLibraryLoading(false);
@@ -700,6 +792,10 @@ function renderLibrary(sequence = ++libraryRenderSequence) {
     return;
   }
   let entries;
+  let project = activeLibraryProject();
+  if (isProjectLocation(state.libraryLocation) && !project) {
+    state.libraryLocation = libraryLocation();
+  }
   if (state.favoriteOnly) {
     entries = favoriteOverviewItems(state.favoriteEntries, state.favorites).filter(entry => {
       if (entry.kind === "file") {
@@ -709,8 +805,12 @@ function renderLibrary(sequence = ++libraryRenderSequence) {
       if (!entry.files.some(matchesCategory)) return false;
       return matchesQuery(`${entry.name} ${entry.fullPath} ${entry.project.displayName} ${rootOf(entry.project)?.name || ""}`);
     });
+  } else if (project) {
+    const files = filteredProjectFiles(project).filter(file => matchesQuery(`${file.name} ${file.path}`));
+    entries = projectBrowserEntries(project, files, state.libraryLocation.path);
   } else if (state.tab === "projects") {
     entries = state.archive.projects.filter(project => {
+      if (state.libraryLocation.rootIndex !== null && project.rootIndex !== state.libraryLocation.rootIndex) return false;
       const files = filteredProjectFiles(project);
       if (!files.length) return false;
       if (!state.query || matchesQuery(`${project.displayName} ${project.name}`)) return true;
@@ -720,6 +820,7 @@ function renderLibrary(sequence = ++libraryRenderSequence) {
     entries = allFiles().filter(file => visibleFile(file) && matchesCategory(file) && matchesQuery(`${file.name} ${file.path} ${rootOf(file)?.name || ""}`));
   }
   entries.sort((a, b) => {
+    if (project) return compareProjectEntries(a, b, project);
     if (state.favoriteOnly) {
       if (state.sort === "date") return b.modified - a.modified;
       if (state.sort === "size") return b.size - a.size;
@@ -737,10 +838,17 @@ function renderLibrary(sequence = ++libraryRenderSequence) {
   });
   byId("empty").classList.toggle("show", !entries.length);
   byId("empty").querySelector("b").textContent = entries.length ? "" : t(state.favoriteOnly ? "favorites.emptyTitle" : "empty.noMatchesTitle");
-  byId("empty").querySelector("span").textContent = entries.length ? "" : t(state.favoriteOnly ? "favorites.emptyDetail" : "empty.noMatchesDetail");
-  const pageResult = paginateEntries(entries, state.page, state.pageSize);
+  byId("empty").querySelector("span").textContent = entries.length ? "" : t(state.favoriteOnly ? "favorites.emptyDetail" : (project ? "project.emptyFolder" : "empty.noMatchesDetail"));
+  const projectGridMode = Boolean(project) && currentLibraryView() === "grid";
+  if (projectGridMode) {
+    const availableHeight = Math.max(300, window.innerHeight - library.getBoundingClientRect().top - 110);
+    state.projectGridPageSize = projectGridPageCapacity(library.clientWidth || 900, availableHeight);
+  }
+  const pageResult = projectGridMode
+    ? paginateEntriesAtSize(entries, state.page, state.projectGridPageSize)
+    : paginateEntries(entries, state.page, state.pageSize);
   state.page = pageResult.page;
-  renderPagination(pageResult);
+  renderPagination(pageResult, { hidePageSize: projectGridMode, stepOnly: projectGridMode });
   updateSectionLabels();
   if (!entries.length) {
     setLibraryLoading(false);
@@ -806,6 +914,7 @@ async function scanLibrary(roots, settings = state.settings, silent = false) {
     state.projectSelection.clear();
     state.roots = [];
     state.settings = normalizeLibrarySettings(settings);
+    state.libraryLocation = libraryLocation();
     state.page = 1;
     saveConfiguration();
     render();
@@ -820,6 +929,7 @@ async function scanLibrary(roots, settings = state.settings, silent = false) {
     state.projectSelection.clear();
     state.roots = archive.roots.map(root => root.path);
     state.settings = normalizeLibrarySettings(settings);
+    state.libraryLocation = libraryLocation();
     state.page = 1;
     saveConfiguration();
     render();
@@ -957,13 +1067,18 @@ byId("stats").addEventListener("click", event => {
   if (!tile) return;
   if (state.favoriteOnly && tile.dataset.tab) return;
   if (tile.dataset.category) state.category = state.category === tile.dataset.category ? "all" : tile.dataset.category;
-  if (tile.dataset.tab) { state.tab = tile.dataset.tab; state.category = "all"; }
+  if (tile.dataset.tab) {
+    state.libraryLocation = libraryLocation();
+    state.tab = tile.dataset.tab;
+    state.category = "all";
+  }
   renderStats();
   scheduleLibraryRender({ resetPage: true });
 });
 byId("libraryModeSwitch").addEventListener("click", event => {
   const button = event.target.closest("[data-library-tab]");
   if (!button || button.dataset.libraryTab === state.tab) return;
+  state.libraryLocation = libraryLocation();
   state.tab = button.dataset.libraryTab;
   renderStats();
   scheduleLibraryRender({ resetPage: true });
@@ -977,13 +1092,19 @@ byId("search").addEventListener("input", event => {
 byId("sort").addEventListener("change", event => { state.sort = event.target.value; scheduleLibraryRender({ resetPage: true }); });
 byId("favoriteFilter").addEventListener("click", () => {
   state.favoriteOnly = !state.favoriteOnly;
+  if (state.favoriteOnly) state.libraryLocation = libraryLocation();
   renderStats();
   scheduleLibraryRender({ resetPage: true });
 });
 byId("viewModeSwitch").addEventListener("click", event => {
   const button = event.target.closest("[data-view-mode]");
-  if (!button || button.dataset.viewMode === state.view) return;
-  state.view = button.dataset.viewMode;
+  if (!button || button.dataset.viewMode === currentLibraryView()) return;
+  if (activeLibraryProject()) {
+    state.projectView = button.dataset.viewMode;
+    localStorage.setItem(PROJECT_VIEW_KEY, state.projectView);
+  } else {
+    state.view = button.dataset.viewMode;
+  }
   scheduleLibraryRender();
 });
 byId("pageSize").addEventListener("change", event => {
@@ -998,6 +1119,42 @@ byId("pagination").addEventListener("click", event => {
   if (!Number.isInteger(nextPage) || nextPage === state.page) return;
   state.page = nextPage;
   scheduleLibraryRender({ scrollToResults: true });
+});
+
+byId("sideLibrary").addEventListener("click", () => {
+  setLibraryLocation(libraryLocation(), { resetCategory: true });
+  renderStats();
+  scheduleLibraryRender({ showLoading: false });
+});
+
+byId("sideFavorites").addEventListener("click", () => {
+  state.libraryLocation = libraryLocation();
+  state.favoriteOnly = true;
+  state.category = "all";
+  state.page = 1;
+  renderStats();
+  scheduleLibraryRender({ showLoading: false });
+});
+
+byId("sideRootList").addEventListener("click", event => {
+  const button = event.target.closest("[data-side-root]");
+  if (!button) return;
+  setLibraryLocation(sourceLocation(Number(button.dataset.sideRoot)), { resetCategory: true });
+  renderStats();
+  scheduleLibraryRender({ showLoading: false });
+});
+
+byId("libraryBreadcrumb").addEventListener("click", event => {
+  if (event.target.closest("[data-library-home]")) {
+    setLibraryLocation(libraryLocation());
+  } else {
+    const folder = event.target.closest("[data-library-folder-path]");
+    if (!folder || !activeLibraryProject()) return;
+    state.libraryLocation = folderLocation(state.libraryLocation, folder.dataset.libraryFolderPath);
+    state.page = 1;
+  }
+  renderStats();
+  scheduleLibraryRender({ showLoading: false, scrollToResults: true });
 });
 
 const projectDialog = byId("projectDialog");
@@ -1049,12 +1206,12 @@ function projectGridFolder(project, folder) {
   return `<article class="project-file-card project-folder-card" style="--tone:${CATEGORIES[category].color}"><button class="project-folder-card-open" type="button" data-project-path="${escapeHtml(folder.path)}" aria-label="${escapeHtml(t("project.openFolder", { name: folder.name }))}"><div class="project-file-cover folder-cover ${previewCoverClass(representative)}" ${previewAttributes(representative)}>${demoPreviewMarkup(representative)}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> ${t("common.folder")}</span></div><div class="project-file-body"><div class="entry-kind">${t("project.subfolder")}</div><h4 title="${escapeHtml(folder.name)}">${escapeHtml(folder.name)}</h4><p>${t("common.filesCount", { count: folder.files.length })}</p><div class="meta"><span>${formatSize(folder.size)}</span><span>${formatDate(folder.modified)}</span></div></div></button>${folderFavoriteButton(project.rootIndex, path, folder.name, "project-folder-grid-favorite")}</article>`;
 }
 
-function compareProjectEntries(left, right) {
+function compareProjectEntries(left, right, project = null) {
   if (left.kind !== right.kind) return left.kind === "folder" ? -1 : 1;
   if (state.sort === "favorite") {
-    const project = state.archive?.projects[Number(projectDialog.dataset.projectIndex)];
-    const leftFavorite = left.kind === "folder" ? isFolderFavorite(project?.rootIndex, projectFolderPath(project, left.path)) : isFavorite(left.file);
-    const rightFavorite = right.kind === "folder" ? isFolderFavorite(project?.rootIndex, projectFolderPath(project, right.path)) : isFavorite(right.file);
+    const currentProject = project || state.archive?.projects[Number(projectDialog.dataset.projectIndex)];
+    const leftFavorite = left.kind === "folder" ? isFolderFavorite(currentProject?.rootIndex, projectFolderPath(currentProject, left.path)) : isFavorite(left.file);
+    const rightFavorite = right.kind === "folder" ? isFolderFavorite(currentProject?.rootIndex, projectFolderPath(currentProject, right.path)) : isFavorite(right.file);
     const favoriteOrder = compareFavoriteState(leftFavorite, rightFavorite);
     if (favoriteOrder) return favoriteOrder;
   }
@@ -1190,7 +1347,7 @@ function renderProjectContents(projectIndex) {
   const showEntireFolder = state.favoriteOnly && isFolderFavorite(project.rootIndex, currentFolderPath);
   const entries = projectBrowserEntries(project, files, state.projectPath)
     .filter(entry => !state.favoriteOnly || showEntireFolder || (entry.kind === "file" ? isFavorite(entry.file) : folderHasFavorite(project, entry.path, files)))
-    .sort(compareProjectEntries);
+    .sort((left, right) => compareProjectEntries(left, right, project));
   const gridMode = state.projectView === "grid";
   const projectPageSize = gridMode ? state.projectGridPageSize : state.pageSize;
   const pageResult = gridMode
@@ -1249,15 +1406,8 @@ byId("library").addEventListener("click", async event => {
   const card = event.target.closest(".card");
   if (!card) return;
   if (card.dataset.projectIndex !== undefined) {
-    state.projectPath = card.dataset.projectPath || "";
-    state.projectPage = 1;
-    state.projectSelection.clear();
-    renderProjectContents(Number(card.dataset.projectIndex));
-    projectDialog.showModal();
-    if (state.projectView === "grid") {
-      scheduleProjectGridCapacitySync();
-      hydrateProjectPreviews();
-    }
+    setLibraryLocation(projectLocation(Number(card.dataset.projectIndex), card.dataset.projectPath || ""));
+    scheduleLibraryRender({ showLoading: false, scrollToResults: true });
   } else if (canOpenModelCard(card)) {
     await openArchiveModel(Number(card.dataset.rootIndex), card.dataset.file);
   }
@@ -1611,6 +1761,10 @@ function startViewerLoop() {
 async function loadModel(file, sourceKey) {
   const buffer = await file.arrayBuffer();
   const object = createModelObject(buffer, file.name);
+  showModelObject(object, file.name, sourceKey);
+}
+
+function showModelObject(object, name, sourceKey) {
   state.viewerFileKey = sourceKey;
   openViewer();
   ensureViewer();
@@ -1619,14 +1773,33 @@ async function loadModel(file, sourceKey) {
   const dimensions = frameModel(object, camera, controls, 1.3);
   viewerGrid.position.y = -dimensions.y / 2;
   viewerGrid.scale.setScalar(Math.max(dimensions.x, dimensions.y, dimensions.z) / 500 || 1);
-  byId("viewerName").textContent = file.name;
+  byId("viewerName").textContent = name;
   byId("viewerInfo").textContent = `${dimensions.x.toFixed(1)} × ${dimensions.y.toFixed(1)} × ${dimensions.z.toFixed(1)} mm`;
 }
 
+function createDemoModelObject(file) {
+  const material = createPreviewMaterial();
+  const extension = file.extension.toLowerCase();
+  const geometry = extension === "3mf"
+    ? new THREE.BoxGeometry(64, 34, 46, 2, 2, 2)
+    : (extension === "obj"
+      ? new THREE.TorusKnotGeometry(22, 7, 96, 14)
+      : new THREE.CylinderGeometry(30, 30, 48, 48));
+  const object = new THREE.Mesh(geometry, material);
+  object.rotation.x = extension === "stl" ? Math.PI / 2 : 0;
+  return object;
+}
+
 async function openArchiveModel(rootIndex, relativePath) {
+  const sourceKey = `${rootIndex}\n${relativePath}`;
+  const demoFile = state.fileIndex.get(sourceKey);
+  if (demoFile?.demoPreview) {
+    showModelObject(createDemoModelObject(demoFile), demoFile.name, sourceKey);
+    return;
+  }
   try {
     const bytes = await invoke("read_model", { root: state.archive.roots[rootIndex].path, relativePath });
-    await loadModel(new File([new Uint8Array(bytes)], relativePath.split("/").pop()), `${rootIndex}\n${relativePath}`);
+    await loadModel(new File([new Uint8Array(bytes)], relativePath.split("/").pop()), sourceKey);
   } catch (error) { window.alert(t("viewer.loadError", { error })); }
 }
 function openViewer() {

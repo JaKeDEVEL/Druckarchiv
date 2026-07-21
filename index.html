@@ -9,16 +9,39 @@
     <script type="module" src="/src/app.js"></script>
   </head>
   <body>
+    <div class="app-frame">
+      <aside class="side-nav">
+        <div class="product-lockup">
+          <span class="archive-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="side-product-copy"><b>Druckarchiv</b><small data-i18n="app.tagline">Lokale Modellbibliothek</small></span>
+        </div>
+        <nav class="side-primary-nav" aria-label="Hauptnavigation" data-i18n-aria-label="sidebar.navigation">
+          <button class="side-nav-item on" id="sideLibrary" type="button" aria-pressed="true">
+            <span class="side-nav-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M3 8.5 10 3l7 5.5V17H3z"/><path d="M8 17v-5h4v5"/></svg></span>
+            <span data-i18n="sidebar.library">Bibliothek</span>
+            <small id="sideLibraryCount">0</small>
+          </button>
+          <button class="side-nav-item" id="sideFavorites" type="button" aria-pressed="false">
+            <span class="side-nav-icon side-favorite-icon" aria-hidden="true">★</span>
+            <span data-i18n="sidebar.favorites">Favoriten</span>
+            <small id="sideFavoriteCount">0</small>
+          </button>
+        </nav>
+        <div class="side-library-tree">
+          <p data-i18n="sidebar.sources">Bibliotheksordner</p>
+          <div id="sideRootList"></div>
+        </div>
+        <div class="side-local-note"><span aria-hidden="true">✓</span><p><b data-i18n="sidebar.local">Alles lokal</b><small data-i18n="sidebar.localDetail">Keine Cloud · keine Telemetrie</small></p></div>
+      </aside>
+
+      <section class="workspace">
     <header>
       <div class="grid-glow"></div>
       <div class="head">
-        <div class="product-lockup">
-          <span class="archive-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-          <div class="product-copy">
-            <div class="eyebrow"><span data-i18n="app.tagline">Lokale Modellbibliothek</span> <span class="version-badge" id="appVersion"></span></div>
-            <h1>Druck<span>archiv</span></h1>
-            <p id="rootLabel" data-i18n="app.noFolder">Noch kein Archivordner ausgewählt</p>
-          </div>
+        <div class="workspace-heading">
+          <div class="eyebrow"><span data-i18n="app.tagline">Lokale Modellbibliothek</span> <span class="version-badge" id="appVersion"></span></div>
+          <h1 id="workspaceTitle" data-i18n="sidebar.library">Bibliothek</h1>
+          <p id="rootLabel" data-i18n="app.noFolder">Noch kein Archivordner ausgewählt</p>
         </div>
         <div class="head-actions">
           <div class="app-menu" id="appMenu">
@@ -79,6 +102,7 @@
     </nav>
 
     <main>
+      <nav class="library-breadcrumb" id="libraryBreadcrumb" aria-label="Ordnerpfad" data-i18n-aria-label="project.folderNavigation" hidden></nav>
       <div class="section-head">
         <div>
           <div class="section-kicker" id="sectionKicker">Projektordner</div>
@@ -123,6 +147,8 @@
         <div class="page-buttons" id="pageButtons"></div>
       </nav>
     </main>
+      </section>
+    </div>
 
     <dialog id="updateDialog" class="update-dialog" aria-labelledby="updateTitle">
       <div class="modal update-modal">

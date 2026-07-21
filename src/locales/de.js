@@ -52,6 +52,16 @@ export default {
     gridView: "Rasteransicht",
     language: "Sprache"
   },
+  sidebar: {
+    navigation: "Hauptnavigation",
+    library: "Bibliothek",
+    favorites: "Favoriten",
+    sources: "Bibliotheksordner",
+    local: "Alles lokal",
+    localDetail: "Keine Cloud · keine Telemetrie",
+    allSources: "Alle Bibliotheksordner",
+    sourceFiles: { one: "{count} Datei", other: "{count} Dateien" }
+  },
   stats: {
     label: "Archiv-Kennzahlen",
     projectFolders: "Projektordner",

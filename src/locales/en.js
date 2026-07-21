@@ -52,6 +52,16 @@ export default {
     gridView: "Grid view",
     language: "Language"
   },
+  sidebar: {
+    navigation: "Main navigation",
+    library: "Library",
+    favorites: "Favorites",
+    sources: "Library folders",
+    local: "Everything stays local",
+    localDetail: "No cloud · no telemetry",
+    allSources: "All library folders",
+    sourceFiles: { one: "{count} file", other: "{count} files" }
+  },
   stats: {
     label: "Archive metrics",
     projectFolders: "Project folders",
