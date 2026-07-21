@@ -12,10 +12,13 @@
     <header>
       <div class="grid-glow"></div>
       <div class="head">
-        <div>
-          <div class="eyebrow"><span data-i18n="app.tagline">Lokale Modellbibliothek</span> <span class="version-badge" id="appVersion"></span></div>
-          <h1>Druck<span>archiv</span></h1>
-          <p id="rootLabel" data-i18n="app.noFolder">Noch kein Archivordner ausgewählt</p>
+        <div class="product-lockup">
+          <span class="archive-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+          <div class="product-copy">
+            <div class="eyebrow"><span data-i18n="app.tagline">Lokale Modellbibliothek</span> <span class="version-badge" id="appVersion"></span></div>
+            <h1>Druck<span>archiv</span></h1>
+            <p id="rootLabel" data-i18n="app.noFolder">Noch kein Archivordner ausgewählt</p>
+          </div>
         </div>
         <div class="head-actions">
           <div class="app-menu" id="appMenu">
@@ -53,7 +56,10 @@
     </header>
 
     <nav class="toolbar" aria-label="Suche und Ansicht" data-i18n-aria-label="nav.label">
-      <input id="search" type="search" placeholder="Projekte und Dateien durchsuchen …" data-i18n-placeholder="nav.searchPlaceholder" autocomplete="off">
+      <label class="search-control" for="search">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m12.5 12.5 4 4"/></svg>
+        <input id="search" type="search" placeholder="Projekte und Dateien durchsuchen …" data-i18n-placeholder="nav.searchPlaceholder" autocomplete="off">
+      </label>
       <div class="entry-mode-switch toolbar-mode-switch" id="libraryModeSwitch" role="group" aria-label="Ergebnisse anzeigen als" data-i18n-aria-label="sections.viewModeLabel">
         <button class="entry-mode-option" type="button" data-library-tab="projects" aria-pressed="true" aria-label="Passende Projektordner anzeigen" data-i18n-aria-label="sections.folderModeLabel"><svg viewBox="0 0 18 14" aria-hidden="true"><path d="M1.5 3.5h6l2-2h7v11h-15z"/></svg><span data-i18n="sections.folderMode">Ordner</span></button>
         <button class="entry-mode-option" type="button" data-library-tab="files" aria-pressed="false" aria-label="Einzelne Dateien anzeigen" data-i18n-aria-label="sections.fileModeLabel"><svg viewBox="0 0 15 17" aria-hidden="true"><path d="M2 1.5h7l4 4v10H2z"/><path d="M9 1.5v4h4"/></svg><span data-i18n="sections.fileMode">Dateien</span></button>

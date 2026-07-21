@@ -31,3 +31,11 @@ test("system light mode receives the same semantic role set", () => {
     assert.ok(systemLight.includes(token), `${token} fehlt im System-Light-Modus`);
   });
 });
+
+test("quiet material shell uses stateful depth and a unified search control", () => {
+  assert.match(css, /\.archive-mark\s*\{/);
+  assert.match(css, /\.stat\.action\.on\s*\{/);
+  assert.match(css, /\.search-control:focus-within\s*\{/);
+  assert.match(css, /\.toolbar \.search-control input\s*\{/);
+  assert.match(css, /@media \(max-width: 1120px\)[\s\S]*?\.stats\s*\{[\s\S]*?repeat\(3,/);
+});
