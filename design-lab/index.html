@@ -38,11 +38,19 @@
       <label class="review-state">Dateiverwaltung
         <select id="workflowSelect" aria-label="CRUD-Ablauf">
           <option value="browse">Übersicht</option>
-          <option value="manage">Datei ausgewählt</option>
           <option value="add">Dateien hinzufügen</option>
-          <option value="rename">Umbenennen</option>
-          <option value="move">Verschieben</option>
-          <option value="delete">Löschen</option>
+          <optgroup label="Dateien">
+            <option value="file-manage">Datei ausgewählt</option>
+            <option value="file-rename">Datei umbenennen</option>
+            <option value="file-move">Datei verschieben</option>
+            <option value="file-delete">Datei löschen</option>
+          </optgroup>
+          <optgroup label="Ordner">
+            <option value="folder-manage">Ordner ausgewählt</option>
+            <option value="folder-rename">Ordner umbenennen</option>
+            <option value="folder-move">Ordner verschieben</option>
+            <option value="folder-delete">Ordner löschen</option>
+          </optgroup>
         </select>
       </label>
     </div>
@@ -125,13 +133,15 @@
           <aside class="selection-bar" id="selectionBar" aria-live="polite" hidden>
             <div class="selection-summary"><span aria-hidden="true">✓</span><p><strong id="selectionCount">1 Datei ausgewählt</strong><small id="selectionPath">/Modelle/Drucker-Upgrades/Druckerfuß.3mf</small></p></div>
             <div class="selection-actions">
-              <div class="manage-actions" aria-label="Datei verwalten">
+              <div class="manage-actions" id="manageActions" aria-label="Eintrag verwalten">
                 <button class="quiet-action" id="renameFile" type="button"><span aria-hidden="true">✎</span> Umbenennen</button>
                 <button class="quiet-action" id="moveFile" type="button"><span aria-hidden="true">⇢</span> Verschieben</button>
                 <button class="quiet-action danger-text" id="deleteFile" type="button"><span aria-hidden="true">⌫</span> Löschen</button>
               </div>
-              <label>Slicer<select id="selectionSlicer"><option>OrcaSlicer</option><option>Bambu Studio</option><option>PrusaSlicer</option></select></label>
-              <button class="primary-button" type="button">Im Slicer öffnen</button>
+              <div class="slicer-actions" id="slicerActions">
+                <label>Slicer<select id="selectionSlicer"><option>OrcaSlicer</option><option>Bambu Studio</option><option>PrusaSlicer</option></select></label>
+                <button class="primary-button" type="button">Im Slicer öffnen</button>
+              </div>
               <button class="icon-button" id="clearSelection" type="button" aria-label="Auswahl aufheben">×</button>
             </div>
           </aside>
@@ -204,30 +214,30 @@
 
   <dialog id="renameDialog" class="prototype-dialog manage-dialog">
     <form method="dialog" class="dialog-surface file-operation-surface">
-      <header><div><p>Dateiverwaltung · Umbenennen</p><h2>Datei umbenennen</h2></div><button value="close" aria-label="Dialog schließen">×</button></header>
+      <header><div><p>Dateiverwaltung · Umbenennen</p><h2 id="renameTitle">Datei umbenennen</h2></div><button value="close" aria-label="Dialog schließen">×</button></header>
       <div class="operation-body">
-        <div class="selected-file-summary"><span>3MF</span><div><b>Druckerfuß.3mf</b><small>/Modelle/Drucker-Upgrades</small></div></div>
-        <label class="rename-field"><span>Neuer Dateiname</span><div><input id="renameInput" value="Druckerfuß" autocomplete="off"><code>.3mf</code></div><small>Die Dateiendung bleibt erhalten, damit die Datei weiterhin erkannt wird.</small></label>
-        <p class="operation-note"><span aria-hidden="true">i</span> Der Name wird direkt im ursprünglichen Ordner auf deinem Laufwerk geändert.</p>
+        <div class="selected-entry-summary"><span id="renameBadge">3MF</span><div><b id="renameName">Druckerfuß.3mf</b><small id="renameLocation">/Modelle/Drucker-Upgrades</small></div></div>
+        <label class="rename-field"><span id="renameLabel">Neuer Dateiname</span><div><input id="renameInput" value="Druckerfuß" autocomplete="off"><code id="renameExtension">.3mf</code></div><small id="renameHelp">Die Dateiendung bleibt erhalten, damit die Datei weiterhin erkannt wird.</small></label>
+        <p class="operation-note"><span aria-hidden="true">i</span><span id="renameNote">Der Name wird direkt im ursprünglichen Ordner auf deinem Laufwerk geändert.</span></p>
       </div>
-      <footer><span>Prototyp · der Dateiname bleibt unverändert.</span><div><button value="close" class="text-button">Abbrechen</button><button type="button" class="primary-button">Umbenennen</button></div></footer>
+      <footer><span id="renamePrototype">Prototyp · der Dateiname bleibt unverändert.</span><div><button value="close" class="text-button">Abbrechen</button><button type="button" class="primary-button">Umbenennen</button></div></footer>
     </form>
   </dialog>
 
   <dialog id="moveDialog" class="prototype-dialog manage-dialog">
     <form method="dialog" class="dialog-surface file-operation-surface move-surface">
-      <header><div><p>Dateiverwaltung · Verschieben</p><h2>Datei in einen anderen Ordner verschieben</h2></div><button value="close" aria-label="Dialog schließen">×</button></header>
+      <header><div><p>Dateiverwaltung · Verschieben</p><h2 id="moveTitle">Datei in einen anderen Ordner verschieben</h2></div><button value="close" aria-label="Dialog schließen">×</button></header>
       <div class="operation-body">
-        <div class="selected-file-summary"><span>3MF</span><div><b>Druckerfuß.3mf</b><small>Aktuell: /Modelle/Drucker-Upgrades</small></div></div>
+        <div class="selected-entry-summary"><span id="moveBadge">3MF</span><div><b id="moveName">Druckerfuß.3mf</b><small id="moveLocation">Aktuell: /Modelle/Drucker-Upgrades</small></div></div>
         <div class="folder-picker" role="tree" aria-label="Zielordner">
-          <button type="button" aria-expanded="true"><span>▾</span><b>Modelle</b></button>
+          <button type="button" id="moveModelsTarget" aria-expanded="true"><span>▾</span><b>Modelle</b><small id="moveModelsStatus"></small></button>
           <button type="button" class="folder-child"><span>▰</span> Organizer-System</button>
-          <button type="button" class="folder-child selected"><span>▰</span> Drucker-Upgrades <small>Aktueller Ordner</small></button>
+          <button type="button" class="folder-child selected" id="movePrinterTarget"><span>▰</span> Drucker-Upgrades <small id="movePrinterStatus">Aktueller Ordner</small></button>
           <button type="button" class="folder-child"><span>▰</span> Varianten</button>
           <button type="button"><span>▸</span><b>Druckaufträge</b></button>
         </div>
         <button class="text-button new-folder-action" type="button">＋ Neuen Ordner anlegen</button>
-        <p class="operation-note"><span aria-hidden="true">i</span> Verschieben ändert den echten Speicherort. Verknüpfungen anderer Programme können dadurch ungültig werden.</p>
+        <p class="operation-note"><span aria-hidden="true">i</span><span id="moveNote">Verschieben ändert den echten Speicherort. Verknüpfungen anderer Programme können dadurch ungültig werden.</span></p>
       </div>
       <footer><span>Ziel: Bitte einen anderen Ordner auswählen.</span><div><button value="close" class="text-button">Abbrechen</button><button type="button" class="primary-button" disabled>Hierher verschieben</button></div></footer>
     </form>
@@ -235,14 +245,14 @@
 
   <dialog id="deleteDialog" class="prototype-dialog manage-dialog danger-dialog">
     <form method="dialog" class="dialog-surface file-operation-surface">
-      <header><div><p>Dateiverwaltung · Löschen</p><h2>Datei in den Papierkorb verschieben?</h2></div><button value="close" aria-label="Dialog schließen">×</button></header>
+      <header><div><p>Dateiverwaltung · Löschen</p><h2 id="deleteTitle">Datei in den Papierkorb verschieben?</h2></div><button value="close" aria-label="Dialog schließen">×</button></header>
       <div class="operation-body">
         <div class="danger-symbol" aria-hidden="true">!</div>
-        <p class="danger-lead"><b>Druckerfuß.3mf</b> wird aus dem Ordner auf deinem Laufwerk entfernt.</p>
-        <code class="danger-path">/Modelle/Drucker-Upgrades/Druckerfuß.3mf</code>
-        <p class="operation-note danger-note"><span aria-hidden="true">!</span> Die Datei wird wirklich aus diesem Ordner gelöscht und in den Papierkorb des Betriebssystems verschoben. Bei externen Laufwerken ist eine Wiederherstellung möglicherweise nicht verfügbar.</p>
+        <p class="danger-lead"><b id="deleteName">Druckerfuß.3mf</b><span id="deleteLead"> wird aus dem Ordner auf deinem Laufwerk entfernt.</span></p>
+        <code class="danger-path" id="deletePath">/Modelle/Drucker-Upgrades/Druckerfuß.3mf</code>
+        <p class="operation-note danger-note"><span aria-hidden="true">!</span><span id="deleteNote">Die Datei wird wirklich aus diesem Ordner gelöscht und in den Papierkorb des Betriebssystems verschoben. Bei externen Laufwerken ist eine Wiederherstellung möglicherweise nicht verfügbar.</span></p>
       </div>
-      <footer><span>Prototyp · es wird keine Datei gelöscht.</span><div><button value="close" class="text-button">Abbrechen</button><button type="button" class="danger-button">In den Papierkorb</button></div></footer>
+      <footer><span id="deletePrototype">Prototyp · es wird keine Datei gelöscht.</span><div><button value="close" class="text-button">Abbrechen</button><button type="button" class="danger-button">In den Papierkorb</button></div></footer>
     </form>
   </dialog>
 

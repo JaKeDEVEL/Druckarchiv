@@ -76,12 +76,12 @@ No other component receives a shadow. Dark mode uses tonal separation before sha
 
 ## Local file management proposal
 
-The library mirrors the filesystem, so every management action must describe its physical effect. No additional hover controls are added to cards. Users select files through the existing selection control and receive one contextual action bar inside the file view.
+The library mirrors the filesystem, so every management action must describe its physical effect. No additional hover controls are added to cards. Favorite and selection controls form one permanently visible leading marker group; they never cover names or metadata. Users select files or folders there and receive one contextual action bar inside the current view.
 
 - **Create:** `Dateien hinzufügen` sits beside the result count. It opens a native file selection followed by an explicit destination inside a registered library root. Files are copied to that real folder.
 - **Read:** browsing, search, preview, metadata, and slicer actions remain unchanged.
-- **Update:** one selected file can be renamed; one or several files can be moved. The extension is preserved by default and destinations use the existing folder hierarchy.
-- **Delete:** the primary proposal is `In den Papierkorb`, not an immediate permanent delete. The confirmation names the affected file, shows its path, and explains that it is removed from the real folder. External volumes warn that recovery may not be available.
+- **Update:** one selected file or folder can be renamed; one or several entries can be moved. File extensions are preserved by default and destinations use the existing folder hierarchy. A folder cannot be moved into itself or one of its descendants.
+- **Delete:** the primary proposal is `In den Papierkorb`, not an immediate permanent delete. The confirmation names the affected file or folder, shows its path, and explains that it is removed from the real storage location. Folder deletion explicitly includes every contained file and subfolder. External volumes warn that recovery may not be available.
 
 ### Filesystem safety requirements
 
@@ -91,6 +91,7 @@ The library mirrors the filesystem, so every management action must describe its
 4. Use atomic filesystem operations where the platform supports them and report partial failures per file for multi-selection.
 5. Use the operating system trash API by default. A future permanent-delete option belongs in advanced settings and requires a stronger confirmation.
 6. Refresh only the affected folder and cached metadata after a successful mutation, keeping selection and navigation stable.
+7. Registered library roots cannot be renamed or deleted from the content view. `Bibliothek verwalten` may detach such a root from Druckarchiv, but never deletes that root from the drive.
 
 ## Component constraints
 

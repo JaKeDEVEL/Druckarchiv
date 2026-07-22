@@ -121,6 +121,27 @@ function visibleAssets() {
   });
 }
 
+function assetPath(asset) {
+  const segments = [asset.name];
+  let parent = assets.find(item => item.id === asset.parentId && item.kind === "folder") || null;
+  while (parent) {
+    segments.unshift(parent.name);
+    parent = assets.find(item => item.id === parent.parentId && item.kind === "folder") || null;
+  }
+  const root = asset.source || "Modelle";
+  if (segments[0] !== root) segments.unshift(root);
+  return `/${segments.join("/")}`;
+}
+
+function assetParentPath(asset) {
+  const path = assetPath(asset);
+  return path.slice(0, Math.max(1, path.lastIndexOf("/")));
+}
+
+function selectedEntries() {
+  return assets.filter(asset => state.selected.has(asset.id));
+}
+
 function assetCard(asset) {
   const kind = asset.kind === "folder" ? "Ordner" : "Datei";
   const favoriteLabel = asset.favorite ? "Aus Favoriten entfernen" : "Als Favorit markieren";
@@ -140,7 +161,7 @@ function assetCard(asset) {
       </div>
     </button>
     <button class="favorite-star ${asset.favorite ? "on" : ""}" type="button" aria-label="${favoriteLabel}" aria-pressed="${asset.favorite}">${asset.favorite ? "★" : "☆"}</button>
-    ${asset.kind === "file" ? `<label class="select-box" title="Für Slicer auswählen"><input type="checkbox" data-select-id="${asset.id}" aria-label="${escapeHtml(asset.name)} für Slicer auswählen" ${selected ? "checked" : ""}></label>` : ""}
+    <label class="select-box" title="Auswählen"><input type="checkbox" data-select-id="${asset.id}" aria-label="${escapeHtml(asset.name)} auswählen" ${selected ? "checked" : ""}></label>
   </article>`;
 }
 
@@ -174,14 +195,21 @@ function renderBreadcrumbs() {
 }
 
 function updateSelectionBar() {
-  const selectedFiles = assets.filter(asset => state.selected.has(asset.id) && asset.kind === "file");
-  const count = selectedFiles.length;
+  const entries = selectedEntries();
+  const count = entries.length;
+  const onlyFiles = count > 0 && entries.every(asset => asset.kind === "file");
+  const onlyFolders = count > 0 && entries.every(asset => asset.kind === "folder");
   $("#selectionBar").hidden = count === 0;
-  $("#selectionCount").textContent = `${count} ${count === 1 ? "Datei ausgewählt" : "Dateien ausgewählt"}`;
+  const selectionLabel = count === 1
+    ? `${entries[0].kind === "folder" ? "Ordner" : "Datei"} ausgewählt`
+    : onlyFiles ? "Dateien ausgewählt" : onlyFolders ? "Ordner ausgewählt" : "Einträge ausgewählt";
+  $("#selectionCount").textContent = `${count} ${selectionLabel}`;
   $("#selectionPath").textContent = count === 1
-    ? `/Modelle/${selectedFiles[0].detail}/${selectedFiles[0].name}`
-    : "Gemeinsam verschieben, löschen oder im Slicer öffnen";
+    ? assetPath(entries[0])
+    : onlyFiles ? "Gemeinsam verschieben, löschen oder im Slicer öffnen" : "Gemeinsam verschieben oder löschen";
   $("#renameFile").hidden = count !== 1;
+  $("#slicerActions").hidden = !onlyFiles;
+  $("#manageActions").setAttribute("aria-label", count === 1 && entries[0].kind === "folder" ? "Ordner verwalten" : "Dateien und Ordner verwalten");
 }
 
 function pageSize() {
@@ -433,26 +461,85 @@ $("#scenarioSelect").addEventListener("change", event => {
   renderAssets();
 });
 
-function showOperation(operation) {
+function updateOperationDialog(operation, asset) {
+  const isFolder = asset.kind === "folder";
+  const type = isFolder ? "Ordner" : "Datei";
+  const badge = isFolder ? "ORDNER" : asset.format.toUpperCase();
+  const path = assetPath(asset);
+  const parentPath = assetParentPath(asset);
+  if (operation === "rename") {
+    const extensionIndex = isFolder ? -1 : asset.name.lastIndexOf(".");
+    const baseName = extensionIndex > 0 ? asset.name.slice(0, extensionIndex) : asset.name;
+    const extension = extensionIndex > 0 ? asset.name.slice(extensionIndex) : "";
+    $("#renameTitle").textContent = `${type} umbenennen`;
+    $("#renameBadge").textContent = badge;
+    $("#renameName").textContent = asset.name;
+    $("#renameLocation").textContent = parentPath;
+    $("#renameLabel").textContent = isFolder ? "Neuer Ordnername" : "Neuer Dateiname";
+    $("#renameInput").value = baseName;
+    $("#renameExtension").textContent = extension;
+    $("#renameExtension").hidden = isFolder;
+    $(".rename-field").classList.toggle("folder-name", isFolder);
+    $("#renameHelp").textContent = isFolder ? "Die enthaltenen Dateien und Unterordner bleiben unverändert." : "Die Dateiendung bleibt erhalten, damit die Datei weiterhin erkannt wird.";
+    $("#renameNote").textContent = `Der Name wird direkt im ursprünglichen Ordner auf deinem Laufwerk geändert.`;
+    $("#renamePrototype").textContent = `Prototyp · der ${isFolder ? "Ordnername" : "Dateiname"} bleibt unverändert.`;
+    $("#renameBadge").closest(".selected-entry-summary").classList.toggle("folder-entry", isFolder);
+  }
+  if (operation === "move") {
+    $("#moveTitle").textContent = `${type} in einen anderen Ordner verschieben`;
+    $("#moveBadge").textContent = badge;
+    $("#moveName").textContent = asset.name;
+    $("#moveLocation").textContent = `Aktuell: ${parentPath}`;
+    $("#moveNote").textContent = isFolder
+      ? "Der Ordner wird einschließlich aller enthaltenen Dateien und Unterordner verschoben. Verknüpfungen anderer Programme können dadurch ungültig werden."
+      : "Verschieben ändert den echten Speicherort. Verknüpfungen anderer Programme können dadurch ungültig werden.";
+    $("#moveModelsTarget").classList.toggle("selected", isFolder);
+    $("#moveModelsStatus").textContent = isFolder ? "Aktueller Ordner" : "";
+    $("#movePrinterTarget").classList.toggle("selected", !isFolder);
+    $("#movePrinterTarget").disabled = isFolder;
+    $("#movePrinterStatus").textContent = isFolder ? "Ausgewählter Ordner" : "Aktueller Ordner";
+    $("#moveBadge").closest(".selected-entry-summary").classList.toggle("folder-entry", isFolder);
+  }
+  if (operation === "delete") {
+    $("#deleteTitle").textContent = `${type} in den Papierkorb verschieben?`;
+    $("#deleteName").textContent = asset.name;
+    $("#deleteLead").textContent = isFolder
+      ? " und alle enthaltenen Dateien und Unterordner werden vom Laufwerk entfernt."
+      : " wird aus dem Ordner auf deinem Laufwerk entfernt.";
+    $("#deletePath").textContent = path;
+    $("#deleteNote").textContent = isFolder
+      ? "Der Ordner wird wirklich aus diesem Speicherort gelöscht. Sein gesamter Inhalt wird in den Papierkorb des Betriebssystems verschoben. Bei externen Laufwerken ist eine Wiederherstellung möglicherweise nicht verfügbar."
+      : "Die Datei wird wirklich aus diesem Ordner gelöscht und in den Papierkorb des Betriebssystems verschoben. Bei externen Laufwerken ist eine Wiederherstellung möglicherweise nicht verfügbar.";
+    $("#deletePrototype").textContent = `Prototyp · es wird kein${isFolder ? " Ordner" : "e Datei"} gelöscht.`;
+  }
+}
+
+function showOperation(operation, asset = selectedEntries()[0]) {
   const dialog = $(`#${operation}Dialog`);
   if (!dialog) return;
-  state.workflow = operation;
-  $("#workflowSelect").value = operation;
+  if (operation === "add") asset = null;
+  if (operation !== "add" && !asset) return;
+  if (asset) updateOperationDialog(operation, asset);
+  state.workflow = asset ? `${asset.kind}-${operation}` : operation;
+  $("#workflowSelect").value = state.workflow;
   dialog.showModal();
   if (operation === "rename") requestAnimationFrame(() => $("#renameInput").select());
 }
 
-function prepareManagementSelection() {
-  state.folderId = 2;
+function prepareManagementSelection(assetId) {
+  const asset = assets.find(item => item.id === assetId);
+  if (!asset) return null;
+  state.folderId = asset.parentId;
   state.favoritesOnly = false;
   state.view = "list";
   state.format = "all";
   state.page = 1;
   state.scenario = "normal";
   state.selected.clear();
-  state.selected.add(13);
+  state.selected.add(asset.id);
   $("#scenarioSelect").value = "normal";
   renderAssets();
+  return asset;
 }
 
 $("#workflowSelect").addEventListener("change", event => {
@@ -466,8 +553,15 @@ $("#workflowSelect").addEventListener("change", event => {
     renderAssets();
     return;
   }
-  prepareManagementSelection();
-  if (workflow !== "manage") showOperation(workflow);
+  if (workflow === "add") {
+    state.selected.clear();
+    renderAssets();
+    showOperation("add");
+    return;
+  }
+  const [kind, operation] = workflow.split("-");
+  const asset = prepareManagementSelection(kind === "folder" ? 2 : 13);
+  if (operation !== "manage") showOperation(operation, asset);
 });
 
 $("#addFiles").addEventListener("click", () => showOperation("add"));
@@ -495,9 +589,10 @@ $$('.prototype-dialog').forEach(dialog => dialog.addEventListener("click", event
 }));
 
 $$('.manage-dialog').forEach(dialog => dialog.addEventListener("close", () => {
-  if (state.selected.size) {
-    state.workflow = "manage";
-    $("#workflowSelect").value = "manage";
+  const entry = selectedEntries()[0];
+  if (entry) {
+    state.workflow = `${entry.kind}-manage`;
+    $("#workflowSelect").value = state.workflow;
   } else {
     state.workflow = "browse";
     $("#workflowSelect").value = "browse";
