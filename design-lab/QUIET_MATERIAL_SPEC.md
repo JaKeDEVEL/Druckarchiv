@@ -69,14 +69,14 @@ No other component receives a shadow. Dark mode uses tonal separation before sha
 - **Folder:** warm ochre identifies the object type; opening it replaces the mixed library with direct children and breadcrumbs.
 - **File:** mineral blue identifies printable assets; clicking the preview opens the model dialog.
 - **Favorite:** remains a property of either a file or folder and never replaces the object-type color.
-- **Selected for slicer:** adds a mineral outline and opens one shared action bar. Selection is retained across pages.
+- **Selected entry:** adds a mineral outline and turns the fixed-height search toolbar around its horizontal axis to reveal shared management and slicer actions. Because both toolbar faces occupy the same reserved slot, selecting an entry never moves the result list. Selection is retained across pages.
 - **Loading:** the chosen KPI changes immediately while only the content region becomes a restrained skeleton.
 - **Empty:** explains which user-controlled filter can be changed and offers one reset action.
 - **Unavailable folder:** states the cause class and offers the library management action.
 
 ## Local file management proposal
 
-The library mirrors the filesystem, so every management action must describe its physical effect. No additional hover controls are added to cards. Favorite and selection controls form one permanently visible leading marker group; they never cover names or metadata. Users select files or folders there and receive one contextual action bar inside the current view.
+The library mirrors the filesystem, so every management action must describe its physical effect. No additional hover controls are added to cards. Favorite and selection controls form one permanently visible vertical marker rail; they never cover names or metadata. Users select files or folders there and the existing search toolbar reveals contextual actions without changing page geometry.
 
 - **Create:** `Dateien hinzufügen` sits beside the result count. It opens a native file selection followed by an explicit destination inside a registered library root. Files are copied to that real folder.
 - **Read:** browsing, search, preview, metadata, and slicer actions remain unchanged.

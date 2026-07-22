@@ -112,39 +112,43 @@
 
         <div class="content-shell">
           <nav class="breadcrumbs" id="breadcrumbs" aria-label="Ordnerpfad" hidden></nav>
-          <div class="toolbar">
-            <label class="search-field">
-              <span aria-hidden="true">⌕</span>
-              <input id="searchInput" type="search" placeholder="Projekte und Dateien durchsuchen …" autocomplete="off">
-              <kbd>⌘ K</kbd>
-            </label>
-            <select id="sortSelect" aria-label="Sortierung">
-              <option value="name">Name A–Z</option>
-              <option value="date">Zuletzt geändert</option>
-              <option value="size">Größe</option>
-            </select>
-            <button class="filter-button" id="favoriteFilter" type="button" aria-pressed="false"><span aria-hidden="true">☆</span> Favoriten <small>4</small></button>
-            <div class="view-switch" role="group" aria-label="Ansicht">
-              <button class="on" type="button" data-view="grid" aria-label="Rasteransicht">▦</button>
-              <button type="button" data-view="list" aria-label="Listenansicht">☷</button>
+          <div class="toolbar-stage" id="toolbarStage">
+            <div class="toolbar-flipper">
+              <div class="toolbar toolbar-face toolbar-front" id="searchToolbar">
+                <label class="search-field">
+                  <span aria-hidden="true">⌕</span>
+                  <input id="searchInput" type="search" placeholder="Projekte und Dateien durchsuchen …" autocomplete="off">
+                  <kbd>⌘ K</kbd>
+                </label>
+                <select id="sortSelect" aria-label="Sortierung">
+                  <option value="name">Name A–Z</option>
+                  <option value="date">Zuletzt geändert</option>
+                  <option value="size">Größe</option>
+                </select>
+                <button class="filter-button" id="favoriteFilter" type="button" aria-pressed="false"><span aria-hidden="true">☆</span> Favoriten <small>4</small></button>
+                <div class="view-switch" role="group" aria-label="Ansicht">
+                  <button class="on" type="button" data-view="grid" aria-label="Rasteransicht">▦</button>
+                  <button type="button" data-view="list" aria-label="Listenansicht">☷</button>
+                </div>
+              </div>
+
+              <aside class="selection-bar toolbar-face toolbar-back" id="selectionBar" aria-live="polite" hidden>
+                <div class="selection-summary"><span aria-hidden="true">✓</span><p><strong id="selectionCount">1 Datei ausgewählt</strong><small id="selectionPath">/Modelle/Drucker-Upgrades/Druckerfuß.3mf</small></p></div>
+                <div class="selection-actions">
+                  <div class="manage-actions" id="manageActions" aria-label="Eintrag verwalten">
+                    <button class="quiet-action" id="renameFile" type="button"><span aria-hidden="true">✎</span> Umbenennen</button>
+                    <button class="quiet-action" id="moveFile" type="button"><span aria-hidden="true">⇢</span> Verschieben</button>
+                    <button class="quiet-action danger-text" id="deleteFile" type="button"><span aria-hidden="true">⌫</span> Löschen</button>
+                  </div>
+                  <div class="slicer-actions" id="slicerActions">
+                    <label>Slicer<select id="selectionSlicer"><option>OrcaSlicer</option><option>Bambu Studio</option><option>PrusaSlicer</option></select></label>
+                    <button class="primary-button" type="button">Im Slicer öffnen</button>
+                  </div>
+                  <button class="icon-button" id="clearSelection" type="button" aria-label="Auswahl aufheben">×</button>
+                </div>
+              </aside>
             </div>
           </div>
-
-          <aside class="selection-bar" id="selectionBar" aria-live="polite" hidden>
-            <div class="selection-summary"><span aria-hidden="true">✓</span><p><strong id="selectionCount">1 Datei ausgewählt</strong><small id="selectionPath">/Modelle/Drucker-Upgrades/Druckerfuß.3mf</small></p></div>
-            <div class="selection-actions">
-              <div class="manage-actions" id="manageActions" aria-label="Eintrag verwalten">
-                <button class="quiet-action" id="renameFile" type="button"><span aria-hidden="true">✎</span> Umbenennen</button>
-                <button class="quiet-action" id="moveFile" type="button"><span aria-hidden="true">⇢</span> Verschieben</button>
-                <button class="quiet-action danger-text" id="deleteFile" type="button"><span aria-hidden="true">⌫</span> Löschen</button>
-              </div>
-              <div class="slicer-actions" id="slicerActions">
-                <label>Slicer<select id="selectionSlicer"><option>OrcaSlicer</option><option>Bambu Studio</option><option>PrusaSlicer</option></select></label>
-                <button class="primary-button" type="button">Im Slicer öffnen</button>
-              </div>
-              <button class="icon-button" id="clearSelection" type="button" aria-label="Auswahl aufheben">×</button>
-            </div>
-          </aside>
 
           <div class="section-heading">
             <div><p id="sectionLabel">Bibliothek</p><h3 id="sectionTitle">Projekte und Dateien</h3></div>

@@ -199,7 +199,12 @@ function updateSelectionBar() {
   const count = entries.length;
   const onlyFiles = count > 0 && entries.every(asset => asset.kind === "file");
   const onlyFolders = count > 0 && entries.every(asset => asset.kind === "folder");
-  $("#selectionBar").hidden = count === 0;
+  $("#selectionBar").hidden = false;
+  $("#toolbarStage").classList.toggle("has-selection", count > 0);
+  $("#searchToolbar").inert = count > 0;
+  $("#searchToolbar").setAttribute("aria-hidden", String(count > 0));
+  $("#selectionBar").inert = count === 0;
+  $("#selectionBar").setAttribute("aria-hidden", String(count === 0));
   const selectionLabel = count === 1
     ? `${entries[0].kind === "folder" ? "Ordner" : "Datei"} ausgewählt`
     : onlyFiles ? "Dateien ausgewählt" : onlyFolders ? "Ordner ausgewählt" : "Einträge ausgewählt";
@@ -451,6 +456,7 @@ $("#paginationNav").addEventListener("click", event => {
 $("#clearSelection").addEventListener("click", () => {
   state.selected.clear();
   renderAssets();
+  requestAnimationFrame(() => $("#searchInput").focus());
 });
 
 $("#scenarioSelect").addEventListener("change", event => {
