@@ -119,13 +119,13 @@ jobs:
       RELEASE_NOTES: |
         Druckarchiv is a local desktop app for organizing 3D-printing files.
 
-        New in version 0.9.0: File and folder favorites now share one accurate count and appear together in a single overview. Favorited folders count once; files contained inside them are not counted automatically. Adding a library folder that is already selected now produces a clear message. Release downloads have also been simplified to the necessary installers and updater files.
+        New in v1.0.0-rc.2: A local duplicate finder compares file contents instead of names, groups confirmed matches, and lets you choose manually which copies move to the system trash. Files stored directly at the root of a library folder, including a USB drive containing a single STL, now remain visible when that source is opened. Switching between folder and file results also stays scoped to the selected source. The native webview context menu is disabled until Druckarchiv provides its own file and folder actions.
 
         The updater supports macOS, Windows, Linux AppImage, and Linux Debian packages. Every update package is cryptographically verified before installation. Private signing keys are never stored in the repository.
 
         --- Deutsche Übersetzung ---
 
-        Neu in Version 0.9.0: Datei- und Ordnerfavoriten verwenden jetzt eine gemeinsame, korrekte Gesamtzahl und erscheinen zusammen in einer Übersicht. Favorisierte Ordner zählen einmal; enthaltene Dateien werden nicht automatisch mitgezählt. Beim erneuten Hinzufügen eines bereits ausgewählten Bibliotheksordners erscheint nun eine klare Meldung. Außerdem wurden die Release-Downloads auf die notwendigen Installer- und Updater-Dateien reduziert.
+        Neu in v1.0.0-rc.2: Ein lokaler Dublettenfinder vergleicht Dateiinhalte statt Dateinamen, gruppiert bestätigte Treffer und überlässt dir die Auswahl, welche Kopien in den System-Papierkorb verschoben werden. Dateien direkt im Stamm eines Bibliotheksordners bleiben jetzt sichtbar, auch wenn ein USB-Stick nur eine einzelne STL enthält. Beim Wechsel zwischen Ordner- und Dateiansicht bleibt die ausgewählte Quelle erhalten. Das native Webview-Kontextmenü ist deaktiviert, bis Druckarchiv dafür eigene Datei- und Ordneraktionen anbietet.
 
         Der Updater unterstützt macOS, Windows sowie Linux als AppImage und Debian-Paket. Jedes Update-Paket wird vor der Installation kryptografisch geprüft. Private Signierschlüssel liegen niemals im Repository.
 

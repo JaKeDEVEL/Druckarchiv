@@ -6,7 +6,9 @@ use std::os::windows::process::CommandExt;
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 use std::process::Command;
 use std::{
+    collections::{HashMap, HashSet},
     fs,
+    io::{BufReader, Read},
     path::{Path, PathBuf},
     sync::Mutex,
     time::UNIX_EPOCH,
@@ -18,6 +20,7 @@ const MAX_ROOTS: usize = 32;
 const MAX_MODEL_BYTES: u64 = 512 * 1024 * 1024;
 const MAX_COVER_IMAGE_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_SLICER_FILES: usize = 100;
+const DUPLICATE_READ_BUFFER: usize = 64 * 1024;
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 const EXCLUDED_ROOT_DIRS: &[&str] = &["_uebersicht", "_druckarchiv_app"];
@@ -44,6 +47,28 @@ enum SlicerKind {
 struct SlicerFileRequest {
     root_index: usize,
     relative_path: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DuplicateFileRequest {
+    root_index: usize,
+    relative_path: String,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DuplicateFileResult {
+    root_index: usize,
+    relative_path: String,
+    size: u64,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DuplicateGroupResult {
+    size: u64,
+    files: Vec<DuplicateFileResult>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -538,6 +563,173 @@ fn existing_library_folder(
     Ok((root, resolved))
 }
 
+#[derive(Debug)]
+struct DuplicateCandidate {
+    request: DuplicateFileRequest,
+    path: PathBuf,
+    size: u64,
+}
+
+fn duplicate_candidate(
+    root: &Path,
+    request: DuplicateFileRequest,
+) -> Result<DuplicateCandidate, String> {
+    let relative = safe_relative_path(&request.relative_path, false)
+        .map_err(|_| "duplicates_path_blocked".to_string())?;
+    let requested = root.join(relative);
+    let metadata = fs::symlink_metadata(&requested).map_err(|error| match error.kind() {
+        std::io::ErrorKind::NotFound => "duplicates_file_missing".to_string(),
+        std::io::ErrorKind::PermissionDenied => "duplicates_permission_denied".to_string(),
+        _ => "duplicates_read_failed".to_string(),
+    })?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err("duplicates_path_blocked".into());
+    }
+    let path = requested
+        .canonicalize()
+        .map_err(|_| "duplicates_file_missing".to_string())?;
+    if !path.starts_with(root) {
+        return Err("duplicates_path_blocked".into());
+    }
+    Ok(DuplicateCandidate {
+        request,
+        path,
+        size: metadata.len(),
+    })
+}
+
+fn fingerprint_file(path: &Path) -> Result<(u64, u64), String> {
+    let file = fs::File::open(path).map_err(|_| "duplicates_read_failed".to_string())?;
+    let mut reader = BufReader::with_capacity(DUPLICATE_READ_BUFFER, file);
+    let mut buffer = [0u8; DUPLICATE_READ_BUFFER];
+    let mut first = 0xcbf29ce484222325u64;
+    let mut second = 0x9e3779b97f4a7c15u64;
+    loop {
+        let count = reader
+            .read(&mut buffer)
+            .map_err(|_| "duplicates_read_failed".to_string())?;
+        if count == 0 {
+            break;
+        }
+        for byte in &buffer[..count] {
+            first ^= u64::from(*byte);
+            first = first.wrapping_mul(0x100000001b3);
+            second ^= u64::from(*byte).wrapping_add(0x517cc1b727220a95);
+            second = second.rotate_left(7).wrapping_mul(0x9ddfea08eb382d69);
+        }
+    }
+    Ok((first, second))
+}
+
+fn files_are_equal(left: &Path, right: &Path) -> Result<bool, String> {
+    let left_file = fs::File::open(left).map_err(|_| "duplicates_read_failed".to_string())?;
+    let right_file = fs::File::open(right).map_err(|_| "duplicates_read_failed".to_string())?;
+    let mut left_reader = BufReader::with_capacity(DUPLICATE_READ_BUFFER, left_file);
+    let mut right_reader = BufReader::with_capacity(DUPLICATE_READ_BUFFER, right_file);
+    let mut left_buffer = [0u8; DUPLICATE_READ_BUFFER];
+    let mut right_buffer = [0u8; DUPLICATE_READ_BUFFER];
+    loop {
+        let left_count = left_reader
+            .read(&mut left_buffer)
+            .map_err(|_| "duplicates_read_failed".to_string())?;
+        let right_count = right_reader
+            .read(&mut right_buffer)
+            .map_err(|_| "duplicates_read_failed".to_string())?;
+        if left_count != right_count || left_buffer[..left_count] != right_buffer[..right_count] {
+            return Ok(false);
+        }
+        if left_count == 0 {
+            return Ok(true);
+        }
+    }
+}
+
+fn find_duplicate_files_at(
+    roots: &[PathBuf],
+    files: Vec<DuplicateFileRequest>,
+) -> Result<Vec<DuplicateGroupResult>, String> {
+    if files.len() > MAX_FILES {
+        return Err("duplicates_too_many_files".into());
+    }
+
+    let mut seen = HashSet::<(usize, String)>::new();
+    let mut canonical_roots = HashMap::<usize, PathBuf>::new();
+    let mut by_size = HashMap::<u64, Vec<DuplicateCandidate>>::new();
+    for request in files {
+        if !seen.insert((request.root_index, request.relative_path.clone())) {
+            continue;
+        }
+        if !canonical_roots.contains_key(&request.root_index) {
+            let root = available_library_root(roots, request.root_index)
+                .map_err(|_| "duplicates_library_unavailable".to_string())?;
+            canonical_roots.insert(request.root_index, root);
+        }
+        let root = canonical_roots
+            .get(&request.root_index)
+            .ok_or_else(|| "duplicates_library_unavailable".to_string())?;
+        let candidate = duplicate_candidate(root, request)?;
+        by_size.entry(candidate.size).or_default().push(candidate);
+    }
+
+    let mut results = Vec::new();
+    for candidates in by_size.into_values().filter(|group| group.len() > 1) {
+        let mut by_fingerprint = HashMap::<(u64, u64), Vec<DuplicateCandidate>>::new();
+        for candidate in candidates {
+            let fingerprint = fingerprint_file(&candidate.path)?;
+            by_fingerprint
+                .entry(fingerprint)
+                .or_default()
+                .push(candidate);
+        }
+
+        for matching_hashes in by_fingerprint.into_values().filter(|group| group.len() > 1) {
+            let mut exact_groups = Vec::<Vec<DuplicateCandidate>>::new();
+            for candidate in matching_hashes {
+                let mut matching_group = None;
+                for (index, group) in exact_groups.iter().enumerate() {
+                    if files_are_equal(&candidate.path, &group[0].path)? {
+                        matching_group = Some(index);
+                        break;
+                    }
+                }
+                if let Some(index) = matching_group {
+                    exact_groups[index].push(candidate);
+                } else {
+                    exact_groups.push(vec![candidate]);
+                }
+            }
+
+            for group in exact_groups.into_iter().filter(|group| group.len() > 1) {
+                let size = group[0].size;
+                results.push(DuplicateGroupResult {
+                    size,
+                    files: group
+                        .into_iter()
+                        .map(|candidate| DuplicateFileResult {
+                            root_index: candidate.request.root_index,
+                            relative_path: candidate.request.relative_path,
+                            size: candidate.size,
+                        })
+                        .collect(),
+                });
+            }
+        }
+    }
+
+    results.sort_by(|left, right| {
+        let left_reclaimable = left
+            .size
+            .saturating_mul(left.files.len().saturating_sub(1) as u64);
+        let right_reclaimable = right
+            .size
+            .saturating_mul(right.files.len().saturating_sub(1) as u64);
+        right_reclaimable
+            .cmp(&left_reclaimable)
+            .then_with(|| right.files.len().cmp(&left.files.len()))
+    });
+    Ok(results)
+}
+
 fn relative_result(root: &Path, path: &Path, root_index: usize) -> Result<MutationResult, String> {
     let relative_path = path
         .strip_prefix(root)
@@ -989,6 +1181,21 @@ fn open_in_slicer(
     launch_slicer(kind, &resolved)
 }
 
+#[tauri::command]
+async fn find_duplicate_files(
+    files: Vec<DuplicateFileRequest>,
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<DuplicateGroupResult>, String> {
+    let roots = state
+        .roots
+        .lock()
+        .map_err(|_| "duplicates_library_unavailable")?
+        .clone();
+    tauri::async_runtime::spawn_blocking(move || find_duplicate_files_at(&roots, files))
+        .await
+        .map_err(|_| "duplicates_read_failed".to_string())?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1010,7 +1217,8 @@ pub fn run() {
             trash_library_entry,
             read_model,
             read_cover_image,
-            open_in_slicer
+            open_in_slicer,
+            find_duplicate_files
         ])
         .run(tauri::generate_context!())
         .expect("Druckarchiv konnte nicht gestartet werden");
@@ -1144,6 +1352,81 @@ mod tests {
         );
 
         fs::remove_dir_all(parent).expect("Testordner entfernen");
+    }
+
+    #[test]
+    fn duplicate_scan_matches_contents_instead_of_names_or_sizes() {
+        let root = test_directory("duplicates");
+        fs::create_dir_all(root.join("Projekt A")).expect("erster Projektordner");
+        fs::create_dir_all(root.join("Projekt B")).expect("zweiter Projektordner");
+        fs::write(
+            root.join("Projekt A").join("halter.stl"),
+            b"identical-model",
+        )
+        .expect("erste Dublette");
+        fs::write(
+            root.join("Projekt B").join("kopie-neuer-name.stl"),
+            b"identical-model",
+        )
+        .expect("umbenannte Dublette");
+        fs::write(
+            root.join("Projekt B").join("andere-datei.stl"),
+            b"different-model",
+        )
+        .expect("gleich große andere Datei");
+        let roots = vec![root.canonicalize().expect("kanonischer Bibliotheksordner")];
+        let files = vec![
+            DuplicateFileRequest {
+                root_index: 0,
+                relative_path: "Projekt A/halter.stl".into(),
+            },
+            DuplicateFileRequest {
+                root_index: 0,
+                relative_path: "Projekt B/kopie-neuer-name.stl".into(),
+            },
+            DuplicateFileRequest {
+                root_index: 0,
+                relative_path: "Projekt B/andere-datei.stl".into(),
+            },
+        ];
+
+        let groups = find_duplicate_files_at(&roots, files).expect("Dublettenprüfung");
+
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].files.len(), 2);
+        assert!(groups[0]
+            .files
+            .iter()
+            .any(|file| file.relative_path.ends_with("halter.stl")));
+        assert!(groups[0]
+            .files
+            .iter()
+            .any(|file| file.relative_path.ends_with("kopie-neuer-name.stl")));
+        assert!(!groups[0]
+            .files
+            .iter()
+            .any(|file| file.relative_path.ends_with("andere-datei.stl")));
+
+        fs::remove_dir_all(root).expect("Testordner entfernen");
+    }
+
+    #[test]
+    fn duplicate_scan_rejects_paths_outside_the_library() {
+        let root = test_directory("duplicate-boundary");
+        fs::create_dir_all(&root).expect("Bibliotheksordner");
+        let roots = vec![root.canonicalize().expect("kanonischer Bibliotheksordner")];
+
+        let error = find_duplicate_files_at(
+            &roots,
+            vec![DuplicateFileRequest {
+                root_index: 0,
+                relative_path: "../fremd.stl".into(),
+            }],
+        )
+        .unwrap_err();
+
+        assert_eq!(error, "duplicates_path_blocked");
+        fs::remove_dir_all(root).expect("Testordner entfernen");
     }
 
     #[test]

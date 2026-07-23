@@ -107,6 +107,9 @@ export default {
     categoryFavorites: "{category}-Favoriten",
     categoryFolders: "{category}-Ordner",
     categoryFiles: "{category}-Dateien",
+    sourceEyebrow: "Bibliotheksordner",
+    sourceOverview: "Inhalte von {source}",
+    sourceCategory: "{category} in {source}",
     viewModeLabel: "Ergebnisse anzeigen als",
     folderMode: "Ordner",
     fileMode: "Dateien",
@@ -320,6 +323,30 @@ export default {
       invalid_source: "Mindestens eine ausgewählte Quelldatei ist nicht verfügbar oder nicht zulässig.",
       trash_failed: "Der System-Papierkorb konnte den Eintrag nicht aufnehmen. Es wurde nichts dauerhaft gelöscht.",
       failed: "Die Änderung konnte nicht sicher durchgeführt werden. Es wurde nichts überschrieben."
+    }
+  },
+  duplicates: {
+    find: "Dubletten finden",
+    showAll: "Dubletten schließen",
+    scanningButton: "Prüfe …",
+    eyebrow: "Inhaltsvergleich",
+    title: "Gefundene Dubletten",
+    scanningTitle: "Dubletten werden gesucht",
+    scanningDetail: "Dateien gleicher Größe werden lokal und bytegenau verglichen …",
+    groupBadge: "Gruppe {group} · {count}×",
+    summary: "{groups} Gruppen · {files} Dateien",
+    reclaimable: "Bis zu {size} freigebbar, wenn je eine Kopie behalten wird.",
+    emptyTitle: "Keine Dubletten gefunden.",
+    emptyDetail: "Alle eingeblendeten Dateitypen sind inhaltlich eindeutig. Dateinamen allein werden nicht als Treffer gewertet.",
+    errorTitle: "Die Dublettenprüfung konnte nicht abgeschlossen werden.",
+    errors: {
+      library_unavailable: "Mindestens ein Bibliotheksordner ist nicht erreichbar. Verbinde das Laufwerk und prüfe erneut.",
+      path_blocked: "Ein unsicherer Dateipfad wurde blockiert.",
+      file_missing: "Eine Datei wurde während der Prüfung verschoben oder entfernt. Lies die Bibliothek neu ein.",
+      permission_denied: "Druckarchiv darf mindestens eine Datei nicht lesen.",
+      too_many_files: "Die Bibliothek enthält zu viele Einträge für eine einzelne Prüfung.",
+      read_failed: "Mindestens eine Datei konnte nicht gelesen werden. Es wurden keine unsicheren Treffer angezeigt.",
+      unavailable_in_browser: "Die bytegenaue Prüfung ist nur in der installierten Druckarchiv-App verfügbar."
     }
   },
   previews: {
