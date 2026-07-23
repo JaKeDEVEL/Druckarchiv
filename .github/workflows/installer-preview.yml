@@ -119,13 +119,17 @@ jobs:
       RELEASE_NOTES: |
         Druckarchiv is a local desktop app for organizing 3D-printing files.
 
-        New in version 0.9.0: File and folder favorites now share one accurate count and appear together in a single overview. Favorited folders count once; files contained inside them are not counted automatically. Adding a library folder that is already selected now produces a clear message. Release downloads have also been simplified to the necessary installers and updater files.
+        Version 1.0.0-rc.1 is the first public release candidate of the new Quiet Material interface. It introduces a clear sidebar and in-place folder navigation, consistent list and grid views, permanent selection and favorite controls, folder covers, and file and folder management for creating, renaming, moving, and deleting entries. Typography, contrast, dialogs, responsive layouts, disconnected-library handling, and Windows path compatibility have also been revised.
+
+        This is a preview intended for testing before the final 1.0.0 release. Please report regressions through GitHub Issues. Existing stable installations will not receive this prerelease automatically.
 
         The updater supports macOS, Windows, Linux AppImage, and Linux Debian packages. Every update package is cryptographically verified before installation. Private signing keys are never stored in the repository.
 
         --- Deutsche Übersetzung ---
 
-        Neu in Version 0.9.0: Datei- und Ordnerfavoriten verwenden jetzt eine gemeinsame, korrekte Gesamtzahl und erscheinen zusammen in einer Übersicht. Favorisierte Ordner zählen einmal; enthaltene Dateien werden nicht automatisch mitgezählt. Beim erneuten Hinzufügen eines bereits ausgewählten Bibliotheksordners erscheint nun eine klare Meldung. Außerdem wurden die Release-Downloads auf die notwendigen Installer- und Updater-Dateien reduziert.
+        Version 1.0.0-rc.1 ist der erste öffentliche Release Candidate der neuen Quiet-Material-Oberfläche. Neu sind die klare Seitenleiste und Navigation direkt durch die Ordnerstruktur, konsistente Listen- und Rasteransichten, dauerhaft sichtbare Auswahl- und Favoritenfunktionen, eigene Ordner-Cover sowie die Verwaltung von Dateien und Ordnern mit Anlegen, Umbenennen, Verschieben und Löschen. Typografie, Kontrast, Dialoge, responsive Darstellung, der Umgang mit getrennten Bibliothekslaufwerken und die Windows-Pfadkompatibilität wurden ebenfalls überarbeitet.
+
+        Diese Vorschau dient dem Test vor der finalen Version 1.0.0. Fehler und Rückmeldungen können über GitHub Issues gemeldet werden. Bestehende stabile Installationen erhalten diesen Prerelease nicht automatisch.
 
         Der Updater unterstützt macOS, Windows sowie Linux als AppImage und Debian-Paket. Jedes Update-Paket wird vor der Installation kryptografisch geprüft. Private Signierschlüssel liegen niemals im Repository.
 
