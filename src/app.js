@@ -45,6 +45,7 @@ import { folderLocation, isProjectLocation, libraryLocation, locationBreadcrumbs
 import { isLibraryRootAvailable, libraryRootConnectionType, unavailableLibraryConnectionType, unavailableLibraryRoots } from "./library-availability.js";
 import { FOLDER_COVERS_STORAGE_KEY, folderContents, folderCoverKey, normalizeFolderCoverPreference, normalizeFolderCoverPreferences, resolveFolderCover } from "./folder-covers.js";
 import { destinationContainsEntry, entryParentPath, libraryFolderOptions, managementEntryKey, mutationErrorKey, splitEntryName } from "./library-mutations.js";
+import { sourceBrowserEntries } from "./source-browser.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -67,6 +68,10 @@ const PROJECT_VIEW_KEY = "druckarchiv.project-view.v1";
 const SLICER_KEY = "druckarchiv.slicer.v1";
 const APP_VERSION = __APP_VERSION__;
 const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+// Reserve right-click for a future, app-specific file and folder context menu.
+document.addEventListener("contextmenu", event => event.preventDefault());
+
 let themePreference = normalizeThemePreference(localStorage.getItem(THEME_STORAGE_KEY));
 let currentTheme = resolveTheme(themePreference, systemThemeQuery.matches);
 function restoredFavoriteKeys() {
@@ -97,6 +102,11 @@ const state = {
   query: "",
   sort: "name",
   favoriteOnly: false,
+  duplicateMode: false,
+  duplicateScanning: false,
+  duplicateGroups: [],
+  duplicateMeta: new Map(),
+  duplicateError: null,
   favorites: new Set(restoredFavoriteKeys()),
   folderCovers: restoredFolderCovers(),
   view: "grid",
@@ -338,6 +348,55 @@ function visibleFiles() {
   return allFiles().filter(visibleFile);
 }
 
+const duplicateFileKey = file => `${file.rootIndex}\n${file.path}`;
+
+function clearDuplicateResults({ leaveMode = true } = {}) {
+  if (leaveMode) state.duplicateMode = false;
+  state.duplicateGroups = [];
+  state.duplicateMeta = new Map();
+  state.duplicateError = null;
+}
+
+function duplicateEntries() {
+  return state.duplicateGroups.flatMap(group => group.files
+    .map(result => state.fileIndex.get(`${result.rootIndex}\n${result.relativePath}`))
+    .filter(Boolean));
+}
+
+function rebuildDuplicateMetadata() {
+  state.duplicateMeta = new Map();
+  state.duplicateGroups.forEach((group, groupIndex) => {
+    group.files.forEach(result => {
+      state.duplicateMeta.set(`${result.rootIndex}\n${result.relativePath}`, {
+        groupIndex,
+        groupNumber: groupIndex + 1,
+        copies: group.files.length,
+        size: group.size
+      });
+    });
+  });
+}
+
+function duplicateReclaimableBytes() {
+  return state.duplicateGroups.reduce((total, group) => (
+    total + Number(group.size || 0) * Math.max(0, group.files.length - 1)
+  ), 0);
+}
+
+function demoDuplicateGroups() {
+  const candidates = visibleFiles();
+  const stlCopies = candidates.filter(file => file.extension === "stl").slice(0, 3);
+  const packageCopies = candidates.filter(file => file.extension === "3mf").slice(0, 2);
+  return [stlCopies, packageCopies].filter(group => group.length > 1).map(group => ({
+    size: group[0].size,
+    files: group.map(file => ({
+      rootIndex: file.rootIndex,
+      relativePath: file.path,
+      size: file.size
+    }))
+  }));
+}
+
 function activeLibraryProject() {
   if (!isProjectLocation(state.libraryLocation)) return null;
   return state.archive?.projects[state.libraryLocation.projectIndex] || null;
@@ -391,6 +450,7 @@ function currentLibraryView() {
 function setLibraryLocation(location, { resetCategory = false } = {}) {
   state.entrySelection.clear();
   state.librarySelection.clear();
+  clearDuplicateResults();
   state.libraryLocation = location;
   state.tab = "projects";
   state.favoriteOnly = false;
@@ -426,7 +486,9 @@ function renderSidebar() {
   const favorites = favoriteOverviewItems(state.favoriteEntries, state.favorites).length;
   byId("sideLibraryCount").textContent = nf.format(files.length);
   byId("sideFavoriteCount").textContent = nf.format(favorites);
-  const libraryActive = !state.favoriteOnly;
+  const libraryActive = !state.favoriteOnly
+    && !isProjectLocation(state.libraryLocation)
+    && state.libraryLocation.rootIndex === null;
   byId("sideLibrary").classList.toggle("on", libraryActive);
   byId("sideLibrary").setAttribute("aria-pressed", String(libraryActive));
   byId("sideFavorites").classList.toggle("on", state.favoriteOnly);
@@ -688,8 +750,10 @@ function renderStats() {
     ...formatTiles
   ];
   byId("stats").innerHTML = tiles.map(tile => {
-    const disabled = state.favoriteOnly && Boolean(tile.tab);
-    const active = tile.category ? state.category === tile.category : !state.favoriteOnly && state.category === "all" && state.tab === tile.tab;
+    const disabled = (state.favoriteOnly || state.duplicateMode) && Boolean(tile.tab);
+    const active = tile.category
+      ? state.category === tile.category
+      : !state.favoriteOnly && !state.duplicateMode && state.category === "all" && state.tab === tile.tab;
     const attrs = `data-${tile.category ? "category" : "tab"}="${tile.category || tile.tab}" aria-pressed="${active}" ${disabled ? "disabled" : ""}`;
     return `<button class="stat action ${active ? "on" : ""}" style="--tone:${tile.color}" ${attrs}><label>${tile.label}</label><b>${nf.format(tile.value)}</b><span>${tile.sub}</span></button>`;
   }).join("");
@@ -749,7 +813,11 @@ function fileCard(file) {
   const entry = managementEntry("file", file.rootIndex, file.path, file.name, file.extension);
   const checked = state.entrySelection.has(entry.key);
   const favoriteControl = favoriteButton(file, "library-favorite");
-  return `<article class="card file-card ${checked ? "is-selected" : ""}" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? 'data-viewable="true"' : ""} style="--tone:${CATEGORIES[category].color}"><button class="file-card-open" type="button" aria-label="${escapeHtml(ariaLabel)}"><div class="card-cover file-cover ${previewCoverClass(file)}" ${previewAttributes(file)} aria-hidden="true">${demoPreviewMarkup(file)}<span class="file-mark">${escapeHtml(file.extension.toUpperCase() || t("common.file").toUpperCase())}</span></div><div class="card-body"><div class="entry-kind">${t("cards.fileEntry", { extension: escapeHtml(file.extension || "–") })}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : t("common.mainFolder"))}</span></div><div class="badges"><span class="badge">${categoryLabel(category)}</span>${viewable ? `<span class="badge">${t("cards.preview")}</span>` : ""}<span class="badge source-badge">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>${cardCornerControls(entry, favoriteControl)}</article>`;
+  const duplicate = state.duplicateMode ? state.duplicateMeta.get(duplicateFileKey(file)) : null;
+  const duplicateBadge = duplicate
+    ? `<span class="badge duplicate-group-badge">${t("duplicates.groupBadge", { group: duplicate.groupNumber, count: duplicate.copies })}</span>`
+    : "";
+  return `<article class="card file-card ${checked ? "is-selected" : ""} ${duplicate ? "duplicate-card" : ""}" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? 'data-viewable="true"' : ""} ${duplicate ? `data-duplicate-group="${duplicate.groupNumber}"` : ""} style="--tone:${CATEGORIES[category].color};${duplicate ? `--duplicate-group:${duplicate.groupIndex % 6}` : ""}"><button class="file-card-open" type="button" aria-label="${escapeHtml(ariaLabel)}"><div class="card-cover file-cover ${previewCoverClass(file)}" ${previewAttributes(file)} aria-hidden="true">${demoPreviewMarkup(file)}<span class="file-mark">${escapeHtml(file.extension.toUpperCase() || t("common.file").toUpperCase())}</span></div><div class="card-body"><div class="entry-kind">${t("cards.fileEntry", { extension: escapeHtml(file.extension || "–") })}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : t("common.mainFolder"))}</span></div><div class="badges">${duplicateBadge}<span class="badge">${categoryLabel(category)}</span>${viewable ? `<span class="badge">${t("cards.preview")}</span>` : ""}<span class="badge source-badge">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>${cardCornerControls(entry, favoriteControl)}</article>`;
 }
 
 let libraryRenderSequence = 0;
@@ -791,6 +859,14 @@ function updateToolbarControls() {
   refresh.setAttribute("aria-label", refreshLabel);
   refresh.title = refreshLabel;
   refresh.dataset.tooltip = refreshLabel;
+  const duplicateButton = byId("duplicateFilter");
+  const duplicateLabel = t(state.duplicateMode ? "duplicates.showAll" : "duplicates.find");
+  duplicateButton.classList.toggle("on", state.duplicateMode);
+  duplicateButton.classList.toggle("is-scanning", state.duplicateScanning);
+  duplicateButton.setAttribute("aria-pressed", String(state.duplicateMode));
+  duplicateButton.setAttribute("aria-label", duplicateLabel);
+  duplicateButton.title = duplicateLabel;
+  duplicateButton.querySelector("span").textContent = t(state.duplicateScanning ? "duplicates.scanningButton" : (state.duplicateMode ? "duplicates.showAll" : "duplicates.find"));
 }
 
 function updateFolderCoverControl() {
@@ -807,21 +883,36 @@ function updateSectionLabels() {
   const selected = selectedKpiExtensions(state.settings);
   const categoryLabel = state.category === "all" ? "" : kpiDescriptor(state.category, selected[state.category] || []).label;
   const project = activeLibraryProject();
+  const source = !project && state.libraryLocation.rootIndex !== null
+    ? state.archive?.roots[state.libraryLocation.rootIndex]
+    : null;
+  const sourceName = source?.name || t("common.folder");
   const folderName = state.libraryLocation.path.split("/").filter(Boolean).pop();
   byId("sectionKicker").textContent = project
     ? (folderName ? t("project.subfolder") : t("project.eyebrow"))
-    : (state.favoriteOnly
+    : (state.duplicateMode
+      ? t("duplicates.eyebrow")
+      : state.favoriteOnly
       ? t("sections.favoriteEntries")
+      : source
+      ? t("sections.sourceEyebrow")
       : (state.tab === "projects" ? t("sections.projectFolders") : t("sections.filesFromAllFolders")));
   byId("sectionTitle").textContent = project
     ? (folderName || project.displayName)
-    : (state.favoriteOnly
+    : (state.duplicateMode
+      ? t("duplicates.title")
+      : state.favoriteOnly
       ? (state.category === "all" ? t("sections.favoritesOverview") : t("sections.categoryFavorites", { category: categoryLabel }))
+      : source
+      ? (state.category === "all"
+        ? t("sections.sourceOverview", { source: sourceName })
+        : t("sections.sourceCategory", { source: sourceName, category: categoryLabel }))
       : (state.category === "all"
         ? (state.tab === "projects" ? t("sections.folderOverview") : t("sections.allFiles"))
         : t(state.tab === "projects" ? "sections.categoryFolders" : "sections.categoryFiles", { category: categoryLabel })));
   const libraryModeSwitch = byId("libraryModeSwitch");
-  libraryModeSwitch.hidden = state.favoriteOnly || Boolean(project);
+  libraryModeSwitch.hidden = state.duplicateMode || state.favoriteOnly || Boolean(project);
+  byId("addFiles").hidden = state.duplicateMode;
   libraryModeSwitch.querySelectorAll("[data-library-tab]").forEach(button => {
     const active = button.dataset.libraryTab === state.tab;
     button.classList.toggle("on", active);
@@ -832,6 +923,14 @@ function updateSectionLabels() {
   updateFavoriteControls();
   updateLibrarySelection();
   renderSidebar();
+  const duplicateStatus = byId("duplicateStatus");
+  duplicateStatus.hidden = !state.duplicateMode;
+  if (state.duplicateMode) {
+    duplicateStatus.classList.toggle("is-error", Boolean(state.duplicateError));
+    duplicateStatus.innerHTML = state.duplicateError
+      ? `<span aria-hidden="true">!</span><div><b>${t("duplicates.errorTitle")}</b><small>${t(`duplicates.errors.${state.duplicateError}`)}</small></div>`
+      : `<span aria-hidden="true">≋</span><div><b>${t("duplicates.summary", { groups: nf.format(state.duplicateGroups.length), files: nf.format(duplicateEntries().length) })}</b><small>${t("duplicates.reclaimable", { size: formatSize(duplicateReclaimableBytes()) })}</small></div>`;
+  }
 }
 
 function updateLibrarySelection() {
@@ -894,9 +993,16 @@ function renderEntryBatch(entries, sequence, offset = 0) {
   const batchSize = currentLibraryView() === "grid" ? 72 : 140;
   const end = Math.min(offset + batchSize, entries.length);
   const project = activeLibraryProject();
+  const sourceHierarchy = !project
+    && state.libraryLocation.rootIndex !== null
+    && state.tab === "projects"
+    && !state.favoriteOnly
+    && !state.duplicateMode;
   library.insertAdjacentHTML("beforeend", entries.slice(offset, end).map(entry => {
+    if (state.duplicateMode) return fileCard(entry);
     if (state.favoriteOnly) return entry.kind === "folder" ? favoriteFolderCard(entry) : fileCard(entry.file);
     if (project) return entry.kind === "folder" ? libraryProjectFolderCard(project, entry) : fileCard(entry.file);
+    if (sourceHierarchy) return entry.kind === "folder" ? projectCard(entry.project) : fileCard(entry.file);
     return state.tab === "projects" ? projectCard(entry) : fileCard(entry);
   }).join(""));
   hydrateModelPreviews(sequence);
@@ -956,10 +1062,18 @@ function renderLibrary(sequence = ++libraryRenderSequence) {
   }
   let entries;
   let project = activeLibraryProject();
+  const sourceRootIndex = state.libraryLocation.rootIndex;
+  const sourceHierarchy = sourceRootIndex !== null && state.tab === "projects";
   if (isProjectLocation(state.libraryLocation) && !project) {
     state.libraryLocation = libraryLocation();
   }
-  if (state.favoriteOnly) {
+  if (state.duplicateMode) {
+    project = null;
+    entries = duplicateEntries().filter(file => (
+      matchesCategory(file)
+      && matchesQuery(`${file.name} ${file.path} ${rootOf(file)?.name || ""}`)
+    ));
+  } else if (state.favoriteOnly) {
     entries = favoriteOverviewItems(state.favoriteEntries, state.favorites).filter(entry => {
       if (entry.kind === "file") {
         const file = entry.file;
@@ -971,6 +1085,18 @@ function renderLibrary(sequence = ++libraryRenderSequence) {
   } else if (project) {
     const files = filteredProjectFiles(project).filter(file => matchesQuery(`${file.name} ${file.path}`));
     entries = projectBrowserEntries(project, files, state.libraryLocation.path);
+  } else if (sourceHierarchy) {
+    entries = sourceBrowserEntries(
+      state.archive,
+      sourceRootIndex,
+      file => visibleFile(file) && matchesCategory(file)
+    ).filter(entry => {
+      if (entry.kind === "file") {
+        return matchesQuery(`${entry.file.name} ${entry.file.path} ${rootOf(entry.file)?.name || ""}`);
+      }
+      if (!state.query || matchesQuery(`${entry.project.displayName} ${entry.project.name}`)) return true;
+      return entry.files.some(file => matchesQuery(`${file.name} ${file.path}`));
+    });
   } else if (state.tab === "projects") {
     entries = state.archive.projects.filter(project => {
       if (state.libraryLocation.rootIndex !== null && project.rootIndex !== state.libraryLocation.rootIndex) return false;
@@ -980,10 +1106,42 @@ function renderLibrary(sequence = ++libraryRenderSequence) {
       return files.some(file => matchesQuery(file.path));
     });
   } else {
-    entries = allFiles().filter(file => visibleFile(file) && matchesCategory(file) && matchesQuery(`${file.name} ${file.path} ${rootOf(file)?.name || ""}`));
+    entries = allFiles().filter(file => (
+      (sourceRootIndex === null || file.rootIndex === sourceRootIndex)
+      && visibleFile(file)
+      && matchesCategory(file)
+      && matchesQuery(`${file.name} ${file.path} ${rootOf(file)?.name || ""}`)
+    ));
   }
   entries.sort((a, b) => {
+    if (state.duplicateMode) {
+      const leftGroup = state.duplicateMeta.get(duplicateFileKey(a))?.groupIndex ?? 0;
+      const rightGroup = state.duplicateMeta.get(duplicateFileKey(b))?.groupIndex ?? 0;
+      if (leftGroup !== rightGroup) return leftGroup - rightGroup;
+      if (state.sort === "favorite") {
+        const favoriteOrder = compareFavoriteState(isFavorite(a), isFavorite(b));
+        if (favoriteOrder) return favoriteOrder;
+      }
+      if (state.sort === "date") return b.modified - a.modified;
+      if (state.sort === "size") return b.size - a.size;
+      return a.name.localeCompare(b.name, getLocale());
+    }
     if (project) return compareProjectEntries(a, b, project);
+    if (sourceHierarchy) {
+      if (state.sort === "favorite") {
+        const leftFavorite = a.kind === "folder"
+          ? isFolderFavorite(a.project.rootIndex, projectFolderPath(a.project))
+          : isFavorite(a.file);
+        const rightFavorite = b.kind === "folder"
+          ? isFolderFavorite(b.project.rootIndex, projectFolderPath(b.project))
+          : isFavorite(b.file);
+        const favoriteOrder = compareFavoriteState(leftFavorite, rightFavorite);
+        if (favoriteOrder) return favoriteOrder;
+      }
+      if (state.sort === "date") return b.modified - a.modified;
+      if (state.sort === "size") return b.size - a.size;
+      return a.name.localeCompare(b.name, getLocale());
+    }
     if (state.favoriteOnly) {
       if (state.sort === "date") return b.modified - a.modified;
       if (state.sort === "size") return b.size - a.size;
@@ -1000,8 +1158,14 @@ function renderLibrary(sequence = ++libraryRenderSequence) {
     return (a.displayName || a.name).localeCompare(b.displayName || b.name, getLocale());
   });
   byId("empty").classList.toggle("show", !entries.length);
-  byId("empty").querySelector("b").textContent = entries.length ? "" : t(state.favoriteOnly ? "favorites.emptyTitle" : "empty.noMatchesTitle");
-  byId("empty").querySelector("span").textContent = entries.length ? "" : t(state.favoriteOnly ? "favorites.emptyDetail" : (project ? "project.emptyFolder" : "empty.noMatchesDetail"));
+  const emptyTitleKey = state.duplicateMode
+    ? (state.duplicateError ? "duplicates.errorTitle" : "duplicates.emptyTitle")
+    : (state.favoriteOnly ? "favorites.emptyTitle" : "empty.noMatchesTitle");
+  const emptyDetailKey = state.duplicateMode
+    ? (state.duplicateError ? `duplicates.errors.${state.duplicateError}` : "duplicates.emptyDetail")
+    : (state.favoriteOnly ? "favorites.emptyDetail" : (project ? "project.emptyFolder" : "empty.noMatchesDetail"));
+  byId("empty").querySelector("b").textContent = entries.length ? "" : t(emptyTitleKey);
+  byId("empty").querySelector("span").textContent = entries.length ? "" : t(emptyDetailKey);
   const projectGridMode = Boolean(project) && currentLibraryView() === "grid";
   if (projectGridMode) {
     const availableHeight = Math.max(300, window.innerHeight - library.getBoundingClientRect().top - 110);
@@ -1058,6 +1222,7 @@ function updateLibraryControls() {
   manageButton.textContent = t("app.manageLibrary");
   manageButton.classList.toggle("is-scanning", state.scanning);
   byId("refreshLibrary").disabled = controls.refreshDisabled;
+  byId("duplicateFilter").disabled = state.scanning || state.duplicateScanning || !state.archive;
   byId("addFiles").disabled = state.scanning || !state.archive || !libraryFolderOptions(state.archive).length;
   byId("retryUnavailableRoots").disabled = controls.refreshDisabled;
   byId("applyLibrarySettings").disabled = controls.applyDisabled;
@@ -1081,6 +1246,7 @@ async function scanLibrary(roots, settings = state.settings, silent = false) {
   const normalizedRoots = normalizeLibraryRoots(roots);
   if (!normalizedRoots.length) {
     state.archive = null;
+    clearDuplicateResults();
     state.fileIndex = new Map();
     state.librarySelection.clear();
     state.entrySelection.clear();
@@ -1098,6 +1264,7 @@ async function scanLibrary(roots, settings = state.settings, silent = false) {
     const archive = await invoke("scan_archives", { roots: normalizedRoots });
     state.archive = archive;
     state.fileIndex = new Map(allFiles().map(file => [`${file.rootIndex}\n${file.path}`, file]));
+    clearDuplicateResults();
     state.librarySelection.clear();
     state.entrySelection.clear();
     state.projectSelection.clear();
@@ -1541,9 +1708,73 @@ async function createFolderInDestination() {
   }
 }
 
-async function refreshAfterMutation() {
+function duplicateErrorCode(error) {
+  const value = String(error || "");
+  const known = [
+    "duplicates_library_unavailable",
+    "duplicates_path_blocked",
+    "duplicates_file_missing",
+    "duplicates_permission_denied",
+    "duplicates_too_many_files",
+    "duplicates_read_failed",
+    "duplicates_unavailable_in_browser"
+  ];
+  const match = known.find(code => value.includes(code));
+  return match ? match.replace("duplicates_", "") : "read_failed";
+}
+
+function leaveDuplicateMode() {
   clearManagementSelection({ renderCards: false });
-  await scanLibrary(state.roots, state.settings, true);
+  clearDuplicateResults();
+  renderStats();
+  scheduleLibraryRender({ resetPage: true, showLoading: false });
+}
+
+async function findDuplicates() {
+  if (!state.archive || state.duplicateScanning) return;
+  clearManagementSelection({ renderCards: false });
+  state.favoriteOnly = false;
+  state.duplicateMode = true;
+  state.duplicateScanning = true;
+  state.duplicateError = null;
+  state.duplicateGroups = [];
+  state.duplicateMeta = new Map();
+  state.libraryLocation = libraryLocation();
+  state.tab = "files";
+  state.category = "all";
+  state.page = 1;
+  renderStats();
+  updateSectionLabels();
+  updateLibraryControls();
+  setLibraryLoading(true, t("duplicates.scanningTitle"), t("duplicates.scanningDetail"));
+  try {
+    if (!isTauri()) {
+      if (!demoMode) throw new Error("duplicates_unavailable_in_browser");
+      state.duplicateGroups = demoDuplicateGroups();
+    } else {
+      const files = visibleFiles().map(file => ({
+        rootIndex: file.rootIndex,
+        relativePath: file.path
+      }));
+      state.duplicateGroups = await invoke("find_duplicate_files", { files });
+    }
+    rebuildDuplicateMetadata();
+  } catch (error) {
+    state.duplicateError = duplicateErrorCode(error);
+    state.duplicateGroups = [];
+    state.duplicateMeta = new Map();
+  } finally {
+    state.duplicateScanning = false;
+    updateLibraryControls();
+    scheduleLibraryRender({ resetPage: true, showLoading: false });
+  }
+}
+
+async function refreshAfterMutation() {
+  const restoreDuplicates = state.duplicateMode;
+  clearManagementSelection({ renderCards: false });
+  const refreshed = await scanLibrary(state.roots, state.settings, true);
+  if (refreshed && restoreDuplicates) await findDuplicates();
 }
 
 async function confirmMutation() {
@@ -1628,7 +1859,6 @@ byId("libraryModeSwitch").addEventListener("click", event => {
   const button = event.target.closest("[data-library-tab]");
   if (!button || button.dataset.libraryTab === state.tab) return;
   clearManagementSelection({ renderCards: false });
-  state.libraryLocation = libraryLocation();
   state.tab = button.dataset.libraryTab;
   renderStats();
   scheduleLibraryRender({ resetPage: true });
@@ -1640,8 +1870,13 @@ byId("search").addEventListener("input", event => {
   searchTimer = setTimeout(() => scheduleLibraryRender({ resetPage: true }), 90);
 });
 byId("sort").addEventListener("change", event => { state.sort = event.target.value; scheduleLibraryRender({ resetPage: true }); });
+byId("duplicateFilter").addEventListener("click", () => {
+  if (state.duplicateMode) leaveDuplicateMode();
+  else findDuplicates();
+});
 byId("favoriteFilter").addEventListener("click", () => {
   clearManagementSelection({ renderCards: false });
+  clearDuplicateResults();
   state.favoriteOnly = !state.favoriteOnly;
   if (state.favoriteOnly) state.libraryLocation = libraryLocation();
   renderStats();
@@ -1680,6 +1915,7 @@ byId("sideLibrary").addEventListener("click", () => {
 
 byId("sideFavorites").addEventListener("click", () => {
   clearManagementSelection({ renderCards: false });
+  clearDuplicateResults();
   state.libraryLocation = libraryLocation();
   state.favoriteOnly = true;
   state.category = "all";

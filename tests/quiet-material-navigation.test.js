@@ -17,11 +17,21 @@ test("the production shell contains the agreed sidebar and main breadcrumbs", ()
   assert.match(css, /\.app-frame\s*\{[\s\S]*?grid-template-columns:\s*232px/);
 });
 
+test("the native webview context menu stays disabled until the app provides its own actions", () => {
+  assert.match(app, /document\.addEventListener\("contextmenu", event => event\.preventDefault\(\)\)/);
+});
+
 test("project cards navigate in place instead of opening the legacy project dialog", () => {
   assert.match(app, /setLibraryLocation\(projectLocation\(/);
   assert.match(app, /libraryProjectFolderCard/);
   assert.match(app, /locationBreadcrumbs/);
   assert.doesNotMatch(app, /projectDialog\.showModal\(\)/);
+});
+
+test("switching between folder and file results preserves the selected library source", () => {
+  const modeSwitchHandler = app.match(/byId\("libraryModeSwitch"\)\.addEventListener[\s\S]*?\n\}\);/)?.[0] || "";
+  assert.match(modeSwitchHandler, /state\.tab = button\.dataset\.libraryTab/);
+  assert.doesNotMatch(modeSwitchHandler, /state\.libraryLocation = libraryLocation\(\)/);
 });
 
 test("files at the end of navigation keep using the model viewer popup", () => {

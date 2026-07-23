@@ -85,6 +85,10 @@
         <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m12.5 12.5 4 4"/></svg>
         <input id="search" type="search" placeholder="Projekte und Dateien durchsuchen …" data-i18n-placeholder="nav.searchPlaceholder" autocomplete="off">
       </label>
+      <button class="tool duplicate-filter" id="duplicateFilter" type="button" aria-pressed="false">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="10" height="12" rx="1.5"/><path d="M7 3V2.5A1.5 1.5 0 0 1 8.5 1H15a2 2 0 0 1 2 2v9.5A1.5 1.5 0 0 1 15.5 14H15"/></svg>
+        <span data-i18n="duplicates.find">Dubletten finden</span>
+      </button>
       <div class="entry-mode-switch toolbar-mode-switch" id="libraryModeSwitch" role="group" aria-label="Ergebnisse anzeigen als" data-i18n-aria-label="sections.viewModeLabel">
         <button class="entry-mode-option" type="button" data-library-tab="projects" aria-pressed="true" aria-label="Passende Projektordner anzeigen" data-i18n-aria-label="sections.folderModeLabel"><svg viewBox="0 0 18 14" aria-hidden="true"><path d="M1.5 3.5h6l2-2h7v11h-15z"/></svg><span data-i18n="sections.folderMode">Ordner</span></button>
         <button class="entry-mode-option" type="button" data-library-tab="files" aria-pressed="false" aria-label="Einzelne Dateien anzeigen" data-i18n-aria-label="sections.fileModeLabel"><svg viewBox="0 0 15 17" aria-hidden="true"><path d="M2 1.5h7l4 4v10H2z"/><path d="M9 1.5v4h4"/></svg><span data-i18n="sections.fileMode">Dateien</span></button>
@@ -152,6 +156,7 @@
           </div>
         </div>
       </div>
+      <div class="duplicate-status" id="duplicateStatus" role="status" aria-live="polite" hidden></div>
       <div class="library-loading" id="libraryLoading" role="status" aria-live="polite" hidden>
         <div class="loading-model" aria-hidden="true"><i></i><i></i><i></i></div>
         <div><b id="loadingTitle" data-i18n="loading.preparing">Ansicht wird vorbereitet</b><span id="loadingDetail" data-i18n="loading.sorting">Einträge werden sortiert …</span></div>

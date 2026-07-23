@@ -119,17 +119,17 @@ jobs:
       RELEASE_NOTES: |
         Druckarchiv is a local desktop app for organizing 3D-printing files.
 
-        Version 1.0.0-rc.1 is the first public release candidate of the new Quiet Material interface. It introduces a clear sidebar and in-place folder navigation, consistent list and grid views, permanent selection and favorite controls, folder covers, and file and folder management for creating, renaming, moving, and deleting entries. Typography, contrast, dialogs, responsive layouts, disconnected-library handling, and Windows path compatibility have also been revised.
+        New in v1.0.0-rc.2: A local duplicate finder compares file contents instead of names, groups confirmed matches, and lets you choose manually which copies move to the system trash. Files stored directly at the root of a library folder, including a USB drive containing a single STL, now remain visible when that source is opened. Switching between folder and file results also stays scoped to the selected source. The native webview context menu is disabled until Druckarchiv provides its own file and folder actions.
 
-        This is a preview intended for testing before the final 1.0.0 release. Please report regressions through GitHub Issues. Existing stable installations will not receive this prerelease automatically.
+        This release candidate uses the new Quiet Material interface with its sidebar, in-place folder navigation, list and grid views, permanent selection and favorite controls, folder covers, and file and folder management. It is a preview intended for testing before the final 1.0.0 release. Existing stable installations will not receive this prerelease automatically.
 
         The updater supports macOS, Windows, Linux AppImage, and Linux Debian packages. Every update package is cryptographically verified before installation. Private signing keys are never stored in the repository.
 
         --- Deutsche Übersetzung ---
 
-        Version 1.0.0-rc.1 ist der erste öffentliche Release Candidate der neuen Quiet-Material-Oberfläche. Neu sind die klare Seitenleiste und Navigation direkt durch die Ordnerstruktur, konsistente Listen- und Rasteransichten, dauerhaft sichtbare Auswahl- und Favoritenfunktionen, eigene Ordner-Cover sowie die Verwaltung von Dateien und Ordnern mit Anlegen, Umbenennen, Verschieben und Löschen. Typografie, Kontrast, Dialoge, responsive Darstellung, der Umgang mit getrennten Bibliothekslaufwerken und die Windows-Pfadkompatibilität wurden ebenfalls überarbeitet.
+        Neu in v1.0.0-rc.2: Ein lokaler Dublettenfinder vergleicht Dateiinhalte statt Dateinamen, gruppiert bestätigte Treffer und überlässt dir die Auswahl, welche Kopien in den System-Papierkorb verschoben werden. Dateien direkt im Stamm eines Bibliotheksordners bleiben jetzt sichtbar, auch wenn ein USB-Stick nur eine einzelne STL enthält. Beim Wechsel zwischen Ordner- und Dateiansicht bleibt die ausgewählte Quelle erhalten. Das native Webview-Kontextmenü ist deaktiviert, bis Druckarchiv dafür eigene Datei- und Ordneraktionen anbietet.
 
-        Diese Vorschau dient dem Test vor der finalen Version 1.0.0. Fehler und Rückmeldungen können über GitHub Issues gemeldet werden. Bestehende stabile Installationen erhalten diesen Prerelease nicht automatisch.
+        Dieser Release Candidate verwendet die neue Quiet-Material-Oberfläche mit Seitenleiste, Navigation direkt durch die Ordnerstruktur, Listen- und Rasteransichten, dauerhaft sichtbaren Auswahl- und Favoritenfunktionen, eigenen Ordner-Covern sowie Datei- und Ordnerverwaltung. Die Vorschau dient dem Test vor der finalen Version 1.0.0. Bestehende stabile Installationen erhalten diesen Prerelease nicht automatisch.
 
         Der Updater unterstützt macOS, Windows sowie Linux als AppImage und Debian-Paket. Jedes Update-Paket wird vor der Installation kryptografisch geprüft. Private Signierschlüssel liegen niemals im Repository.
 

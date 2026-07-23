@@ -107,6 +107,9 @@ export default {
     categoryFavorites: "{category} favorites",
     categoryFolders: "{category} folders",
     categoryFiles: "{category} files",
+    sourceEyebrow: "Library folder",
+    sourceOverview: "Contents of {source}",
+    sourceCategory: "{category} in {source}",
     viewModeLabel: "Show results as",
     folderMode: "Folders",
     fileMode: "Files",
@@ -320,6 +323,30 @@ export default {
       invalid_source: "At least one selected source file is unavailable or not allowed.",
       trash_failed: "The system trash could not accept the entry. Nothing was permanently deleted.",
       failed: "The change could not be completed safely. Nothing was overwritten."
+    }
+  },
+  duplicates: {
+    find: "Find duplicates",
+    showAll: "Close duplicates",
+    scanningButton: "Checking …",
+    eyebrow: "Content comparison",
+    title: "Duplicate files",
+    scanningTitle: "Searching for duplicates",
+    scanningDetail: "Files with matching sizes are compared locally, byte for byte …",
+    groupBadge: "Group {group} · {count}×",
+    summary: "{groups} groups · {files} files",
+    reclaimable: "Up to {size} can be freed while keeping one copy from each group.",
+    emptyTitle: "No duplicates found.",
+    emptyDetail: "All displayed file types have unique contents. Matching names alone do not count as duplicates.",
+    errorTitle: "The duplicate scan could not be completed.",
+    errors: {
+      library_unavailable: "At least one library folder is unavailable. Reconnect the drive and scan again.",
+      path_blocked: "An unsafe file path was blocked.",
+      file_missing: "A file was moved or removed during the scan. Rescan the library.",
+      permission_denied: "Druckarchiv cannot read at least one file.",
+      too_many_files: "The library contains too many entries for a single scan.",
+      read_failed: "At least one file could not be read. No uncertain matches were shown.",
+      unavailable_in_browser: "Byte-for-byte comparison is available only in the installed Druckarchiv app."
     }
   },
   previews: {

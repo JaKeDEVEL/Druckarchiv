@@ -536,6 +536,7 @@ header p {
 
 .toolbar #sort,
 .toolbar .favorite-filter,
+.toolbar .duplicate-filter,
 .toolbar .icon-tool,
 .toolbar .entry-mode-switch,
 .toolbar .view-mode-switch {
@@ -545,7 +546,8 @@ header p {
 }
 
 .toolbar #sort,
-.toolbar .favorite-filter {
+.toolbar .favorite-filter,
+.toolbar .duplicate-filter {
   font-family: inherit;
   font-size: 11px;
   font-weight: 650;
@@ -567,6 +569,42 @@ header p {
   border-color: color-mix(in srgb, var(--qm-folder) 62%, var(--qm-outline));
   background: color-mix(in srgb, var(--qm-folder) 11%, var(--qm-surface-container));
   color: var(--qm-folder);
+}
+
+.toolbar .duplicate-filter {
+  display: inline-flex;
+  min-height: var(--toolbar-control-height);
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.toolbar .duplicate-filter svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.toolbar .duplicate-filter.on {
+  border-color: color-mix(in srgb, var(--qm-primary) 58%, var(--qm-outline));
+  background: color-mix(in srgb, var(--qm-primary) 10%, var(--qm-surface-container));
+  color: var(--qm-primary);
+}
+
+.toolbar .duplicate-filter.is-scanning svg {
+  animation: duplicate-scan-pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes duplicate-scan-pulse {
+  to {
+    opacity: .35;
+    transform: translateX(2px);
+  }
 }
 
 main {
