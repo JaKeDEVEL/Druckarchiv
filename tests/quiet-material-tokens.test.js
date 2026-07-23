@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const css = readFileSync(new URL("../src/quiet-material-tokens.css", import.meta.url), "utf8");
+const typography = readFileSync(new URL("../src/quiet-material-typography.css", import.meta.url), "utf8");
 
 test("Quiet Material defines the selected light and dark semantic palette", () => {
   [
@@ -54,4 +55,22 @@ test("dialogs keep model content legible while sharing quiet material surfaces",
   assert.match(css, /\.project-modal\s*\{[\s\S]*?min-height:\s*min\(480px, 88vh\)/);
   assert.match(css, /\.viewer-stage\s*\{[\s\S]*?background:\s*#101718/);
   assert.match(css, /\.update-orbit\s*\{[\s\S]*?display:\s*none/);
+});
+
+test("the production interface uses one readable seven-step type scale", () => {
+  [
+    "--qm-type-caption: 10px",
+    "--qm-type-label: 12px",
+    "--qm-type-body: 14px",
+    "--qm-type-subtitle: 16px",
+    "--qm-type-title: 20px",
+    "--qm-type-section: 24px",
+    "--qm-type-page: 28px"
+  ].forEach(token => assert.ok(css.includes(token), `${token} fehlt`));
+  assert.match(typography, /\.quiet-action\s*\{[\s\S]*?font-size:\s*var\(--qm-type-body\)/);
+  assert.match(typography, /\.mutation-field input,[\s\S]*?font-size:\s*var\(--qm-type-body\)/);
+  assert.match(typography, /\.entry-kind,[\s\S]*?font-size:\s*var\(--qm-type-caption\)/);
+  assert.match(css, /--qm-weight-regular:\s*500/);
+  assert.match(css, /--qm-weight-emphasis:\s*650/);
+  assert.match(css, /--qm-weight-strong:\s*750/);
 });

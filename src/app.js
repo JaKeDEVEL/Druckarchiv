@@ -1,5 +1,6 @@
 import "./styles.css";
 import "./quiet-material-tokens.css";
+import "./quiet-material-typography.css";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { relaunch } from "@tauri-apps/plugin-process";
@@ -37,11 +38,13 @@ import { releaseViewerModel } from "./viewer-lifecycle.js";
 import { compatibleSelection, fileSelectionKey, selectionPayload } from "./file-selection.js";
 import { PREVIEW_MATERIAL_OPTIONS } from "./preview-style.js";
 import { DEFAULT_PROJECT_GRID_PAGE_SIZE, projectGridPageCapacity } from "./project-grid-pagination.js";
-import { mergeLibraryRoots, rootDisplayName } from "./library-roots.js";
+import { mergeLibraryRoots, normalizeLibraryRoots, rootDisplayName } from "./library-roots.js";
 import { compareFavoriteState, favoriteFileKey, favoriteFolderKey, favoriteOverviewItems, favoriteToggleNeedsRender, FAVORITES_STORAGE_KEY, folderPathsForFiles, normalizeFavoriteKeys, normalizeFolderPath } from "./favorites.js";
 import { createUpdateProgress, reduceUpdateProgress, updateProgressPercent } from "./update-progress.js";
 import { folderLocation, isProjectLocation, libraryLocation, locationBreadcrumbs, projectLocation, sourceLocation } from "./library-navigation.js";
 import { isLibraryRootAvailable, libraryRootConnectionType, unavailableLibraryConnectionType, unavailableLibraryRoots } from "./library-availability.js";
+import { FOLDER_COVERS_STORAGE_KEY, folderContents, folderCoverKey, normalizeFolderCoverPreference, normalizeFolderCoverPreferences, resolveFolderCover } from "./folder-covers.js";
+import { destinationContainsEntry, entryParentPath, libraryFolderOptions, managementEntryKey, mutationErrorKey, splitEntryName } from "./library-mutations.js";
 
 const CATEGORIES = {
   stl: { label: "STL", color: "var(--orange)", exts: CATEGORY_EXTENSIONS.stl },
@@ -74,6 +77,14 @@ function restoredFavoriteKeys() {
     return [];
   }
 }
+function restoredFolderCovers() {
+  try {
+    return normalizeFolderCoverPreferences(JSON.parse(localStorage.getItem(FOLDER_COVERS_STORAGE_KEY) || "{}"));
+  } catch (_) {
+    localStorage.removeItem(FOLDER_COVERS_STORAGE_KEY);
+    return {};
+  }
+}
 const state = {
   archive: null,
   roots: [],
@@ -87,6 +98,7 @@ const state = {
   sort: "name",
   favoriteOnly: false,
   favorites: new Set(restoredFavoriteKeys()),
+  folderCovers: restoredFolderCovers(),
   view: "grid",
   projectView: normalizeViewMode(localStorage.getItem(PROJECT_VIEW_KEY)),
   slicer: normalizeSlicer(localStorage.getItem(SLICER_KEY)),
@@ -97,12 +109,15 @@ const state = {
   projectPath: "",
   projectSelection: new Set(),
   librarySelection: new Set(),
+  entrySelection: new Map(),
   viewerFileKey: null,
   scanning: false,
   fileIndex: new Map(),
   favoriteEntries: [],
   libraryLocation: libraryLocation()
 };
+let pendingFolderCover = null;
+let pendingMutation = null;
 let slicerOpening = false;
 let availableUpdate = null;
 let updateChecking = false;
@@ -328,11 +343,54 @@ function activeLibraryProject() {
   return state.archive?.projects[state.libraryLocation.projectIndex] || null;
 }
 
+function managementEntry(kind, rootIndex, relativePath, name, extension = "") {
+  const normalizedKind = kind === "folder" ? "folder" : "file";
+  const entry = {
+    kind: normalizedKind,
+    rootIndex: Number(rootIndex),
+    relativePath: String(relativePath || ""),
+    name: String(name || ""),
+    extension: String(extension || "")
+  };
+  entry.key = managementEntryKey(entry.kind, entry.rootIndex, entry.relativePath);
+  return entry;
+}
+
+function selectedManagementEntries() {
+  return [...state.entrySelection.values()];
+}
+
+function clearManagementSelection({ renderCards = true } = {}) {
+  state.entrySelection.clear();
+  state.librarySelection.clear();
+  if (renderCards) scheduleLibraryRender({ showLoading: false });
+  else updateLibrarySelection();
+}
+
+function managementSelectionControl(entry, className = "") {
+  const checked = state.entrySelection.has(entry.key);
+  const label = t("mutations.selectEntry", { name: entry.name });
+  return `<label class="entry-select ${className}" title="${escapeHtml(label)}"><input type="checkbox" data-management-kind="${entry.kind}" data-management-root="${entry.rootIndex}" data-management-path="${escapeHtml(entry.relativePath)}" data-management-name="${escapeHtml(entry.name)}" data-management-extension="${escapeHtml(entry.extension)}" aria-label="${escapeHtml(label)}" ${checked ? "checked" : ""}></label>`;
+}
+
+function cardKindFlag(kind) {
+  if (kind === "folder") {
+    return `<span class="kind-flag folder-flag"><svg viewBox="0 0 16 13" aria-hidden="true"><path d="M1 3h6l2 2h6v7H1z"/></svg>${t("common.folder")}</span>`;
+  }
+  return `<span class="kind-flag file-flag"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1h7l3 3v11H3zm7 1.5V5h2.5z"/></svg>${t("common.file")}</span>`;
+}
+
+function cardCornerControls(entry, favoriteControl) {
+  return `<div class="card-corner-controls">${managementSelectionControl(entry)}${favoriteControl}${cardKindFlag(entry.kind)}</div>`;
+}
+
 function currentLibraryView() {
   return activeLibraryProject() ? state.projectView : state.view;
 }
 
 function setLibraryLocation(location, { resetCategory = false } = {}) {
+  state.entrySelection.clear();
+  state.librarySelection.clear();
   state.libraryLocation = location;
   state.tab = "projects";
   state.favoriteOnly = false;
@@ -557,6 +615,44 @@ function previewCoverClass(file) {
   return state.settings.showPreviews && file?.demoPreview ? "has-thumbnail" : "";
 }
 
+function folderCoverPreference(project, path = "") {
+  const root = rootOf(project);
+  return state.folderCovers[folderCoverKey(root?.path || "", projectFolderPath(project, path))] || null;
+}
+
+function folderCoverDecision(project, path = "", candidateFiles = project?.files || []) {
+  return resolveFolderCover({
+    project,
+    folderPath: path,
+    allFiles: project?.files || [],
+    candidateFiles,
+    preference: folderCoverPreference(project, path),
+    isPreviewable: isViewable
+  });
+}
+
+function folderCoverPresentation(decision) {
+  if (decision.kind === "custom") {
+    return {
+      className: "has-thumbnail has-custom-cover",
+      attributes: "",
+      markup: `<img class="model-thumbnail folder-custom-cover" src="${escapeHtml(decision.image)}" alt="">`
+    };
+  }
+  const file = decision.kind === "model" ? decision.representative : null;
+  return {
+    className: previewCoverClass(file),
+    attributes: previewAttributes(file),
+    markup: demoPreviewMarkup(file)
+  };
+}
+
+function folderCoverLabel(decision, dominant) {
+  return decision.isLeaf && decision.kind !== "icon"
+    ? `<span class="cover-label">${categoryLabel(dominant)}</span>`
+    : "";
+}
+
 function kpiDescriptor(category, extensions) {
   const labels = extensions.map(extension => formatLabels.get(extension) || extension.toUpperCase());
   const singleLabel = labels.length === 1 ? labels[0] : null;
@@ -608,8 +704,11 @@ function projectCard(project) {
   const size = shownFiles.reduce((sum, file) => sum + file.size, 0);
   const root = rootOf(project);
   const projectIndex = state.archive.projects.indexOf(project);
-  const representative = shownFiles.find(isViewable);
-  return `<article class="card folder-card" data-project-index="${projectIndex}" style="--tone:${CATEGORIES[dominant].color}"><button class="folder-card-open" type="button" aria-label="${escapeHtml(t("cards.openProject", { name: project.displayName }))}"><div class="card-cover folder-cover ${previewCoverClass(representative)}" ${previewAttributes(representative)} aria-hidden="true">${demoPreviewMarkup(representative)}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> ${t("common.folder")}</span><span class="cover-label">${categoryLabel(dominant)}</span></div><div class="card-body"><div class="entry-kind">${t("cards.projectFolder")}</div><h3>${escapeHtml(project.displayName)}</h3><div class="meta"><span>${t("common.filesCount", { count: shownFiles.length })}</span><span>${formatSize(size)}</span><span>${formatDate(project.modified)}</span></div><div class="badges">${badges}<span class="badge source-badge" title="${escapeHtml(root?.path || "")}">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>${folderFavoriteButton(project.rootIndex, projectFolderPath(project), project.displayName, "library-folder-favorite")}</article>`;
+  const cover = folderCoverDecision(project, "", shownFiles);
+  const presentation = folderCoverPresentation(cover);
+  const entry = managementEntry("folder", project.rootIndex, projectFolderPath(project), project.displayName);
+  const favoriteControl = folderFavoriteButton(project.rootIndex, projectFolderPath(project), project.displayName, "library-folder-favorite");
+  return `<article class="card folder-card ${state.entrySelection.has(entry.key) ? "is-selected" : ""}" data-project-index="${projectIndex}" style="--tone:${CATEGORIES[dominant].color}"><button class="folder-card-open" type="button" aria-label="${escapeHtml(t("cards.openProject", { name: project.displayName }))}"><div class="card-cover folder-cover ${presentation.className}" ${presentation.attributes} aria-hidden="true">${presentation.markup}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span>${folderCoverLabel(cover, dominant)}</div><div class="card-body"><div class="entry-kind">${t("cards.projectFolder")}</div><h3>${escapeHtml(project.displayName)}</h3><div class="meta"><span>${t("common.filesCount", { count: shownFiles.length })}</span><span>${formatSize(size)}</span><span>${formatDate(project.modified)}</span></div><div class="badges">${badges}<span class="badge source-badge" title="${escapeHtml(root?.path || "")}">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>${cardCornerControls(entry, favoriteControl)}</article>`;
 }
 
 function favoriteFolderCard(entry) {
@@ -624,10 +723,13 @@ function favoriteFolderCard(entry) {
     .map(([key, count]) => `<span class="badge">${categoryLabel(key)} ${nf.format(count)}</span>`).join("");
   const size = shownFiles.reduce((sum, file) => sum + Number(file.size || 0), 0);
   const modified = Math.max(...shownFiles.map(file => Number(file.modified || 0)));
-  const representative = shownFiles.find(isViewable);
+  const cover = folderCoverDecision(entry.project, entry.path, shownFiles);
+  const presentation = folderCoverPresentation(cover);
   const root = rootOf(entry.project);
   const kind = entry.path ? t("project.subfolder") : t("cards.projectFolder");
-  return `<article class="card folder-card" data-project-index="${entry.projectIndex}" data-project-path="${escapeHtml(entry.path)}" style="--tone:${CATEGORIES[dominant].color}"><button class="folder-card-open" type="button" aria-label="${escapeHtml(t("project.openFolder", { name: entry.name }))}"><div class="card-cover folder-cover ${previewCoverClass(representative)}" ${previewAttributes(representative)} aria-hidden="true">${demoPreviewMarkup(representative)}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> ${t("common.folder")}</span><span class="cover-label">${categoryLabel(dominant)}</span></div><div class="card-body"><div class="entry-kind">${kind}</div><h3 title="${escapeHtml(entry.fullPath)}">${escapeHtml(entry.name)}</h3><div class="meta"><span>${t("common.filesCount", { count: shownFiles.length })}</span><span>${formatSize(size)}</span><span>${formatDate(modified)}</span></div><div class="badges">${badges}<span class="badge source-badge" title="${escapeHtml(root?.path || "")}">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>${folderFavoriteButton(entry.project.rootIndex, entry.fullPath, entry.name, "library-folder-favorite")}</article>`;
+  const selectedEntry = managementEntry("folder", entry.project.rootIndex, entry.fullPath, entry.name);
+  const favoriteControl = folderFavoriteButton(entry.project.rootIndex, entry.fullPath, entry.name, "library-folder-favorite");
+  return `<article class="card folder-card ${state.entrySelection.has(selectedEntry.key) ? "is-selected" : ""}" data-project-index="${entry.projectIndex}" data-project-path="${escapeHtml(entry.path)}" style="--tone:${CATEGORIES[dominant].color}"><button class="folder-card-open" type="button" aria-label="${escapeHtml(t("project.openFolder", { name: entry.name }))}"><div class="card-cover folder-cover ${presentation.className}" ${presentation.attributes} aria-hidden="true">${presentation.markup}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span>${folderCoverLabel(cover, dominant)}</div><div class="card-body"><div class="entry-kind">${kind}</div><h3 title="${escapeHtml(entry.fullPath)}">${escapeHtml(entry.name)}</h3><div class="meta"><span>${t("common.filesCount", { count: shownFiles.length })}</span><span>${formatSize(size)}</span><span>${formatDate(modified)}</span></div><div class="badges">${badges}<span class="badge source-badge" title="${escapeHtml(root?.path || "")}">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>${cardCornerControls(selectedEntry, favoriteControl)}</article>`;
 }
 
 function libraryProjectFolderCard(project, entry) {
@@ -644,12 +746,10 @@ function fileCard(file) {
   const viewable = isViewable(file);
   const root = rootOf(file);
   const ariaLabel = `${t("cards.openFile", { name: file.name })}${viewable ? t("cards.openFileViewerSuffix") : ""}`;
-  const key = fileSelectionKey(file);
-  const compatible = isSlicerCompatible(file.extension, state.slicer);
-  const checked = state.librarySelection.has(key);
-  const selectionTitle = compatible ? t("project.selectForSlicer", { name: file.name }) : t("project.slicerUnsupported");
-  const selectionControl = `<label class="library-file-select" title="${escapeHtml(selectionTitle)}"><input type="checkbox" data-library-path="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" aria-label="${escapeHtml(selectionTitle)}" ${checked ? "checked" : ""} ${compatible ? "" : "disabled"}></label>`;
-  return `<article class="card file-card ${checked ? "is-selected" : ""}" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? 'data-viewable="true"' : ""} style="--tone:${CATEGORIES[category].color}"><button class="file-card-open" type="button" aria-label="${escapeHtml(ariaLabel)}"><div class="card-cover file-cover ${previewCoverClass(file)}" ${previewAttributes(file)} aria-hidden="true">${demoPreviewMarkup(file)}<span class="file-mark">${escapeHtml(file.extension.toUpperCase() || t("common.file").toUpperCase())}</span><span class="kind-flag file-flag">${t("common.file")}</span></div><div class="card-body"><div class="entry-kind">${t("cards.fileEntry", { extension: escapeHtml(file.extension || "–") })}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : t("common.mainFolder"))}</span></div><div class="badges"><span class="badge">${categoryLabel(category)}</span>${viewable ? `<span class="badge">${t("cards.preview")}</span>` : ""}<span class="badge source-badge">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>${favoriteButton(file, "library-favorite")}${selectionControl}</article>`;
+  const entry = managementEntry("file", file.rootIndex, file.path, file.name, file.extension);
+  const checked = state.entrySelection.has(entry.key);
+  const favoriteControl = favoriteButton(file, "library-favorite");
+  return `<article class="card file-card ${checked ? "is-selected" : ""}" data-file="${escapeHtml(file.path)}" data-root-index="${file.rootIndex}" ${viewable ? 'data-viewable="true"' : ""} style="--tone:${CATEGORIES[category].color}"><button class="file-card-open" type="button" aria-label="${escapeHtml(ariaLabel)}"><div class="card-cover file-cover ${previewCoverClass(file)}" ${previewAttributes(file)} aria-hidden="true">${demoPreviewMarkup(file)}<span class="file-mark">${escapeHtml(file.extension.toUpperCase() || t("common.file").toUpperCase())}</span></div><div class="card-body"><div class="entry-kind">${t("cards.fileEntry", { extension: escapeHtml(file.extension || "–") })}</div><h3>${escapeHtml(file.name)}</h3><div class="meta"><span>${formatSize(file.size)}</span><span>${formatDate(file.modified)}</span><span>${escapeHtml(file.path.includes("/") ? file.path.split("/").slice(0, -1).join("/") : t("common.mainFolder"))}</span></div><div class="badges"><span class="badge">${categoryLabel(category)}</span>${viewable ? `<span class="badge">${t("cards.preview")}</span>` : ""}<span class="badge source-badge">${escapeHtml(root?.name || t("common.library"))}</span></div></div></button>${cardCornerControls(entry, favoriteControl)}</article>`;
 }
 
 let libraryRenderSequence = 0;
@@ -693,6 +793,16 @@ function updateToolbarControls() {
   refresh.dataset.tooltip = refreshLabel;
 }
 
+function updateFolderCoverControl() {
+  const button = byId("folderCoverButton");
+  const project = activeLibraryProject();
+  button.hidden = !project;
+  if (button.hidden) return;
+  const label = t("folderCovers.manage");
+  button.setAttribute("aria-label", label);
+  button.title = label;
+}
+
 function updateSectionLabels() {
   const selected = selectedKpiExtensions(state.settings);
   const categoryLabel = state.category === "all" ? "" : kpiDescriptor(state.category, selected[state.category] || []).label;
@@ -718,6 +828,7 @@ function updateSectionLabels() {
     button.setAttribute("aria-pressed", String(active));
   });
   updateToolbarControls();
+  updateFolderCoverControl();
   updateFavoriteControls();
   updateLibrarySelection();
   renderSidebar();
@@ -725,15 +836,38 @@ function updateSectionLabels() {
 
 function updateLibrarySelection() {
   const selection = byId("librarySelection");
-  const count = state.librarySelection.size;
-  const selectionContext = state.favoriteOnly || state.tab === "files" || Boolean(activeLibraryProject());
-  selection.hidden = !state.archive || !selectionContext || count === 0;
+  const entries = selectedManagementEntries();
+  const count = entries.length;
+  const onlyFiles = count > 0 && entries.every(entry => entry.kind === "file");
+  state.librarySelection = new Set(entries
+    .filter(entry => entry.kind === "file" && isSlicerCompatible(entry.extension, state.slicer))
+    .map(entry => `${entry.rootIndex}\n${entry.relativePath}`));
+  selection.hidden = count === 0;
+  byId("toolbarStage").classList.toggle("has-selection", count > 0);
+  byId("searchToolbar").inert = count > 0;
+  byId("searchToolbar").setAttribute("aria-hidden", String(count > 0));
+  selection.inert = count === 0;
+  selection.setAttribute("aria-hidden", String(count === 0));
+  if (!count) return;
+
+  const kinds = new Set(entries.map(entry => entry.kind));
+  byId("librarySelectedLabel").textContent = count === 1
+    ? t(entries[0].kind === "folder" ? "mutations.oneFolderSelected" : "mutations.oneFileSelected")
+    : t(kinds.size === 1
+      ? (onlyFiles ? "mutations.filesSelected" : "mutations.foldersSelected")
+      : "mutations.entriesSelected", { count: nf.format(count) });
+  byId("librarySelectionPath").textContent = count === 1
+    ? entries[0].relativePath
+    : t(onlyFiles ? "mutations.fileSelectionHint" : "mutations.mixedSelectionHint");
+  byId("renameSelection").hidden = count !== 1;
+  byId("moveSelection").disabled = false;
+  byId("deleteSelection").disabled = false;
+  byId("selectionSlicerActions").hidden = !onlyFiles;
   const slicer = slicerLabel(state.slicer);
-  byId("librarySelectedCount").textContent = nf.format(count);
   byId("librarySlicerSelect").value = state.slicer;
   const openButton = byId("openLibrarySelectionInSlicer");
-  openButton.disabled = slicerOpening || count === 0;
-  openButton.textContent = t(slicerOpening ? "project.openingInSlicer" : "project.openInSlicer", { count, slicer });
+  openButton.disabled = slicerOpening || state.librarySelection.size !== count;
+  openButton.textContent = t(slicerOpening ? "project.openingInSlicer" : "project.openInSlicer", { count: state.librarySelection.size, slicer });
 }
 
 function scheduleLibraryRender({ resetPage = false, scrollToResults = false, showLoading = true } = {}) {
@@ -924,6 +1058,7 @@ function updateLibraryControls() {
   manageButton.textContent = t("app.manageLibrary");
   manageButton.classList.toggle("is-scanning", state.scanning);
   byId("refreshLibrary").disabled = controls.refreshDisabled;
+  byId("addFiles").disabled = state.scanning || !state.archive || !libraryFolderOptions(state.archive).length;
   byId("retryUnavailableRoots").disabled = controls.refreshDisabled;
   byId("applyLibrarySettings").disabled = controls.applyDisabled;
   const settingsStatus = byId("settingsStatus");
@@ -943,10 +1078,12 @@ function setScanning(scanning) {
 }
 
 async function scanLibrary(roots, settings = state.settings, silent = false) {
-  if (!roots.length) {
+  const normalizedRoots = normalizeLibraryRoots(roots);
+  if (!normalizedRoots.length) {
     state.archive = null;
     state.fileIndex = new Map();
     state.librarySelection.clear();
+    state.entrySelection.clear();
     state.projectSelection.clear();
     state.roots = [];
     state.settings = normalizeLibrarySettings(settings);
@@ -958,12 +1095,13 @@ async function scanLibrary(roots, settings = state.settings, silent = false) {
   }
   setScanning(true);
   try {
-    const archive = await invoke("scan_archives", { roots });
+    const archive = await invoke("scan_archives", { roots: normalizedRoots });
     state.archive = archive;
     state.fileIndex = new Map(allFiles().map(file => [`${file.rootIndex}\n${file.path}`, file]));
     state.librarySelection.clear();
+    state.entrySelection.clear();
     state.projectSelection.clear();
-    state.roots = roots.filter(root => typeof root === "string" && root);
+    state.roots = normalizedRoots;
     state.settings = normalizeLibrarySettings(settings);
     state.libraryLocation = libraryLocation();
     state.page = 1;
@@ -1099,6 +1237,380 @@ byId("applyLibrarySettings").addEventListener("click", async () => {
   if (applied) libraryDialog.close();
 });
 
+const folderCoverDialog = byId("folderCoverDialog");
+
+function currentFolderCoverContext() {
+  const project = activeLibraryProject();
+  if (!project) return null;
+  const path = state.libraryLocation.path;
+  const rootPath = rootOf(project)?.path || "";
+  return {
+    project,
+    path,
+    isLeaf: folderContents(project, project.files, path).isLeaf,
+    key: folderCoverKey(rootPath, projectFolderPath(project, path)),
+    name: path.split("/").filter(Boolean).pop() || project.displayName
+  };
+}
+
+function renderFolderCoverDialog() {
+  if (!pendingFolderCover) return;
+  folderCoverDialog.querySelectorAll('input[name="folder-cover-mode"]').forEach(input => {
+    input.checked = input.value === pendingFolderCover.mode;
+  });
+  const custom = pendingFolderCover.mode === "custom";
+  const preview = byId("folderCoverPreview");
+  const image = byId("folderCoverPreviewImage");
+  const hasImage = custom && Boolean(pendingFolderCover.image);
+  preview.classList.toggle("has-image", hasImage);
+  image.hidden = !hasImage;
+  image.src = hasImage ? pendingFolderCover.image : "";
+  byId("folderCoverImageAction").hidden = !custom;
+  byId("folderCoverFileName").textContent = pendingFolderCover.fileName || "";
+  byId("folderCoverAutoDetail").textContent = t(pendingFolderCover.isLeaf
+    ? "folderCovers.autoDetail"
+    : "folderCovers.structuralAutoDetail");
+  byId("saveFolderCover").disabled = custom && !pendingFolderCover.image;
+}
+
+function openFolderCoverDialog() {
+  const context = currentFolderCoverContext();
+  if (!context) return;
+  const preference = normalizeFolderCoverPreference(state.folderCovers[context.key]);
+  pendingFolderCover = { ...context, ...preference };
+  byId("folderCoverTitle").textContent = context.name;
+  byId("folderCoverError").hidden = true;
+  renderFolderCoverDialog();
+  if (!folderCoverDialog.open) folderCoverDialog.showModal();
+}
+
+function imageFromBlob(blob) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("image_decode_failed"));
+    };
+    image.src = url;
+  });
+}
+
+async function croppedFolderCover(bytes, mimeType) {
+  const source = await imageFromBlob(new Blob([new Uint8Array(bytes)], { type: mimeType }));
+  const width = 960;
+  const height = 540;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d", { alpha: false });
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, width, height);
+  const scale = Math.max(width / source.naturalWidth, height / source.naturalHeight);
+  const drawWidth = source.naturalWidth * scale;
+  const drawHeight = source.naturalHeight * scale;
+  context.drawImage(source, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
+  return canvas.toDataURL("image/jpeg", .84);
+}
+
+async function chooseFolderCoverImage() {
+  if (!pendingFolderCover) return;
+  const error = byId("folderCoverError");
+  error.hidden = true;
+  if (!isTauri()) {
+    error.textContent = t("folderCovers.unavailableInBrowser");
+    error.hidden = false;
+    return;
+  }
+  try {
+    const selected = await open({
+      multiple: false,
+      directory: false,
+      title: t("folderCovers.chooseImageTitle"),
+      filters: [{ name: "PNG / JPG", extensions: ["png", "jpg", "jpeg"] }]
+    });
+    if (!selected || Array.isArray(selected)) return;
+    const extension = selected.split(/[\\/]/).pop()?.split(".").pop()?.toLowerCase();
+    const mimeType = extension === "png" ? "image/png" : "image/jpeg";
+    const bytes = await invoke("read_cover_image", { path: selected });
+    pendingFolderCover.mode = "custom";
+    pendingFolderCover.image = await croppedFolderCover(bytes, mimeType);
+    pendingFolderCover.fileName = selected.split(/[\\/]/).pop() || "";
+    renderFolderCoverDialog();
+  } catch (reason) {
+    error.textContent = t("folderCovers.readError", { error: String(reason) });
+    error.hidden = false;
+  }
+}
+
+function saveFolderCover() {
+  if (!pendingFolderCover) return;
+  const error = byId("folderCoverError");
+  if (pendingFolderCover.mode === "custom" && !pendingFolderCover.image) {
+    error.textContent = t("folderCovers.imageRequired");
+    error.hidden = false;
+    return;
+  }
+  const next = { ...state.folderCovers };
+  if (pendingFolderCover.mode === "auto") delete next[pendingFolderCover.key];
+  else next[pendingFolderCover.key] = normalizeFolderCoverPreference(pendingFolderCover);
+  try {
+    localStorage.setItem(FOLDER_COVERS_STORAGE_KEY, JSON.stringify(next));
+  } catch (_) {
+    error.textContent = t("folderCovers.storageError");
+    error.hidden = false;
+    return;
+  }
+  state.folderCovers = next;
+  folderCoverDialog.close();
+  scheduleLibraryRender({ showLoading: false });
+}
+
+byId("folderCoverButton").addEventListener("click", openFolderCoverDialog);
+byId("chooseFolderCoverImage").addEventListener("click", chooseFolderCoverImage);
+byId("saveFolderCover").addEventListener("click", saveFolderCover);
+folderCoverDialog.querySelectorAll("[data-close]").forEach(button => button.addEventListener("click", () => folderCoverDialog.close()));
+folderCoverDialog.addEventListener("click", event => { if (event.target === folderCoverDialog) folderCoverDialog.close(); });
+folderCoverDialog.addEventListener("close", () => { pendingFolderCover = null; });
+folderCoverDialog.addEventListener("change", event => {
+  const input = event.target.closest('input[name="folder-cover-mode"]');
+  if (!input || !pendingFolderCover) return;
+  pendingFolderCover.mode = input.value;
+  byId("folderCoverError").hidden = true;
+  renderFolderCoverDialog();
+});
+
+const mutationDialog = byId("mutationDialog");
+
+function destinationValue(folder) {
+  return JSON.stringify([folder.rootIndex, folder.relativePath]);
+}
+
+function destinationFromSelect(select) {
+  try {
+    const [rootIndex, relativePath] = JSON.parse(select.value);
+    return { rootIndex: Number(rootIndex), relativePath: String(relativePath || "") };
+  } catch (_) {
+    return null;
+  }
+}
+
+function currentMutationDestination() {
+  const project = activeLibraryProject();
+  if (project) {
+    return { rootIndex: project.rootIndex, relativePath: projectFolderPath(project, state.libraryLocation.path) };
+  }
+  if (state.libraryLocation.rootIndex !== null) return { rootIndex: state.libraryLocation.rootIndex, relativePath: "" };
+  return libraryFolderOptions(state.archive)[0] || null;
+}
+
+function renderDestinationOptions(select, entries = [], preferred = currentMutationDestination()) {
+  const options = libraryFolderOptions(state.archive);
+  select.innerHTML = "";
+  options.forEach(folder => {
+    const option = document.createElement("option");
+    option.value = destinationValue(folder);
+    option.textContent = `${folder.rootName}${folder.relativePath ? ` / ${folder.relativePath}` : ""}`;
+    option.disabled = entries.some(entry => destinationContainsEntry(folder, entry));
+    select.append(option);
+  });
+  const preferredValue = preferred ? destinationValue(preferred) : "";
+  const preferredOption = [...select.options].find(option => option.value === preferredValue && !option.disabled);
+  const fallback = [...select.options].find(option => !option.disabled);
+  select.value = (preferredOption || fallback)?.value || "";
+}
+
+function setMutationPanel(type) {
+  ["rename", "move", "delete", "add"].forEach(name => {
+    byId(`${name}MutationPanel`).hidden = name !== type;
+  });
+}
+
+function mutationSummary(entries) {
+  if (entries.length === 1) return entries[0].relativePath;
+  return t("mutations.itemsAffected", { count: nf.format(entries.length) });
+}
+
+function openMutation(type) {
+  const entries = selectedManagementEntries();
+  if (type !== "add" && !entries.length) return;
+  if (type === "rename" && entries.length !== 1) return;
+  pendingMutation = { type, entries, files: [], completed: 0 };
+  setMutationPanel(type);
+  byId("mutationError").hidden = true;
+  byId("mutationEntrySummary").hidden = type === "add";
+  byId("mutationTitle").textContent = t(`mutations.${type}Title`, { count: entries.length });
+  const confirm = byId("confirmMutation");
+  confirm.textContent = t(`mutations.${type}Confirm`, { count: entries.length });
+  confirm.disabled = type === "add";
+  confirm.classList.toggle("danger-action", type === "delete");
+  byId("mutationStatus").textContent = t(type === "delete" ? "mutations.trashAction" : "mutations.localAction");
+
+  if (entries.length) {
+    const entry = entries[0];
+    byId("mutationEntryBadge").textContent = entries.length === 1
+      ? (entry.kind === "folder" ? t("common.folder").toUpperCase() : (entry.extension || t("common.file")).toUpperCase())
+      : nf.format(entries.length);
+    byId("mutationEntryName").textContent = entries.length === 1 ? entry.name : t("mutations.multipleEntries");
+    byId("mutationEntryPath").textContent = mutationSummary(entries);
+    byId("mutationEntrySummary").classList.toggle("folder-entry", entries.length === 1 && entry.kind === "folder");
+  }
+
+  if (type === "rename") {
+    const entry = entries[0];
+    const parts = splitEntryName(entry.name, entry.kind);
+    byId("renameMutationInput").value = parts.base;
+    byId("renameMutationExtension").textContent = parts.extension;
+    byId("renameMutationExtension").hidden = !parts.extension;
+    byId("renameMutationLabel").textContent = t(entry.kind === "folder" ? "mutations.newFolderName" : "mutations.newFileName");
+    byId("renameMutationHelp").textContent = t(entry.kind === "folder" ? "mutations.renameFolderHelp" : "mutations.renameFileHelp");
+    byId("renameMutationInput").closest(".mutation-field").classList.toggle("folder-name", entry.kind === "folder");
+  } else if (type === "move") {
+    renderDestinationOptions(byId("moveMutationDestination"), entries);
+    byId("newFolderFields").hidden = true;
+    byId("newFolderName").value = "";
+    confirm.disabled = !byId("moveMutationDestination").value;
+  } else if (type === "delete") {
+    const oneFolder = entries.length === 1 && entries[0].kind === "folder";
+    byId("deleteMutationLead").textContent = entries.length === 1
+      ? t(oneFolder ? "mutations.deleteFolderLead" : "mutations.deleteFileLead", { name: entries[0].name })
+      : t("mutations.deleteManyLead", { count: nf.format(entries.length) });
+    byId("deleteMutationPath").textContent = mutationSummary(entries);
+    byId("deleteMutationNote").textContent = t(oneFolder ? "mutations.deleteFolderNote" : "mutations.deleteNote");
+  } else if (type === "add") {
+    renderDestinationOptions(byId("addMutationDestination"));
+    byId("addMutationFileSummary").textContent = t("mutations.noFilesSelected");
+  }
+
+  if (!mutationDialog.open) mutationDialog.showModal();
+  if (type === "rename") requestAnimationFrame(() => byId("renameMutationInput").select());
+}
+
+function showMutationError(error, completed = 0) {
+  const message = t(mutationErrorKey(error));
+  byId("mutationError").textContent = completed
+    ? t("mutations.partialFailure", { count: nf.format(completed), error: message })
+    : message;
+  byId("mutationError").hidden = false;
+}
+
+async function chooseMutationFiles() {
+  if (!pendingMutation || pendingMutation.type !== "add") return;
+  if (!isTauri()) {
+    showMutationError("mutation_failed");
+    return;
+  }
+  const extensions = [...new Set(FORMAT_GROUPS.flatMap(group => group.formats.map(format => format.ext)))];
+  const selected = await open({
+    multiple: true,
+    directory: false,
+    title: t("mutations.chooseFilesTitle"),
+    filters: [{ name: t("mutations.printFiles"), extensions }]
+  });
+  if (!selected) return;
+  pendingMutation.files = (Array.isArray(selected) ? selected : [selected]).slice(0, 100);
+  byId("addMutationFileSummary").textContent = t("mutations.filesChosen", { count: nf.format(pendingMutation.files.length) });
+  byId("confirmMutation").disabled = !pendingMutation.files.length || !byId("addMutationDestination").value;
+}
+
+async function createFolderInDestination() {
+  const name = byId("newFolderName").value;
+  const destination = destinationFromSelect(byId("moveMutationDestination"));
+  if (!name || !destination || !isTauri()) return;
+  const button = byId("createFolderInDestination");
+  button.disabled = true;
+  byId("mutationError").hidden = true;
+  try {
+    const created = await invoke("create_library_folder", { destination, name });
+    const option = document.createElement("option");
+    option.value = destinationValue(created);
+    const rootName = state.archive?.roots[created.rootIndex]?.name || t("common.library");
+    option.textContent = `${rootName} / ${created.relativePath}`;
+    byId("moveMutationDestination").append(option);
+    byId("moveMutationDestination").value = option.value;
+    byId("newFolderFields").hidden = true;
+    byId("confirmMutation").disabled = false;
+  } catch (error) {
+    showMutationError(error);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function refreshAfterMutation() {
+  clearManagementSelection({ renderCards: false });
+  await scanLibrary(state.roots, state.settings, true);
+}
+
+async function confirmMutation() {
+  if (!pendingMutation || !isTauri()) {
+    showMutationError("mutation_failed");
+    return;
+  }
+  const confirm = byId("confirmMutation");
+  confirm.disabled = true;
+  byId("mutationError").hidden = true;
+  let completed = 0;
+  try {
+    if (pendingMutation.type === "rename") {
+      const entry = pendingMutation.entries[0];
+      const parts = splitEntryName(entry.name, entry.kind);
+      const newName = `${byId("renameMutationInput").value}${parts.extension}`;
+      await invoke("rename_library_entry", { entry, newName });
+      completed = 1;
+    } else if (pendingMutation.type === "move") {
+      const destination = destinationFromSelect(byId("moveMutationDestination"));
+      if (!destination) throw new Error("mutation_invalid_destination");
+      for (const entry of pendingMutation.entries) {
+        await invoke("move_library_entry", { entry, destination });
+        completed++;
+      }
+    } else if (pendingMutation.type === "delete") {
+      for (const entry of pendingMutation.entries) {
+        await invoke("trash_library_entry", { entry });
+        completed++;
+      }
+    } else if (pendingMutation.type === "add") {
+      const destination = destinationFromSelect(byId("addMutationDestination"));
+      if (!destination || !pendingMutation.files.length) throw new Error("mutation_invalid_selection");
+      const copied = await invoke("copy_files_to_library", { sources: pendingMutation.files, destination });
+      completed = copied.length;
+    }
+    mutationDialog.close();
+    await refreshAfterMutation();
+  } catch (error) {
+    if (completed) await refreshAfterMutation();
+    showMutationError(error, completed);
+    confirm.disabled = false;
+  }
+}
+
+byId("addFiles").addEventListener("click", () => openMutation("add"));
+byId("renameSelection").addEventListener("click", () => openMutation("rename"));
+byId("moveSelection").addEventListener("click", () => openMutation("move"));
+byId("deleteSelection").addEventListener("click", () => openMutation("delete"));
+byId("clearLibrarySelection").addEventListener("click", () => clearManagementSelection());
+byId("chooseMutationFiles").addEventListener("click", chooseMutationFiles);
+byId("confirmMutation").addEventListener("click", confirmMutation);
+byId("showNewFolder").addEventListener("click", () => {
+  byId("newFolderFields").hidden = false;
+  requestAnimationFrame(() => byId("newFolderName").focus());
+});
+byId("createFolderInDestination").addEventListener("click", createFolderInDestination);
+mutationDialog.querySelectorAll("[data-close]").forEach(button => button.addEventListener("click", () => mutationDialog.close()));
+mutationDialog.addEventListener("click", event => { if (event.target === mutationDialog) mutationDialog.close(); });
+mutationDialog.addEventListener("close", () => { pendingMutation = null; });
+byId("renameMutationInput").addEventListener("input", event => {
+  byId("confirmMutation").disabled = !event.target.value.trim();
+});
+byId("moveMutationDestination").addEventListener("change", event => {
+  byId("confirmMutation").disabled = !event.target.value;
+});
+
 byId("stats").addEventListener("click", event => {
   const tile = event.target.closest(".action");
   if (!tile) return;
@@ -1115,6 +1627,7 @@ byId("stats").addEventListener("click", event => {
 byId("libraryModeSwitch").addEventListener("click", event => {
   const button = event.target.closest("[data-library-tab]");
   if (!button || button.dataset.libraryTab === state.tab) return;
+  clearManagementSelection({ renderCards: false });
   state.libraryLocation = libraryLocation();
   state.tab = button.dataset.libraryTab;
   renderStats();
@@ -1128,6 +1641,7 @@ byId("search").addEventListener("input", event => {
 });
 byId("sort").addEventListener("change", event => { state.sort = event.target.value; scheduleLibraryRender({ resetPage: true }); });
 byId("favoriteFilter").addEventListener("click", () => {
+  clearManagementSelection({ renderCards: false });
   state.favoriteOnly = !state.favoriteOnly;
   if (state.favoriteOnly) state.libraryLocation = libraryLocation();
   renderStats();
@@ -1165,6 +1679,7 @@ byId("sideLibrary").addEventListener("click", () => {
 });
 
 byId("sideFavorites").addEventListener("click", () => {
+  clearManagementSelection({ renderCards: false });
   state.libraryLocation = libraryLocation();
   state.favoriteOnly = true;
   state.category = "all";
@@ -1182,6 +1697,7 @@ byId("sideRootList").addEventListener("click", event => {
 });
 
 byId("libraryBreadcrumb").addEventListener("click", event => {
+  clearManagementSelection({ renderCards: false });
   if (event.target.closest("[data-library-home]")) {
     setLibraryLocation(libraryLocation());
   } else {
@@ -1238,9 +1754,10 @@ function projectGridCard(file, selectedKeys) {
 
 function projectGridFolder(project, folder) {
   const category = projectFolderCategory(folder);
-  const representative = folder.files.find(isViewable);
+  const cover = folderCoverDecision(project, folder.path, folder.files);
+  const presentation = folderCoverPresentation(cover);
   const path = projectFolderPath(project, folder.path);
-  return `<article class="project-file-card project-folder-card" style="--tone:${CATEGORIES[category].color}"><button class="project-folder-card-open" type="button" data-project-path="${escapeHtml(folder.path)}" aria-label="${escapeHtml(t("project.openFolder", { name: folder.name }))}"><div class="project-file-cover folder-cover ${previewCoverClass(representative)}" ${previewAttributes(representative)}>${demoPreviewMarkup(representative)}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> ${t("common.folder")}</span></div><div class="project-file-body"><div class="entry-kind">${t("project.subfolder")}</div><h4 title="${escapeHtml(folder.name)}">${escapeHtml(folder.name)}</h4><p>${t("common.filesCount", { count: folder.files.length })}</p><div class="meta"><span>${formatSize(folder.size)}</span><span>${formatDate(folder.modified)}</span></div></div></button>${folderFavoriteButton(project.rootIndex, path, folder.name, "project-folder-grid-favorite")}</article>`;
+  return `<article class="project-file-card project-folder-card" style="--tone:${CATEGORIES[category].color}"><button class="project-folder-card-open" type="button" data-project-path="${escapeHtml(folder.path)}" aria-label="${escapeHtml(t("project.openFolder", { name: folder.name }))}"><div class="project-file-cover folder-cover ${presentation.className}" ${presentation.attributes}>${presentation.markup}<span class="folder-mark"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span><span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> ${t("common.folder")}</span></div><div class="project-file-body"><div class="entry-kind">${t("project.subfolder")}</div><h4 title="${escapeHtml(folder.name)}">${escapeHtml(folder.name)}</h4><p>${t("common.filesCount", { count: folder.files.length })}</p><div class="meta"><span>${formatSize(folder.size)}</span><span>${formatDate(folder.modified)}</span></div></div></button>${folderFavoriteButton(project.rootIndex, path, folder.name, "project-folder-grid-favorite")}</article>`;
 }
 
 function compareProjectEntries(left, right, project = null) {
@@ -1333,18 +1850,7 @@ function setActiveSlicer(value) {
   state.slicer = normalizeSlicer(value);
   localStorage.setItem(SLICER_KEY, state.slicer);
   const supportsFile = file => isSlicerCompatible(file.extension, state.slicer);
-  state.librarySelection = compatibleSelection(state.librarySelection, state.fileIndex, supportsFile);
   state.projectSelection = compatibleSelection(state.projectSelection, state.fileIndex, supportsFile);
-  byId("library").querySelectorAll('input[type="checkbox"][data-library-path]').forEach(checkbox => {
-    const file = state.fileIndex.get(`${checkbox.dataset.rootIndex}\n${checkbox.dataset.libraryPath}`);
-    const compatible = file && supportsFile(file);
-    const selectionTitle = compatible ? t("project.selectForSlicer", { name: file.name }) : t("project.slicerUnsupported");
-    checkbox.disabled = !compatible;
-    checkbox.checked = compatible && state.librarySelection.has(fileSelectionKey(file));
-    checkbox.setAttribute("aria-label", selectionTitle);
-    checkbox.closest(".library-file-select")?.setAttribute("title", selectionTitle);
-    checkbox.closest(".file-card")?.classList.toggle("is-selected", checkbox.checked);
-  });
   if (projectDialog.open && projectDialog.dataset.projectIndex !== undefined) renderProjectContents(Number(projectDialog.dataset.projectIndex));
   updateSelectionControls();
 }
@@ -1439,7 +1945,7 @@ byId("library").addEventListener("click", async event => {
     toggleFavorite(favoriteFileFromControl(favoriteControl));
     return;
   }
-  if (event.target.closest(".library-file-select")) return;
+  if (event.target.closest(".entry-select")) return;
   const card = event.target.closest(".card");
   if (!card) return;
   if (card.dataset.projectIndex !== undefined) {
@@ -1450,12 +1956,18 @@ byId("library").addEventListener("click", async event => {
   }
 });
 byId("library").addEventListener("change", event => {
-  const checkbox = event.target.closest('input[type="checkbox"][data-library-path]');
+  const checkbox = event.target.closest('input[type="checkbox"][data-management-kind]');
   if (!checkbox) return;
-  const key = `${checkbox.dataset.rootIndex}\n${checkbox.dataset.libraryPath}`;
-  if (checkbox.checked) state.librarySelection.add(key);
-  else state.librarySelection.delete(key);
-  checkbox.closest(".file-card")?.classList.toggle("is-selected", checkbox.checked);
+  const entry = managementEntry(
+    checkbox.dataset.managementKind,
+    checkbox.dataset.managementRoot,
+    checkbox.dataset.managementPath,
+    checkbox.dataset.managementName,
+    checkbox.dataset.managementExtension
+  );
+  if (checkbox.checked) state.entrySelection.set(entry.key, entry);
+  else state.entrySelection.delete(entry.key);
+  checkbox.closest(".card")?.classList.toggle("is-selected", checkbox.checked);
   updateLibrarySelection();
 });
 projectDialog.querySelector("[data-close]").addEventListener("click", () => projectDialog.close());
@@ -1871,7 +2383,7 @@ async function restoreConfiguration() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
     if (!saved) return;
-    state.roots = Array.isArray(saved.roots) ? saved.roots.filter(root => typeof root === "string" && root) : [];
+    state.roots = normalizeLibraryRoots(Array.isArray(saved.roots) ? saved.roots : []);
     state.settings = saved.settingsVersion === SETTINGS_VERSION
       ? normalizeLibrarySettings(saved.settings)
       : defaultLibrarySettings();

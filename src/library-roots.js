@@ -28,8 +28,22 @@ export function isNestedLibraryRoot(candidate, parent) {
   return parentPath === "/" ? childPath.startsWith("/") : childPath.startsWith(`${parentPath}/`);
 }
 
+export function normalizeLibraryRoots(candidates = []) {
+  let roots = [];
+
+  candidates.filter(root => typeof root === "string" && root.trim()).forEach(candidate => {
+    if (roots.some(root => comparableRoot(root) === comparableRoot(candidate))) return;
+    if (roots.some(root => isNestedLibraryRoot(candidate, root))) return;
+
+    roots = roots.filter(root => !isNestedLibraryRoot(root, candidate));
+    roots.push(candidate);
+  });
+
+  return roots;
+}
+
 export function mergeLibraryRoots(currentRoots = [], additions = []) {
-  let roots = [...new Set(currentRoots.filter(root => typeof root === "string" && root))];
+  let roots = normalizeLibraryRoots(currentRoots);
   const skippedDuplicates = [];
   const skippedNested = [];
   const replacedNested = [];

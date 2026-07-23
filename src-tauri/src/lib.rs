@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 #[cfg(target_os = "windows")]
 use std::env;
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 use std::process::Command;
 use std::{
@@ -14,7 +16,10 @@ use tauri::ipc::Response;
 const MAX_FILES: usize = 200_000;
 const MAX_ROOTS: usize = 32;
 const MAX_MODEL_BYTES: u64 = 512 * 1024 * 1024;
+const MAX_COVER_IMAGE_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_SLICER_FILES: usize = 100;
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 const EXCLUDED_ROOT_DIRS: &[&str] = &["_uebersicht", "_druckarchiv_app"];
 const SLICER_EXTENSIONS: &[&str] = &[
     "stl", "3mf", "obj", "step", "stp", "amf", "ply", "gcode", "bgcode",
@@ -37,6 +42,27 @@ enum SlicerKind {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SlicerFileRequest {
+    root_index: usize,
+    relative_path: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LibraryEntryRequest {
+    root_index: usize,
+    relative_path: String,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LibraryFolderRequest {
+    root_index: usize,
+    relative_path: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MutationResult {
     root_index: usize,
     relative_path: String,
 }
@@ -282,25 +308,86 @@ fn scan_configured_roots(roots: Vec<String>) -> Result<(ArchiveData, Vec<PathBuf
         ));
     }
 
-    let mut archive = ArchiveData {
-        roots: Vec::with_capacity(roots.len()),
-        projects: Vec::new(),
-        loose: Vec::new(),
-    };
-    let mut root_paths = Vec::with_capacity(roots.len());
-    let mut total_files = 0usize;
+    struct PreparedRoot {
+        configured: String,
+        configured_path: PathBuf,
+        resolved_path: Option<PathBuf>,
+        comparable: String,
+    }
 
-    for configured_root in roots {
-        let configured_path = PathBuf::from(&configured_root);
+    fn comparable_root(path: &Path) -> String {
+        let mut value = path.to_string_lossy().replace('\\', "/");
+        if value.to_ascii_lowercase().starts_with("//?/unc/") {
+            value = format!("//{}", &value[8..]);
+        } else if value.starts_with("//?/") || value.starts_with("//./") {
+            value = value[4..].to_owned();
+        }
+        while value.contains("//") {
+            value = value.replace("//", "/");
+        }
+        if value.len() > 1 {
+            value = value.trim_end_matches('/').to_owned();
+        }
+        #[cfg(target_os = "windows")]
+        {
+            value = value.to_lowercase();
+        }
+        value
+    }
+
+    fn nested_root(candidate: &str, parent: &str) -> bool {
+        candidate != parent
+            && if parent == "/" {
+                candidate.starts_with('/')
+            } else {
+                candidate.starts_with(&format!("{parent}/"))
+            }
+    }
+
+    let mut prepared = Vec::<PreparedRoot>::new();
+    for configured in roots {
+        let configured_path = PathBuf::from(&configured);
         let resolved_path = configured_path
             .canonicalize()
             .ok()
             .filter(|path| path.is_dir());
-        let root_path = resolved_path.as_ref().unwrap_or(&configured_path);
+        let comparable = comparable_root(resolved_path.as_deref().unwrap_or(&configured_path));
+
+        if prepared.iter().any(|root| root.comparable == comparable) {
+            continue;
+        }
+        if prepared
+            .iter()
+            .any(|root| nested_root(&comparable, &root.comparable))
+        {
+            continue;
+        }
+        prepared.retain(|root| !nested_root(&root.comparable, &comparable));
+        prepared.push(PreparedRoot {
+            configured,
+            configured_path,
+            resolved_path,
+            comparable,
+        });
+    }
+
+    let mut archive = ArchiveData {
+        roots: Vec::with_capacity(prepared.len()),
+        projects: Vec::new(),
+        loose: Vec::new(),
+    };
+    let mut root_paths = Vec::with_capacity(prepared.len());
+    let mut total_files = 0usize;
+
+    for prepared_root in prepared {
+        let root_path = prepared_root
+            .resolved_path
+            .as_ref()
+            .unwrap_or(&prepared_root.configured_path);
         let name = {
             let folder_name = name_of(root_path);
             if folder_name.is_empty() {
-                configured_root.clone()
+                prepared_root.configured.clone()
             } else {
                 folder_name
             }
@@ -309,11 +396,11 @@ fn scan_configured_roots(roots: Vec<String>) -> Result<(ArchiveData, Vec<PathBuf
         archive.roots.push(ArchiveRoot {
             name,
             path: root_path.to_string_lossy().into_owned(),
-            available: resolved_path.is_some(),
+            available: prepared_root.resolved_path.is_some(),
         });
         root_paths.push(root_path.to_path_buf());
 
-        let Some(resolved_path) = resolved_path else {
+        let Some(resolved_path) = prepared_root.resolved_path else {
             continue;
         };
 
@@ -349,6 +436,273 @@ fn scan_archives(
     Ok(archive)
 }
 
+fn mutation_io_error(error: std::io::Error) -> String {
+    match error.kind() {
+        std::io::ErrorKind::NotFound => "mutation_missing".into(),
+        std::io::ErrorKind::AlreadyExists => "mutation_collision".into(),
+        std::io::ErrorKind::PermissionDenied => "mutation_permission_denied".into(),
+        std::io::ErrorKind::CrossesDevices => "mutation_cross_device".into(),
+        _ => "mutation_failed".into(),
+    }
+}
+
+fn safe_relative_path(value: &str, allow_empty: bool) -> Result<PathBuf, String> {
+    let path = Path::new(value);
+    if value.is_empty() && allow_empty {
+        return Ok(PathBuf::new());
+    }
+    if value.is_empty() || path.is_absolute() {
+        return Err("mutation_outside_library".into());
+    }
+    if path
+        .components()
+        .any(|component| !matches!(component, std::path::Component::Normal(_)))
+    {
+        return Err("mutation_outside_library".into());
+    }
+    Ok(path.to_path_buf())
+}
+
+fn safe_entry_name(value: &str) -> Result<&str, String> {
+    if value.is_empty()
+        || value.trim() != value
+        || value.len() > 240
+        || value.chars().any(|character| {
+            character.is_control()
+                || matches!(
+                    character,
+                    '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*'
+                )
+        })
+    {
+        return Err("mutation_invalid_name".into());
+    }
+    let mut components = Path::new(value).components();
+    if !matches!(components.next(), Some(std::path::Component::Normal(_)))
+        || components.next().is_some()
+        || matches!(value, "." | "..")
+    {
+        return Err("mutation_invalid_name".into());
+    }
+    Ok(value)
+}
+
+fn available_library_root(roots: &[PathBuf], root_index: usize) -> Result<PathBuf, String> {
+    roots
+        .get(root_index)
+        .ok_or_else(|| "mutation_library_unavailable".to_string())?
+        .canonicalize()
+        .map_err(|_| "mutation_library_unavailable".to_string())
+        .and_then(|root| {
+            if root.is_dir() {
+                Ok(root)
+            } else {
+                Err("mutation_library_unavailable".into())
+            }
+        })
+}
+
+fn existing_library_entry(
+    roots: &[PathBuf],
+    entry: &LibraryEntryRequest,
+) -> Result<(PathBuf, PathBuf), String> {
+    let root = available_library_root(roots, entry.root_index)?;
+    let relative = safe_relative_path(&entry.relative_path, false)?;
+    let requested = root.join(relative);
+    let metadata = fs::symlink_metadata(&requested).map_err(mutation_io_error)?;
+    if metadata.file_type().is_symlink() {
+        return Err("mutation_symlink".into());
+    }
+    let resolved = requested.canonicalize().map_err(mutation_io_error)?;
+    if resolved == root || !resolved.starts_with(&root) {
+        return Err("mutation_root_protected".into());
+    }
+    Ok((root, resolved))
+}
+
+fn existing_library_folder(
+    roots: &[PathBuf],
+    folder: &LibraryFolderRequest,
+) -> Result<(PathBuf, PathBuf), String> {
+    let root = available_library_root(roots, folder.root_index)?;
+    let relative = safe_relative_path(&folder.relative_path, true)?;
+    let requested = root.join(relative);
+    let metadata = fs::symlink_metadata(&requested).map_err(mutation_io_error)?;
+    if metadata.file_type().is_symlink() {
+        return Err("mutation_symlink".into());
+    }
+    let resolved = requested.canonicalize().map_err(mutation_io_error)?;
+    if !resolved.starts_with(&root) || !resolved.is_dir() {
+        return Err("mutation_invalid_destination".into());
+    }
+    Ok((root, resolved))
+}
+
+fn relative_result(root: &Path, path: &Path, root_index: usize) -> Result<MutationResult, String> {
+    let relative_path = path
+        .strip_prefix(root)
+        .map_err(|_| "mutation_outside_library")?
+        .to_string_lossy()
+        .into_owned();
+    Ok(MutationResult {
+        root_index,
+        relative_path,
+    })
+}
+
+fn rename_library_entry_at(
+    roots: &[PathBuf],
+    entry: &LibraryEntryRequest,
+    new_name: &str,
+) -> Result<MutationResult, String> {
+    let new_name = safe_entry_name(new_name)?;
+    let (root, source) = existing_library_entry(roots, entry)?;
+    if source.file_name() == Some(std::ffi::OsStr::new(new_name)) {
+        return Err("mutation_same_name".into());
+    }
+    let target = source.with_file_name(new_name);
+    if target.exists() {
+        return Err("mutation_collision".into());
+    }
+    fs::rename(&source, &target).map_err(mutation_io_error)?;
+    relative_result(&root, &target, entry.root_index)
+}
+
+fn move_library_entry_at(
+    roots: &[PathBuf],
+    entry: &LibraryEntryRequest,
+    destination: &LibraryFolderRequest,
+) -> Result<MutationResult, String> {
+    let (_, source) = existing_library_entry(roots, entry)?;
+    let (destination_root, destination_folder) = existing_library_folder(roots, destination)?;
+    if source.is_dir() && destination_folder.starts_with(&source) {
+        return Err("mutation_into_descendant".into());
+    }
+    let name = source.file_name().ok_or("mutation_invalid_name")?;
+    let target = destination_folder.join(name);
+    if source == target || source.parent() == Some(destination_folder.as_path()) {
+        return Err("mutation_same_location".into());
+    }
+    if target.exists() {
+        return Err("mutation_collision".into());
+    }
+    fs::rename(&source, &target).map_err(mutation_io_error)?;
+    relative_result(&destination_root, &target, destination.root_index)
+}
+
+fn create_library_folder_at(
+    roots: &[PathBuf],
+    destination: &LibraryFolderRequest,
+    name: &str,
+) -> Result<MutationResult, String> {
+    let name = safe_entry_name(name)?;
+    let (root, destination_folder) = existing_library_folder(roots, destination)?;
+    let target = destination_folder.join(name);
+    if target.exists() {
+        return Err("mutation_collision".into());
+    }
+    fs::create_dir(&target).map_err(mutation_io_error)?;
+    relative_result(&root, &target, destination.root_index)
+}
+
+fn copy_files_to_library_at(
+    roots: &[PathBuf],
+    sources: &[String],
+    destination: &LibraryFolderRequest,
+) -> Result<Vec<MutationResult>, String> {
+    if sources.is_empty() || sources.len() > 100 {
+        return Err("mutation_invalid_selection".into());
+    }
+    let (root, destination_folder) = existing_library_folder(roots, destination)?;
+    let mut prepared = Vec::<(PathBuf, PathBuf)>::new();
+    for source in sources {
+        let source_path = PathBuf::from(source);
+        let metadata = fs::symlink_metadata(&source_path).map_err(mutation_io_error)?;
+        if metadata.file_type().is_symlink() || !metadata.is_file() {
+            return Err("mutation_invalid_source".into());
+        }
+        let source_path = source_path.canonicalize().map_err(mutation_io_error)?;
+        let name = source_path.file_name().ok_or("mutation_invalid_name")?;
+        let target = destination_folder.join(name);
+        if target.exists() || prepared.iter().any(|(_, existing)| existing == &target) {
+            return Err("mutation_collision".into());
+        }
+        prepared.push((source_path, target));
+    }
+
+    let mut copied = Vec::with_capacity(prepared.len());
+    for (source, target) in prepared {
+        fs::copy(source, &target).map_err(mutation_io_error)?;
+        copied.push(relative_result(&root, &target, destination.root_index)?);
+    }
+    Ok(copied)
+}
+
+#[tauri::command]
+fn rename_library_entry(
+    entry: LibraryEntryRequest,
+    new_name: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<MutationResult, String> {
+    let roots = state
+        .roots
+        .lock()
+        .map_err(|_| "mutation_library_unavailable")?;
+    rename_library_entry_at(&roots, &entry, &new_name)
+}
+
+#[tauri::command]
+fn move_library_entry(
+    entry: LibraryEntryRequest,
+    destination: LibraryFolderRequest,
+    state: tauri::State<'_, AppState>,
+) -> Result<MutationResult, String> {
+    let roots = state
+        .roots
+        .lock()
+        .map_err(|_| "mutation_library_unavailable")?;
+    move_library_entry_at(&roots, &entry, &destination)
+}
+
+#[tauri::command]
+fn create_library_folder(
+    destination: LibraryFolderRequest,
+    name: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<MutationResult, String> {
+    let roots = state
+        .roots
+        .lock()
+        .map_err(|_| "mutation_library_unavailable")?;
+    create_library_folder_at(&roots, &destination, &name)
+}
+
+#[tauri::command]
+fn copy_files_to_library(
+    sources: Vec<String>,
+    destination: LibraryFolderRequest,
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<MutationResult>, String> {
+    let roots = state
+        .roots
+        .lock()
+        .map_err(|_| "mutation_library_unavailable")?;
+    copy_files_to_library_at(&roots, &sources, &destination)
+}
+
+#[tauri::command]
+fn trash_library_entry(
+    entry: LibraryEntryRequest,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), String> {
+    let roots = state
+        .roots
+        .lock()
+        .map_err(|_| "mutation_library_unavailable")?;
+    let (_, source) = existing_library_entry(&roots, &entry)?;
+    trash::delete(source).map_err(|_| "mutation_trash_failed".to_string())
+}
+
 #[tauri::command]
 fn read_model(root: String, relative_path: String) -> Result<Response, String> {
     let root_path = PathBuf::from(root)
@@ -382,6 +736,36 @@ fn read_model(root: String, relative_path: String) -> Result<Response, String> {
     let bytes =
         fs::read(requested).map_err(|error| format!("Datei kann nicht gelesen werden: {error}"))?;
     Ok(Response::new(bytes))
+}
+
+fn cover_image_bytes(path: &Path) -> Result<Vec<u8>, String> {
+    let requested = path
+        .canonicalize()
+        .map_err(|error| format!("Bild nicht gefunden: {error}"))?;
+    if !requested.is_file() {
+        return Err("Der ausgewählte Pfad ist keine Datei.".into());
+    }
+    let extension = requested
+        .extension()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_lowercase();
+    if !matches!(extension.as_str(), "png" | "jpg" | "jpeg") {
+        return Err("Nur PNG- und JPG-Bilder können als Ordner-Cover verwendet werden.".into());
+    }
+    let size = requested
+        .metadata()
+        .map_err(|error| error.to_string())?
+        .len();
+    if size > MAX_COVER_IMAGE_BYTES {
+        return Err("Das Cover-Bild ist größer als 16 MB.".into());
+    }
+    fs::read(requested).map_err(|error| format!("Bild kann nicht gelesen werden: {error}"))
+}
+
+#[tauri::command]
+fn read_cover_image(path: String) -> Result<Response, String> {
+    cover_image_bytes(Path::new(&path)).map(Response::new)
 }
 
 fn slicer_kind(id: &str) -> Result<SlicerKind, String> {
@@ -435,6 +819,18 @@ fn resolve_slicer_files(
     Ok(resolved)
 }
 
+#[cfg(any(target_os = "windows", test))]
+fn windows_external_path(path: &Path) -> PathBuf {
+    let value = path.as_os_str().to_string_lossy();
+    if let Some(network_path) = value.strip_prefix(r"\\?\UNC\") {
+        return PathBuf::from(format!(r"\\{network_path}"));
+    }
+    value
+        .strip_prefix(r"\\?\")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| path.to_path_buf())
+}
+
 #[cfg(target_os = "macos")]
 fn launch_slicer(kind: SlicerKind, files: &[PathBuf]) -> Result<(), String> {
     let mut command = Command::new("/usr/bin/open");
@@ -461,7 +857,14 @@ fn launch_slicer(kind: SlicerKind, files: &[PathBuf]) -> Result<(), String> {
 fn windows_slicer_candidates(kind: SlicerKind) -> Vec<PathBuf> {
     let (directories, executable): (Vec<&[&str]>, &str) = match kind {
         SlicerKind::OrcaSlicer => (vec![&["OrcaSlicer"]], "orca-slicer.exe"),
-        SlicerKind::BambuStudio => (vec![&["Bambu Studio"]], "bambu-studio.exe"),
+        SlicerKind::BambuStudio => (
+            vec![
+                &["Bambu Studio"],
+                &["BambuStudio"],
+                &["Bambu Lab", "Bambu Studio"],
+            ],
+            "bambu-studio.exe",
+        ),
         SlicerKind::PrusaSlicer => (
             vec![&["Prusa3D", "PrusaSlicer"], &["PrusaSlicer"]],
             "prusa-slicer.exe",
@@ -504,7 +907,9 @@ fn find_windows_slicer(kind: SlicerKind) -> Option<PathBuf> {
         SlicerKind::BambuStudio => "bambu-studio.exe",
         SlicerKind::PrusaSlicer => "prusa-slicer.exe",
     };
-    let output = Command::new("where.exe").arg(executable).output().ok()?;
+    let mut command = Command::new("where.exe");
+    command.creation_flags(CREATE_NO_WINDOW).arg(executable);
+    let output = command.output().ok()?;
     if !output.status.success() {
         return None;
     }
@@ -518,8 +923,13 @@ fn find_windows_slicer(kind: SlicerKind) -> Option<PathBuf> {
 #[cfg(target_os = "windows")]
 fn launch_slicer(kind: SlicerKind, files: &[PathBuf]) -> Result<(), String> {
     let executable = find_windows_slicer(kind).ok_or("slicer_not_found")?;
-    Command::new(executable)
-        .args(files)
+    let mut command = Command::new(&executable);
+    command.creation_flags(CREATE_NO_WINDOW);
+    if let Some(directory) = executable.parent() {
+        command.current_dir(directory);
+    }
+    command
+        .args(files.iter().map(|path| windows_external_path(path)))
         .spawn()
         .map(|_| ())
         .map_err(|_| "launch_failed".into())
@@ -593,7 +1003,13 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             scan_archives,
+            rename_library_entry,
+            move_library_entry,
+            create_library_folder,
+            copy_files_to_library,
+            trash_library_entry,
             read_model,
+            read_cover_image,
             open_in_slicer
         ])
         .run(tauri::generate_context!())
@@ -688,11 +1104,212 @@ mod tests {
     }
 
     #[test]
+    fn configured_scan_deduplicates_the_same_available_root() {
+        let available = test_directory("duplicate-root");
+        fs::create_dir_all(&available).expect("verfügbarer Bibliotheksordner");
+        fs::write(available.join("plate.stl"), b"solid test\nendsolid test").expect("Testmodell");
+
+        let equivalent = available.join(".");
+        let (archive, native_roots) = scan_configured_roots(vec![
+            available.to_string_lossy().into_owned(),
+            equivalent.to_string_lossy().into_owned(),
+        ])
+        .expect("Scan ohne doppelten Bibliotheksordner");
+
+        assert_eq!(archive.roots.len(), 1);
+        assert_eq!(native_roots.len(), 1);
+        assert_eq!(archive.loose.len(), 1);
+
+        fs::remove_dir_all(available).expect("Testordner entfernen");
+    }
+
+    #[test]
+    fn configured_scan_prefers_a_parent_over_its_child() {
+        let parent = test_directory("configured-parent");
+        let child = parent.join("child");
+        fs::create_dir_all(&child).expect("verschachtelte Bibliotheksordner");
+        fs::write(child.join("plate.stl"), b"solid test\nendsolid test").expect("Testmodell");
+
+        let (archive, native_roots) = scan_configured_roots(vec![
+            child.to_string_lossy().into_owned(),
+            parent.to_string_lossy().into_owned(),
+        ])
+        .expect("Scan mit übergeordnetem Bibliotheksordner");
+
+        assert_eq!(archive.roots.len(), 1);
+        assert_eq!(native_roots.len(), 1);
+        assert_eq!(
+            native_roots[0],
+            parent.canonicalize().expect("kanonischer Elternordner")
+        );
+
+        fs::remove_dir_all(parent).expect("Testordner entfernen");
+    }
+
+    #[test]
+    fn library_mutations_stay_inside_registered_roots() {
+        let root = test_directory("mutation-boundary");
+        fs::create_dir_all(root.join("Projekt")).expect("Projektordner");
+        fs::write(
+            root.join("Projekt").join("teil.stl"),
+            b"solid test\nendsolid test",
+        )
+        .expect("Testmodell");
+        let roots = vec![root.canonicalize().expect("kanonischer Bibliotheksordner")];
+
+        let traversal = LibraryEntryRequest {
+            root_index: 0,
+            relative_path: "../fremd.stl".into(),
+        };
+        let root_entry = LibraryEntryRequest {
+            root_index: 0,
+            relative_path: "".into(),
+        };
+
+        assert_eq!(
+            existing_library_entry(&roots, &traversal).unwrap_err(),
+            "mutation_outside_library"
+        );
+        assert_eq!(
+            existing_library_entry(&roots, &root_entry).unwrap_err(),
+            "mutation_outside_library"
+        );
+
+        fs::remove_dir_all(root).expect("Testordner entfernen");
+    }
+
+    #[test]
+    fn library_entries_can_be_created_renamed_moved_and_copied_without_overwrite() {
+        let root = test_directory("mutations");
+        let imports = test_directory("mutation-imports");
+        fs::create_dir_all(root.join("Projekt").join("Quelle")).expect("Quellordner");
+        fs::create_dir_all(root.join("Projekt").join("Ziel")).expect("Zielordner");
+        fs::create_dir_all(&imports).expect("Importordner");
+        fs::write(
+            root.join("Projekt").join("Quelle").join("teil.stl"),
+            b"solid test",
+        )
+        .expect("Testmodell");
+        fs::write(imports.join("platte.3mf"), b"test").expect("Importdatei");
+        let roots = vec![root.canonicalize().expect("kanonischer Bibliotheksordner")];
+
+        let renamed = rename_library_entry_at(
+            &roots,
+            &LibraryEntryRequest {
+                root_index: 0,
+                relative_path: "Projekt/Quelle/teil.stl".into(),
+            },
+            "halter.stl",
+        )
+        .expect("Datei umbenennen");
+        assert!(renamed.relative_path.ends_with("Projekt/Quelle/halter.stl"));
+
+        let destination = LibraryFolderRequest {
+            root_index: 0,
+            relative_path: "Projekt/Ziel".into(),
+        };
+        let moved = move_library_entry_at(
+            &roots,
+            &LibraryEntryRequest {
+                root_index: 0,
+                relative_path: renamed.relative_path,
+            },
+            &destination,
+        )
+        .expect("Datei verschieben");
+        assert!(moved.relative_path.ends_with("Projekt/Ziel/halter.stl"));
+
+        let created = create_library_folder_at(&roots, &destination, "Varianten")
+            .expect("Unterordner erstellen");
+        assert!(created.relative_path.ends_with("Projekt/Ziel/Varianten"));
+
+        let copied = copy_files_to_library_at(
+            &roots,
+            &[imports.join("platte.3mf").to_string_lossy().into_owned()],
+            &destination,
+        )
+        .expect("Datei kopieren");
+        assert_eq!(copied.len(), 1);
+        assert!(copied[0].relative_path.ends_with("Projekt/Ziel/platte.3mf"));
+
+        assert_eq!(
+            rename_library_entry_at(
+                &roots,
+                &LibraryEntryRequest {
+                    root_index: 0,
+                    relative_path: moved.relative_path,
+                },
+                "platte.3mf",
+            )
+            .unwrap_err(),
+            "mutation_collision"
+        );
+
+        fs::remove_dir_all(root).expect("Bibliotheksordner entfernen");
+        fs::remove_dir_all(imports).expect("Importordner entfernen");
+    }
+
+    #[test]
+    fn folders_cannot_be_moved_into_their_own_descendants() {
+        let root = test_directory("mutation-descendant");
+        fs::create_dir_all(root.join("Projekt").join("Unterordner"))
+            .expect("verschachtelte Ordner");
+        let roots = vec![root.canonicalize().expect("kanonischer Bibliotheksordner")];
+
+        let error = move_library_entry_at(
+            &roots,
+            &LibraryEntryRequest {
+                root_index: 0,
+                relative_path: "Projekt".into(),
+            },
+            &LibraryFolderRequest {
+                root_index: 0,
+                relative_path: "Projekt/Unterordner".into(),
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(error, "mutation_into_descendant");
+        fs::remove_dir_all(root).expect("Testordner entfernen");
+    }
+
+    #[test]
+    fn folder_covers_only_read_supported_images() {
+        let directory = test_directory("folder-cover");
+        fs::create_dir_all(&directory).expect("Cover-Testordner");
+        let image = directory.join("cover.PNG");
+        let unsupported = directory.join("cover.svg");
+        fs::write(&image, b"png-test").expect("PNG-Testdatei");
+        fs::write(&unsupported, b"svg-test").expect("SVG-Testdatei");
+
+        assert_eq!(cover_image_bytes(&image).expect("Cover-Bild"), b"png-test");
+        assert!(cover_image_bytes(&unsupported).is_err());
+
+        fs::remove_dir_all(directory).expect("Cover-Testordner entfernen");
+    }
+
+    #[test]
     fn slicer_targets_are_strictly_limited() {
         assert_eq!(slicer_kind("orcaSlicer"), Ok(SlicerKind::OrcaSlicer));
         assert_eq!(slicer_kind("bambuStudio"), Ok(SlicerKind::BambuStudio));
         assert_eq!(slicer_kind("prusaSlicer"), Ok(SlicerKind::PrusaSlicer));
         assert_eq!(slicer_kind("custom"), Err("unknown_slicer".into()));
+    }
+
+    #[test]
+    fn windows_slicer_paths_remove_extended_length_prefixes() {
+        assert_eq!(
+            windows_external_path(Path::new(r"\\?\C:\Modelle\Teil mit Leerzeichen.3mf")),
+            PathBuf::from(r"C:\Modelle\Teil mit Leerzeichen.3mf")
+        );
+        assert_eq!(
+            windows_external_path(Path::new(r"\\?\UNC\server\drucke\teil.stl")),
+            PathBuf::from(r"\\server\drucke\teil.stl")
+        );
+        assert_eq!(
+            windows_external_path(Path::new(r"C:\Modelle\teil.stl")),
+            PathBuf::from(r"C:\Modelle\teil.stl")
+        );
     }
 
     #[test]

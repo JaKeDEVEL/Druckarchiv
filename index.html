@@ -78,7 +78,9 @@
       <div class="stats" id="stats" aria-label="Archiv-Kennzahlen" data-i18n-aria-label="stats.label"></div>
     </header>
 
-    <nav class="toolbar" aria-label="Suche und Ansicht" data-i18n-aria-label="nav.label">
+    <div class="toolbar-stage" id="toolbarStage">
+      <div class="toolbar-flipper">
+    <nav class="toolbar toolbar-face toolbar-front" id="searchToolbar" aria-label="Suche und Ansicht" data-i18n-aria-label="nav.label">
       <label class="search-control" for="search">
         <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m12.5 12.5 4 4"/></svg>
         <input id="search" type="search" placeholder="Projekte und Dateien durchsuchen …" data-i18n-placeholder="nav.searchPlaceholder" autocomplete="off">
@@ -100,6 +102,23 @@
       </div>
       <button class="icon-tool" id="refreshLibrary" type="button" aria-label="Neu einlesen" title="Neu einlesen" data-tooltip="Neu einlesen" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.2 6.2A7 7 0 1 0 17 12"/><path d="M16.2 2.8v3.7h-3.7"/></svg></button>
     </nav>
+        <aside class="selection library-selection toolbar-face toolbar-back" id="librarySelection" aria-live="polite" hidden>
+          <div class="selection-summary"><span class="selection-check" aria-hidden="true">✓</span><p><strong id="librarySelectedLabel">1 Eintrag ausgewählt</strong><small id="librarySelectionPath"></small></p></div>
+          <div class="library-selection-actions">
+            <div class="management-actions" id="managementActions">
+              <button class="quiet-action" id="renameSelection" type="button"><span aria-hidden="true">✎</span><span data-i18n="mutations.rename">Umbenennen</span></button>
+              <button class="quiet-action" id="moveSelection" type="button"><span aria-hidden="true">⇢</span><span data-i18n="mutations.move">Verschieben</span></button>
+              <button class="quiet-action danger-text" id="deleteSelection" type="button"><span aria-hidden="true">⌫</span><span data-i18n="mutations.delete">Löschen</span></button>
+            </div>
+            <div class="selection-slicer-actions" id="selectionSlicerActions">
+              <select class="slicer-select" id="librarySlicerSelect" aria-label="Slicer auswählen" data-i18n-aria-label="project.slicerLabel"><option value="orcaSlicer">OrcaSlicer</option><option value="bambuStudio">Bambu Studio</option><option value="prusaSlicer">PrusaSlicer</option></select>
+              <button class="tool accent" id="openLibrarySelectionInSlicer" type="button" disabled>Datei im Slicer öffnen</button>
+            </div>
+            <button class="selection-clear" id="clearLibrarySelection" type="button" aria-label="Auswahl aufheben" data-i18n-aria-label="mutations.clearSelection">×</button>
+          </div>
+        </aside>
+      </div>
+    </div>
 
     <main>
       <div class="library-source-warning" id="librarySourceWarning" role="status" aria-live="polite" hidden>
@@ -114,6 +133,13 @@
           <h2 id="sectionTitle">Ordnerübersicht</h2>
         </div>
         <div class="section-head-actions">
+          <button class="tool add-files-trigger" id="addFiles" type="button">
+            <span aria-hidden="true">＋</span><span data-i18n="mutations.addFiles">Dateien hinzufügen</span>
+          </button>
+          <button class="tool folder-cover-trigger" id="folderCoverButton" type="button" hidden>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 5.5h6l1.8 2h7.2v8.5h-15z"/><circle cx="13.6" cy="10.7" r="1.3"/><path d="m8 14 2.2-2.2 2.1 2.1 1.2-1.2 2 2"/></svg>
+            <span data-i18n="folderCovers.manage">Ordnervorschau</span>
+          </button>
           <div class="section-results">
             <span id="resultCount">0 Treffer</span>
             <label class="page-size-control" id="pageSizeControl" hidden>
@@ -124,13 +150,6 @@
               </select>
             </label>
           </div>
-        </div>
-      </div>
-      <div class="selection library-selection" id="librarySelection" hidden>
-        <span><b id="librarySelectedCount">0</b> <span data-i18n="project.selected">Dateien ausgewählt</span></span>
-        <div class="library-selection-actions">
-          <select class="slicer-select" id="librarySlicerSelect" aria-label="Slicer auswählen" data-i18n-aria-label="project.slicerLabel"><option value="orcaSlicer">OrcaSlicer</option><option value="bambuStudio">Bambu Studio</option><option value="prusaSlicer">PrusaSlicer</option></select>
-          <button class="tool accent" id="openLibrarySelectionInSlicer" type="button" disabled>Datei im Slicer öffnen</button>
         </div>
       </div>
       <div class="library-loading" id="libraryLoading" role="status" aria-live="polite" hidden>
@@ -230,6 +249,88 @@
         <div class="settings-footer">
           <span class="settings-status" id="settingsStatus" role="status" aria-live="polite" data-i18n="settings.statusEmpty">Noch keine Ordner ausgewählt</span>
           <div><button class="tool" data-close type="button" data-i18n="common.cancel">Abbrechen</button><button class="primary small" id="applyLibrarySettings" type="button" data-i18n="settings.apply">Änderungen übernehmen</button></div>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="folderCoverDialog" class="folder-cover-dialog" aria-labelledby="folderCoverTitle">
+      <div class="modal folder-cover-modal">
+        <div class="modal-head">
+          <div><small data-i18n="folderCovers.eyebrow">Ordnerdarstellung</small><h3 id="folderCoverTitle"></h3></div>
+          <button class="icon" data-close type="button" aria-label="Schließen" data-i18n-aria-label="common.close">×</button>
+        </div>
+        <div class="folder-cover-body">
+          <div class="folder-cover-preview" id="folderCoverPreview" aria-hidden="true">
+            <span class="folder-cover-preview-icon"><svg viewBox="0 0 64 48"><path d="M4 12h22l6 7h28v25H4z"/></svg></span>
+            <img id="folderCoverPreviewImage" alt="" hidden>
+            <span class="kind-flag folder-flag"><svg viewBox="0 0 16 13"><path d="M1 3h6l2 2h6v7H1z"/></svg> <span data-i18n="common.folder">Ordner</span></span>
+          </div>
+          <div class="folder-cover-options">
+            <div class="folder-cover-intro"><b data-i18n="folderCovers.title">Vorschau für diesen Ordner</b><span data-i18n="folderCovers.detail">Die Einstellung gilt nur für diesen Projektordner und bleibt lokal auf diesem Gerät.</span></div>
+            <label class="folder-cover-option"><input type="radio" name="folder-cover-mode" value="auto"><span><b data-i18n="folderCovers.autoTitle">Automatisch</b><small id="folderCoverAutoDetail" data-i18n="folderCovers.autoDetail">Erste direkt enthaltene STL-, 3MF- oder OBJ-Datei verwenden.</small></span></label>
+            <label class="folder-cover-option"><input type="radio" name="folder-cover-mode" value="custom"><span><b data-i18n="folderCovers.customTitle">Eigenes Bild</b><small data-i18n="folderCovers.customDetail">PNG oder JPG auswählen; das Bild wird automatisch zugeschnitten.</small></span></label>
+            <div class="folder-cover-image-action" id="folderCoverImageAction" hidden>
+              <button class="tool accent" id="chooseFolderCoverImage" type="button" data-i18n="folderCovers.chooseImage">PNG oder JPG auswählen</button>
+              <span id="folderCoverFileName"></span>
+            </div>
+            <label class="folder-cover-option"><input type="radio" name="folder-cover-mode" value="icon"><span><b data-i18n="folderCovers.iconTitle">Nur Ordnersymbol</b><small data-i18n="folderCovers.iconDetail">Für diesen Ordner keine Dateivorschau anzeigen.</small></span></label>
+            <p class="folder-cover-note" data-i18n="folderCovers.leafNote">Modellvorschauen erscheinen nur in Endordnern. Für Strukturordner kannst du das Ordnersymbol behalten oder ein eigenes Bild wählen.</p>
+            <p class="folder-cover-error" id="folderCoverError" role="alert" hidden></p>
+          </div>
+        </div>
+        <div class="settings-footer">
+          <span id="folderCoverStatus" data-i18n="folderCovers.localHint">Bild und Auswahl bleiben ausschließlich lokal.</span>
+          <div><button class="tool" data-close type="button" data-i18n="common.cancel">Abbrechen</button><button class="primary small" id="saveFolderCover" type="button" data-i18n="folderCovers.save">Vorschau speichern</button></div>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="mutationDialog" class="mutation-dialog" aria-labelledby="mutationTitle">
+      <div class="modal mutation-modal">
+        <div class="modal-head">
+          <div><small id="mutationEyebrow" data-i18n="mutations.eyebrow">Dateiverwaltung</small><h3 id="mutationTitle"></h3></div>
+          <button class="icon" data-close type="button" aria-label="Schließen" data-i18n-aria-label="common.close">×</button>
+        </div>
+        <div class="mutation-body">
+          <div class="mutation-entry-summary" id="mutationEntrySummary">
+            <span id="mutationEntryBadge">STL</span><div><b id="mutationEntryName"></b><small id="mutationEntryPath"></small></div>
+          </div>
+
+          <section class="mutation-panel" id="renameMutationPanel" hidden>
+            <label class="mutation-field"><span id="renameMutationLabel" data-i18n="mutations.newName">Neuer Name</span><div class="rename-control"><input id="renameMutationInput" autocomplete="off" spellcheck="false"><code id="renameMutationExtension"></code></div><small id="renameMutationHelp"></small></label>
+            <p class="mutation-note"><span aria-hidden="true">i</span><span data-i18n="mutations.renameNote">Der Name wird direkt im ursprünglichen Ordner geändert.</span></p>
+          </section>
+
+          <section class="mutation-panel" id="moveMutationPanel" hidden>
+            <label class="mutation-field"><span data-i18n="mutations.destination">Zielordner</span><select id="moveMutationDestination"></select></label>
+            <button class="tool new-folder-trigger" id="showNewFolder" type="button" data-i18n="mutations.createFolder">＋ Neuen Ordner anlegen</button>
+            <div class="new-folder-fields" id="newFolderFields" hidden>
+              <input id="newFolderName" type="text" maxlength="240" autocomplete="off" spellcheck="false" placeholder="Ordnername" data-i18n-placeholder="mutations.folderNamePlaceholder">
+              <button class="tool accent" id="createFolderInDestination" type="button" data-i18n="mutations.create">Anlegen</button>
+            </div>
+            <p class="mutation-note"><span aria-hidden="true">i</span><span data-i18n="mutations.moveNote">Der echte Speicherort wird geändert. Verknüpfungen anderer Programme können dadurch ungültig werden.</span></p>
+          </section>
+
+          <section class="mutation-panel delete-mutation-panel" id="deleteMutationPanel" hidden>
+            <div class="danger-symbol" aria-hidden="true">!</div>
+            <p class="delete-lead" id="deleteMutationLead"></p>
+            <code class="delete-path" id="deleteMutationPath"></code>
+            <p class="mutation-note danger-note"><span aria-hidden="true">!</span><span id="deleteMutationNote"></span></p>
+          </section>
+
+          <section class="mutation-panel" id="addMutationPanel" hidden>
+            <div class="mutation-step"><span>1</span><div><b data-i18n="mutations.chooseFiles">Dateien auswählen</b><small data-i18n="mutations.chooseFilesDetail">Bis zu 100 Dateien von deinem Rechner</small></div></div>
+            <button class="file-picker-trigger" id="chooseMutationFiles" type="button"><span aria-hidden="true">＋</span><b data-i18n="mutations.chooseFilesButton">Dateien auswählen</b><small id="addMutationFileSummary" data-i18n="mutations.noFilesSelected">Noch keine Dateien ausgewählt</small></button>
+            <div class="mutation-step"><span>2</span><div><b data-i18n="mutations.chooseDestination">Zielordner festlegen</b><small data-i18n="mutations.copyPhysicalDetail">Die Dateien werden physisch in diesen Ordner kopiert.</small></div></div>
+            <label class="mutation-field"><span data-i18n="mutations.destination">Zielordner</span><select id="addMutationDestination"></select></label>
+            <p class="mutation-note"><span aria-hidden="true">i</span><span data-i18n="mutations.addNote">Druckarchiv erstellt keine Schattenbibliothek. Die Dateien liegen anschließend wirklich im gewählten Ordner.</span></p>
+          </section>
+
+          <p class="mutation-error" id="mutationError" role="alert" hidden></p>
+        </div>
+        <div class="settings-footer mutation-footer">
+          <span id="mutationStatus" data-i18n="mutations.localAction">Änderungen erfolgen direkt auf deinem Laufwerk.</span>
+          <div><button class="tool" data-close type="button" data-i18n="common.cancel">Abbrechen</button><button class="primary small" id="confirmMutation" type="button"></button></div>
         </div>
       </div>
     </dialog>

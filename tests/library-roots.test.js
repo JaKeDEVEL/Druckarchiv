@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isNestedLibraryRoot, mergeLibraryRoots, rootDisplayName } from "../src/library-roots.js";
+import { isNestedLibraryRoot, mergeLibraryRoots, normalizeLibraryRoots, rootDisplayName } from "../src/library-roots.js";
 
 test("ein bereits ausgewählter Ordner wird als Duplikat gemeldet", () => {
   const result = mergeLibraryRoots(["/Modelle"], ["/Modelle/"]);
@@ -61,4 +61,19 @@ test("Unterordner werden auch zwischen kanonischen und normalen Windows-Pfaden e
 
   assert.equal(driveResult.skippedNested.length, 1);
   assert.equal(networkResult.skippedNested.length, 1);
+});
+
+test("bereits gespeicherte gleichwertige Windows-Pfade werden beim Wiederherstellen bereinigt", () => {
+  assert.deepEqual(normalizeLibraryRoots([
+    "C:\\Users\\Jana\\3D-Druck",
+    "\\\\?\\C:\\Users\\Jana\\3D-Druck\\"
+  ]), ["C:\\Users\\Jana\\3D-Druck"]);
+});
+
+test("bereits gespeicherte Unterordner werden unabhängig von ihrer Reihenfolge bereinigt", () => {
+  assert.deepEqual(normalizeLibraryRoots([
+    "/Modelle/Figuren",
+    "/Modelle",
+    "/Modelle/Ersatzteile"
+  ]), ["/Modelle"]);
 });

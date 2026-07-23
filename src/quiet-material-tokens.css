@@ -22,6 +22,16 @@
   --qm-radius-control: 10px;
   --qm-radius-card: 11px;
   --qm-radius-large: 15px;
+  --qm-type-caption: 10px;
+  --qm-type-label: 12px;
+  --qm-type-body: 14px;
+  --qm-type-subtitle: 16px;
+  --qm-type-title: 20px;
+  --qm-type-section: 24px;
+  --qm-type-page: 28px;
+  --qm-weight-regular: 500;
+  --qm-weight-emphasis: 650;
+  --qm-weight-strong: 750;
   --qm-shadow-1: 0 3px 12px rgba(0, 0, 0, .18);
   --qm-shadow-2: 0 8px 24px rgba(0, 0, 0, .24);
   --qm-shadow-3: 0 26px 70px rgba(0, 0, 0, .36);
@@ -613,6 +623,566 @@ main {
 
   .toolbar {
     padding: 9px 16px;
+  }
+}
+
+/*
+ * Final production typography pass.
+ * This stays after every phased component rule so legacy declarations cannot
+ * silently reduce readable text below the shared scale.
+ */
+body {
+  font-size: var(--qm-type-body);
+  font-weight: var(--qm-weight-regular);
+  line-height: 1.45;
+}
+
+button,
+input,
+select,
+textarea,
+.primary,
+.tool {
+  font-size: var(--qm-type-body);
+}
+
+button,
+.primary,
+.tool {
+  font-weight: var(--qm-weight-emphasis);
+}
+
+small,
+.meta,
+.badge,
+.cover-label,
+.selection-summary small,
+.settings-heading > div:first-child > span,
+.root-row small,
+.root-empty span,
+.privacy-note,
+.format-chip small,
+.unknown-toggle small,
+.rule-help,
+.preview-panel p,
+.update-check-button small,
+.update-notes p,
+.library-source-warning div > span,
+.folder-cover-intro > span,
+.folder-cover-option small,
+.folder-cover-note,
+.folder-cover-error,
+.mutation-entry-summary small,
+.mutation-field > small,
+.mutation-note,
+.file-picker-trigger small,
+.mutation-step small,
+.mutation-error {
+  font-weight: var(--qm-weight-regular);
+}
+
+.workspace > header h1 {
+  font-size: var(--qm-type-page);
+  font-weight: var(--qm-weight-strong);
+}
+
+.section-head h2 {
+  font-size: var(--qm-type-section);
+  font-weight: var(--qm-weight-strong);
+}
+
+.modal-head h3,
+.update-content h3 {
+  font-size: var(--qm-type-title);
+  font-weight: var(--qm-weight-strong);
+}
+
+.side-product-copy b,
+.card h3,
+.library.list .card h3,
+.settings-heading > div:first-child > b,
+.folder-cover-intro > b {
+  font-size: var(--qm-type-subtitle);
+  font-weight: var(--qm-weight-strong);
+}
+
+.side-nav-item,
+.side-root-item,
+.app-menu-heading > span,
+.root-row b,
+.root-empty b,
+.project-file-body h4,
+.folder-row-name b,
+.file-row,
+.selection,
+.selection-summary strong,
+.mutation-entry-summary b,
+.delete-lead,
+.file-picker-trigger b,
+.mutation-step b {
+  font-size: var(--qm-type-body);
+}
+
+header p,
+.side-product-copy small,
+.side-nav-item small,
+.side-root-item small,
+.side-library-tree > p,
+.side-root-item .source-offline-status,
+.side-local-note small,
+.entry-kind,
+.meta,
+.badge,
+.kind-flag,
+.cover-label,
+.version-badge,
+.pagination > span,
+.view-mode-option[data-tooltip]::after,
+.icon-tool[data-tooltip]::after,
+.update-check-button small,
+.update-notes small,
+.update-progress-label,
+.viewer-foot,
+.project-file-body p,
+.folder-row-name small,
+.project-breadcrumb,
+.project-browser-results,
+.library-breadcrumb,
+.mutation-entry-summary small,
+.mutation-field > small,
+.delete-path,
+.file-picker-trigger small,
+.mutation-step small,
+.folder-cover-image-action > span {
+  font-size: var(--qm-type-caption);
+  line-height: 1.4;
+}
+
+.eyebrow,
+.section-kicker,
+.app-menu-label,
+.stat label,
+.stat span,
+.section-results,
+.page-size-control select,
+.page-buttons button,
+.page-ellipsis,
+.toolbar input,
+.toolbar #sort,
+.toolbar .favorite-filter,
+.toolbar .entry-mode-option,
+.selection-summary small,
+.settings-heading > div:first-child > span,
+.root-row small,
+.root-empty span,
+.privacy-note,
+.mini-action,
+.format-groups legend,
+.format-chip b,
+.format-chip small,
+.unknown-toggle b,
+.unknown-toggle small,
+.field-label,
+.rule-help,
+.settings-footer > span,
+.preview-panel p,
+.switch-control b,
+.slicer-select,
+.preview-status,
+.library-loading span,
+.app-menu-panel .theme-option,
+.locale-option > span,
+.locale-option small,
+.update-check-button b,
+.update-notes p,
+.update-error,
+.library-source-warning div > span,
+.folder-cover-intro > span,
+.folder-cover-option small,
+.folder-cover-note,
+.folder-cover-error,
+.mutation-field > span,
+.rename-control code,
+.mutation-note,
+.mutation-error {
+  font-size: var(--qm-type-label);
+  line-height: 1.45;
+}
+
+.eyebrow,
+.section-kicker,
+.app-menu-label,
+.stat label,
+.entry-kind,
+.kind-flag,
+.field-label,
+.mutation-field > span,
+.side-nav-item,
+.side-root-item,
+.toolbar input,
+.toolbar select,
+.toolbar button,
+.settings-heading > div:first-child > b,
+.root-row b,
+.root-empty b,
+.format-chip b,
+.unknown-toggle b,
+.switch-control b,
+.app-menu-heading > span,
+.locale-option > span,
+.update-check-button b,
+.project-file-body h4,
+.folder-row-name b,
+.selection-summary strong,
+.mutation-entry-summary b,
+.file-picker-trigger b,
+.mutation-step b {
+  font-weight: var(--qm-weight-emphasis);
+}
+
+.stat b {
+  font-size: var(--qm-type-title);
+  font-weight: var(--qm-weight-strong);
+}
+
+.side-product-copy b {
+  font-size: var(--qm-type-subtitle);
+}
+
+.side-nav-item,
+.side-root-item {
+  font-size: var(--qm-type-body);
+}
+
+.side-local-note b {
+  font-size: var(--qm-type-label);
+  font-weight: var(--qm-weight-emphasis);
+}
+
+.quiet-action {
+  min-height: 40px;
+  padding-inline: 11px;
+  font-size: var(--qm-type-body);
+  font-weight: var(--qm-weight-emphasis);
+}
+
+.mutation-entry-summary > span,
+.mutation-note > span:first-child,
+.mutation-step > span {
+  font-size: var(--qm-type-caption);
+}
+
+.mutation-field input,
+.mutation-field select {
+  font-size: var(--qm-type-body);
+}
+
+.selection-summary strong {
+  color: var(--qm-text);
+}
+
+.selection-summary small,
+.mutation-entry-summary small,
+.mutation-field > small,
+.mutation-note,
+.folder-cover-option small,
+.folder-cover-note,
+.update-check-button small,
+.update-notes p,
+.library-source-warning div > span {
+  color: var(--qm-text-secondary);
+}
+
+.side-nav-item > span:nth-child(2) {
+  font-size: inherit;
+}
+
+@media (max-width: 800px) {
+  .side-nav-item > span:nth-child(2) {
+    font-size: var(--qm-type-caption);
+  }
+}
+
+/* Accessible desktop type scale: seven sizes, three textual weights. */
+body {
+  font-size: var(--qm-type-body);
+  font-weight: var(--qm-weight-regular);
+  line-height: 1.45;
+}
+
+button,
+input,
+select,
+textarea,
+.primary,
+.tool {
+  font-size: var(--qm-type-body);
+}
+
+button,
+.primary,
+.tool {
+  font-weight: var(--qm-weight-emphasis);
+}
+
+h1,
+h2,
+h3,
+h4,
+b,
+strong {
+  font-weight: var(--qm-weight-strong);
+}
+
+small,
+.meta,
+.badge,
+.cover-label,
+.selection-summary small,
+.settings-heading > div:first-child > span,
+.root-row small,
+.root-empty span,
+.privacy-note,
+.format-chip small,
+.unknown-toggle small,
+.rule-help,
+.preview-panel p,
+.update-check-button small,
+.update-notes p,
+.library-source-warning div > span,
+.folder-cover-intro > span,
+.folder-cover-option small,
+.folder-cover-note,
+.folder-cover-error,
+.mutation-entry-summary small,
+.mutation-field > small,
+.mutation-note,
+.file-picker-trigger small,
+.mutation-step small,
+.mutation-error {
+  font-weight: var(--qm-weight-regular);
+}
+
+.eyebrow,
+.section-kicker,
+.app-menu-label,
+.stat label,
+.entry-kind,
+.kind-flag,
+.field-label,
+.mutation-field > span {
+  font-weight: var(--qm-weight-emphasis);
+}
+
+.workspace > header h1 {
+  font-size: var(--qm-type-page);
+}
+
+header p,
+.app-menu-heading small,
+.side-product-copy small,
+.side-nav-item small,
+.side-root-item small,
+.side-library-tree > p,
+.side-root-item .source-offline-status,
+.side-local-note small,
+.entry-kind,
+.meta,
+.badge,
+.kind-flag,
+.cover-label,
+.version-badge,
+.pagination > span,
+.view-mode-option[data-tooltip]::after,
+.icon-tool[data-tooltip]::after,
+.update-check-button small,
+.update-notes small,
+.update-progress-label,
+.viewer-foot,
+.project-file-body p,
+.folder-row-name small,
+.project-breadcrumb,
+.project-browser-results,
+.library-breadcrumb,
+.mutation-entry-summary small,
+.mutation-field > small,
+.delete-path,
+.file-picker-trigger small,
+.mutation-step small,
+.folder-cover-image-action > span {
+  font-size: var(--qm-type-caption);
+  line-height: 1.4;
+}
+
+.eyebrow,
+.section-kicker,
+.app-menu-label,
+.stat label,
+.stat span,
+.section-results,
+.page-size-control select,
+.page-buttons button,
+.page-ellipsis,
+.toolbar input,
+.toolbar #sort,
+.toolbar .favorite-filter,
+.toolbar .entry-mode-option,
+.selection-summary small,
+.settings-heading > div:first-child > span,
+.root-row small,
+.root-empty span,
+.privacy-note,
+.mini-action,
+.format-groups legend,
+.format-chip b,
+.format-chip small,
+.unknown-toggle b,
+.unknown-toggle small,
+.field-label,
+.rule-help,
+.settings-footer > span,
+.preview-panel p,
+.switch-control b,
+.slicer-select,
+.preview-status,
+.library-loading span,
+.app-menu-panel .theme-option,
+.locale-option > span,
+.locale-option small,
+.update-check-button b,
+.update-notes p,
+.update-error,
+.library-source-warning div > span,
+.folder-cover-intro > span,
+.folder-cover-option small,
+.folder-cover-note,
+.folder-cover-error,
+.mutation-field > span,
+.rename-control code,
+.mutation-note,
+.mutation-error {
+  font-size: var(--qm-type-label);
+  line-height: 1.45;
+}
+
+.side-product-copy b,
+.card h3,
+.library.list .card h3,
+.settings-heading > div:first-child > b,
+.folder-cover-intro > b,
+.modal-head h3,
+.update-content h3 {
+  font-weight: var(--qm-weight-strong);
+}
+
+.side-product-copy b,
+.card h3,
+.library.list .card h3,
+.folder-cover-intro > b {
+  font-size: var(--qm-type-subtitle);
+}
+
+.side-nav-item,
+.side-root-item,
+.app-menu-heading > span,
+.root-row b,
+.root-empty b,
+.project-file-body h4,
+.folder-row-name b,
+.file-row,
+.selection,
+.selection-summary strong,
+.mutation-entry-summary b,
+.delete-lead,
+.file-picker-trigger b,
+.mutation-step b {
+  font-size: var(--qm-type-body);
+}
+
+.side-nav-item,
+.side-root-item,
+.toolbar input,
+.toolbar select,
+.toolbar button,
+.quiet-action,
+.settings-heading > div:first-child > b,
+.root-row b,
+.root-empty b,
+.format-chip b,
+.unknown-toggle b,
+.field-label,
+.switch-control b,
+.app-menu-heading > span,
+.locale-option > span,
+.update-check-button b,
+.project-file-body h4,
+.folder-row-name b,
+.selection-summary strong,
+.mutation-entry-summary b,
+.mutation-field > span,
+.file-picker-trigger b,
+.mutation-step b {
+  font-weight: var(--qm-weight-emphasis);
+}
+
+.settings-heading > div:first-child > b {
+  font-size: var(--qm-type-subtitle);
+}
+
+.modal-head h3,
+.update-content h3 {
+  font-size: var(--qm-type-title);
+}
+
+.section-head h2 {
+  font-size: var(--qm-type-section);
+}
+
+.stat b {
+  font-size: var(--qm-type-title);
+  font-weight: var(--qm-weight-strong);
+}
+
+.quiet-action {
+  min-height: 40px;
+  padding-inline: 11px;
+  font-size: var(--qm-type-body);
+}
+
+.selection-summary strong {
+  color: var(--qm-text);
+}
+
+.selection-summary small,
+.mutation-entry-summary small,
+.mutation-field > small,
+.mutation-note,
+.folder-cover-option small,
+.folder-cover-note,
+.update-check-button small,
+.update-notes p,
+.library-source-warning div > span {
+  color: var(--qm-text-secondary);
+}
+
+.mutation-entry-summary > span,
+.mutation-note > span:first-child,
+.mutation-step > span {
+  font-size: var(--qm-type-caption);
+}
+
+.mutation-field input,
+.mutation-field select {
+  font-size: var(--qm-type-body);
+}
+
+.side-nav-item > span:nth-child(2) {
+  font-size: inherit;
+}
+
+@media (max-width: 800px) {
+  .side-nav-item > span:nth-child(2) {
+    font-size: var(--qm-type-caption);
   }
 }
 
